@@ -26,7 +26,6 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// AKTIVASI OFFLINE PERSISTENCE
 enableIndexedDbPersistence(db).catch((err) => {
     console.warn("Offline Persistence Status:", err.code);
 });
@@ -182,6 +181,7 @@ const PIRUApp = () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('CKP');
 
+    // 1. Judul & Info
     sheet.mergeCells('A2:H2');
     const tCell = sheet.getCell('A2');
     tCell.value = `Capaian Kinerja Pegawai Tahun ${selectedYear}`;
@@ -198,6 +198,7 @@ const PIRUApp = () => {
     setInfo(6, 'Jabatan', targetStaff?.jabatan || '');
     setInfo(7, 'Periode', `1 - ${lastDay} ${monthNames[selectedMonth-1]} ${selectedYear}`);
 
+    // 2. Header Tabel
     sheet.mergeCells('A9:A10'); sheet.getCell('A9').value = 'No';
     sheet.mergeCells('B9:B10'); sheet.getCell('B9').value = 'Uraian Kegiatan';
     sheet.mergeCells('C9:C10'); sheet.getCell('C9').value = 'Satuan';
@@ -214,6 +215,7 @@ const PIRUApp = () => {
         cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
     });
 
+    // 3. Data Loop
     let curRow = 11;
     let sumKuan = 0; let sumKual = 0;
     currentFilteredReports.forEach((r, i) => {
@@ -223,43 +225,79 @@ const PIRUApp = () => {
         row.values = [i+1, r.title, r.satuan, r.target, r.realisasi, kP, qP, r.keterangan || ''];
         row.eachCell({ includeEmpty: true }, (cell) => {
             cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-            cell.alignment = { horizontal: cell.col >= 4 && cell.col <= 7 ? 'center' : 'left' };
+            cell.alignment = { horizontal: cell.col >= 4 && cell.col <= 7 ? 'center' : 'left', vertical: 'middle' };
         });
         sumKuan += Math.min(kP, 100); sumKual += qP; curRow++;
     });
 
+    // 4. Baris Rata-Rata (Centre)
     const avgKuan = currentFilteredReports.length > 0 ? sumKuan / currentFilteredReports.length : 0;
     const avgKual = currentFilteredReports.length > 0 ? sumKual / currentFilteredReports.length : 0;
 
     sheet.mergeCells(`A${curRow}:E${curRow}`);
-    sheet.getCell(`A${curRow}`).value = 'Rata-Rata';
-    sheet.getCell(`A${curRow}`).alignment = { horizontal: 'center' };
-    sheet.getCell(`F${curRow}`).value = avgKuan.toFixed(2);
-    sheet.getCell(`G${curRow}`).value = avgKual.toFixed(2);
+    const avgLabel = sheet.getCell(`A${curRow}`);
+    avgLabel.value = 'Rata-Rata';
+    avgLabel.alignment = { horizontal: 'center', vertical: 'middle' };
+    
+    const avgValKuan = sheet.getCell(`F${curRow}`);
+    avgValKuan.value = avgKuan.toFixed(2);
+    avgValKuan.alignment = { horizontal: 'center' };
+    
+    const avgValKual = sheet.getCell(`G${curRow}`);
+    avgValKual.value = avgKual.toFixed(2);
+    avgValKual.alignment = { horizontal: 'center' };
+
     [`A${curRow}`,`F${curRow}`,`G${curRow}`,`H${curRow}`].forEach(c => {
         sheet.getCell(c).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
         sheet.getCell(c).font = { bold: true };
     });
     curRow++;
 
+    // 5. Baris CKP (Centre)
     sheet.mergeCells(`A${curRow}:E${curRow}`);
-    sheet.getCell(`A${curRow}`).value = 'Capaian Kinerja Pegawai (CKP)';
-    sheet.getCell(`A${curRow}`).alignment = { horizontal: 'center' };
+    const ckpLabel = sheet.getCell(`A${curRow}`);
+    ckpLabel.value = 'Capaian Kinerja Pegawai (CKP)';
+    ckpLabel.alignment = { horizontal: 'center', vertical: 'middle' };
+    
     sheet.mergeCells(`F${curRow}:G${curRow}`);
-    sheet.getCell(`F${curRow}`).value = ((avgKuan + avgKual) / 2).toFixed(2);
-    sheet.getCell(`F${curRow}`).alignment = { horizontal: 'center' };
+    const ckpVal = sheet.getCell(`F${curRow}`);
+    ckpVal.value = ((avgKuan + avgKual) / 2).toFixed(2);
+    ckpVal.alignment = { horizontal: 'center', vertical: 'middle' };
+
     [`A${curRow}`,`F${curRow}`,`H${curRow}`].forEach(c => {
         sheet.getCell(c).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
         sheet.getCell(c).font = { bold: true };
     });
     curRow += 2;
 
-    sheet.getCell(`F${curRow}`).value = `Penilaian Kinerja: ${lastDay} ${monthNames[selectedMonth-1]} ${selectedYear}`;
+    // 6. Penilaian Kinerja & TTD (Merge & Centre)
+    sheet.mergeCells(`F${curRow}:H${curRow}`);
+    const penCell = sheet.getCell(`F${curRow}`);
+    penCell.value = `Penilaian Kinerja: ${lastDay} ${monthNames[selectedMonth-1]} ${selectedYear}`;
+    penCell.alignment = { horizontal: 'center' };
     curRow += 2;
-    sheet.getCell(`F${curRow}`).value = 'Pejabat Penilai,';
+
+    sheet.mergeCells(`F${curRow}:G${curRow}`);
+    const pjbCell = sheet.getCell(`F${curRow}`);
+    pjbCell.value = 'Pejabat Penilai,';
+    pjbCell.alignment = { horizontal: 'center' };
     curRow += 4;
-    sheet.getCell(`F${curRow}`).value = pimpinan.name;
-    sheet.getCell(`F${curRow}`).font = { bold: true, underline: true };
+
+    sheet.mergeCells(`F${curRow}:G${curRow}`);
+    const nmPCell = sheet.getCell(`F${curRow}`);
+    nmPCell.value = pimpinan.name;
+    nmPCell.font = { bold: true, underline: true };
+    nmPCell.alignment = { horizontal: 'center' };
+
+    // 7. Auto-adjust Column Width
+    sheet.columns.forEach(column => {
+        let maxColumnLength = 0;
+        column.eachCell({ includeEmpty: true }, cell => {
+            const cellValue = cell.value ? cell.value.toString() : "";
+            maxColumnLength = Math.max(maxColumnLength, cellValue.length);
+        });
+        column.width = maxColumnLength < 10 ? 10 : maxColumnLength + 2;
+    });
 
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), `CKP_${targetStaff?.name}.xlsx`);
@@ -353,7 +391,7 @@ const PIRUApp = () => {
                    <div className="flex items-center gap-3 mb-10"><TrendingUp className="text-indigo-600" size={28}/><h3 className="font-black text-2xl uppercase tracking-tighter italic">Monitoring Progres Pegawai</h3></div>
                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                      {dashboardStats.staffSummary.map((s, i) => (
-                       <div key={i} className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 flex flex-col justify-between hover:border-indigo-200 transition-all shadow-sm">
+                       <div key={i} className="p-8 bg-slate-50 rounded-[2.5rem] border flex flex-col justify-between hover:border-indigo-300 transition-all shadow-sm">
                          <div className="mb-6"><p className="text-[11px] font-black text-slate-400 uppercase mb-2">{s.name}</p><span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-lg ${s.status === 'Selesai' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>{s.status} ({s.total} Keg.)</span></div>
                          <div className="flex justify-between items-end"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nilai Akhir</p><p className="text-4xl font-black text-indigo-600 tracking-tighter">{s.nilaiAkhir}</p></div>
                        </div>
@@ -396,7 +434,7 @@ const PIRUApp = () => {
                       <td className="p-8 text-center">
                         <div className="flex justify-center gap-2">
                           {r.userId === user.username && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl hover:bg-indigo-600 hover:text-white transition-all"><Edit3 size={18}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-red-50 text-red-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all"><Trash2 size={18}/></button></>}
-                          {user.role === 'admin' && <button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-slate-100 text-slate-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all"><Trash2 size={18}/></button>}
+                          {user.role === 'admin' && <button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-slate-100 text-slate-400 rounded-2xl hover:bg-red-500 transition-all"><Trash2 size={18}/></button>}
                           {(user.role === 'admin' || user.role === 'ketua') && r.userId !== user.username && r.status !== 'selesai' && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase transition-all active:scale-95">Ketua</button>}
                           {(user.role === 'pimpinan' || user.role === 'admin') && r.userId !== user.username && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-lg transition-all active:scale-95">{r.status === 'selesai' ? 'Koreksi' : 'Pimpinan'}</button>}
                         </div>
