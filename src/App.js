@@ -19,12 +19,12 @@ import * as XLSX from 'xlsx';
 // 1. PENTING: GANTI DATA DI BAWAH INI DENGAN DATA FIREBASE ANDA
 // ==========================================================
 const firebaseConfig = {
-  apiKey: "ISI_API_KEY_ANDA",
-  authDomain: "PROYEK-ANDA.firebaseapp.com",
-  projectId: "PROYEK-ANDA",
-  storageBucket: "PROYEK-ANDA.appspot.com",
-  messagingSenderId: "NOMOR_SENDER",
-  appId: "ID_APLIKASI_ANDA"
+  apiKey: "AIzaSyDVRt3zgojeVh8ek61yXFQ9r9ihpOt7BqQ",
+  authDomain: "piru8106-b4f0a.firebaseapp.com",
+  projectId: "piru8106-b4f0a",
+  storageBucket: "piru8106-b4f0a.firebasestorage.app",
+  messagingSenderId: "948735762696",
+  appId: "1:948735762696:web:43674d0341fc8b05e14cbd"
 };
 
 // Inisialisasi Firebase (Memperbaiki error 'db' is not defined)
@@ -211,3 +211,4 @@ const PIRUApp = () => {
 };
 
 export default PIRUApp;
+
