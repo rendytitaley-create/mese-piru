@@ -90,7 +90,7 @@ const PIRUApp = () => {
           realisasi: Number(newReport.realisasi),
           userId: user.username,
           userName: user.name,
-          userRole: user.role, // Menyimpan role pengentri
+          userRole: user.role,
           month: selectedMonth,
           year: selectedYear,
           status: 'pending',
@@ -106,7 +106,7 @@ const PIRUApp = () => {
   };
 
   const submitGrade = async (reportId, roleName) => {
-    const val = prompt(`Masukkan Nilai ${roleName === 'ketua' ? 'Ketua Tim' : 'Pimpinan'} (Bisa Desimal):`);
+    const val = prompt(`Masukkan Nilai ${roleName === 'ketua' ? 'Ketua Tim' : 'Pimpinan'} (Desimal diperbolehkan):`);
     if (val && !isNaN(val)) {
         const grade = parseFloat(val);
         const ref = doc(db, "reports", reportId);
@@ -124,20 +124,31 @@ const PIRUApp = () => {
     return res;
   }, [reports, user, selectedMonth, selectedYear]);
 
+  // LOGIKA PERHITUNGAN BARU SESUAI PROMPT
   const stats = useMemo(() => {
     const total = filteredReports.length;
-    const selesai = filteredReports.filter(r => r.status === 'selesai').length;
-    const avg = total > 0 ? (filteredReports.reduce((a, b) => a + (b.nilaiPimpinan || 0), 0) / total).toFixed(1) : 0;
-    return { total, selesai, avg };
+    if (total === 0) return { total: 0, avgCapaian: 0, avgPimpinan: 0, nilaiAkhir: 0 };
+
+    const avgCapaian = (filteredReports.reduce((acc, curr) => {
+        const capaian = (curr.realisasi / curr.target) * 100;
+        return acc + Math.min(capaian, 100); // Dibatasi max 100% per kegiatan
+    }, 0) / total);
+
+    const avgPimpinan = (filteredReports.reduce((acc, curr) => acc + (Number(curr.nilaiPimpinan) || 0), 0) / total);
+    
+    // Rumus: (Avg Capaian + Avg Pimpinan) / 2
+    const nilaiAkhir = ((avgCapaian + avgPimpinan) / 2).toFixed(2);
+
+    return { total, avgCapaian: avgCapaian.toFixed(2), avgPimpinan: avgPimpinan.toFixed(2), nilaiAkhir };
   }, [filteredReports]);
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-indigo-600" size={50} /></div>;
 
   if (!user) return (
-    <div className="h-screen bg-indigo-900 flex items-center justify-center p-4">
+    <div className="h-screen bg-indigo-900 flex items-center justify-center p-4 text-slate-800">
       <div className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl text-center">
         <ShieldCheck size={60} className="mx-auto text-indigo-600 mb-4" />
-        <h1 className="text-3xl font-black mb-8 text-slate-800 tracking-tighter uppercase font-sans">PIRU LOGIN</h1>
+        <h1 className="text-3xl font-black mb-8 tracking-tighter uppercase">PIRU LOGIN</h1>
         <form onSubmit={handleLogin} className="space-y-4">
           {authError && <div className="p-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold text-center border border-red-100">{authError}</div>}
           <input type="text" placeholder="Username" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold" onChange={e => setAuthForm({...authForm, username: e.target.value})} />
@@ -150,7 +161,6 @@ const PIRUApp = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex font-sans overflow-hidden text-slate-800">
-      {/* Sidebar */}
       <div className="w-72 bg-white border-r p-8 flex flex-col hidden md:flex">
         <div className="flex items-center gap-3 mb-12">
           <div className="bg-indigo-600 p-2.5 rounded-2xl text-white shadow-lg shadow-indigo-100"><ShieldCheck size={24}/></div>
@@ -177,10 +187,10 @@ const PIRUApp = () => {
               {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
             </select>
             {(user.role === 'pegawai' || user.role === 'ketua' || user.role === 'admin') && activeTab === 'laporan' && (
-                <button onClick={() => {setIsEditing(false); setShowReportModal(true)}} className="bg-indigo-600 text-white px-8 py-3.5 rounded-2xl font-black shadow-lg uppercase tracking-widest text-xs active:scale-95 transition-all"><Plus size={18}/> Lapor</button>
+                <button onClick={() => {setIsEditing(false); setShowReportModal(true)}} className="bg-indigo-600 text-white px-8 py-3.5 rounded-2xl font-black shadow-lg uppercase tracking-widest text-xs"><Plus size={18}/> Lapor</button>
             )}
             {user.role === 'admin' && activeTab === 'users' && (
-                <button onClick={() => setShowUserModal(true)} className="bg-green-600 text-white px-8 py-3.5 rounded-2xl font-black shadow-lg uppercase tracking-widest text-xs active:scale-95 transition-all"><Plus size={18}/> Pegawai</button>
+                <button onClick={() => setShowUserModal(true)} className="bg-green-600 text-white px-8 py-3.5 rounded-2xl font-black shadow-lg uppercase tracking-widest text-xs"><Plus size={18}/> Pegawai</button>
             )}
           </div>
         </header>
@@ -214,33 +224,23 @@ const PIRUApp = () => {
                       <td className="p-8 text-center font-black text-indigo-600">{((r.realisasi/r.target)*100).toFixed(1)}%</td>
                       <td className="p-8 text-center font-black text-slate-400 text-xl">{r.nilaiKetua || '-'}</td>
                       <td className="p-8 text-center font-black text-indigo-600 text-xl">{r.nilaiPimpinan || '-'}</td>
-                      <td className="p-8 text-center">
-                         <div className="flex justify-center items-center gap-2">
-                            {/* PEGAWAI & ADMIN EDIT MILIK SENDIRI */}
+                      <td className="p-8 text-center flex justify-center items-center gap-2">
                             {((r.userId === user.username) && r.status === 'pending') && (
                                 <>
                                    <button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan}); setShowReportModal(true); }} className="text-indigo-600 p-2"><Edit3 size={18}/></button>
                                    <button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="text-red-400 p-2"><Trash2 size={18}/></button>
                                 </>
                             )}
-
-                            {/* ADMIN (SUPER USER) BISA HAPUS APA PUN MESKIPUN SELESAI */}
                             {user.role === 'admin' && (r.status === 'selesai' || r.status === 'dinilai_ketua') && (
                                <button onClick={() => { if(window.confirm("Admin: Hapus permanen laporan ini?")) deleteDoc(doc(db, "reports", r.id)) }} className="text-red-200 hover:text-red-500 p-2"><Trash2 size={18}/></button>
                             )}
-
-                            {/* PENILAIAN KETUA TIM (BISA EDIT NILAI) */}
                             {(user.role === 'admin' || user.role === 'ketua') && r.userId !== user.username && (r.status === 'pending' || r.status === 'dinilai_ketua') && (
                                 <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-md">{r.status === 'dinilai_ketua' ? 'Edit Nilai' : 'Ketua'}</button>
                             )}
-
-                            {/* PENILAIAN PIMPINAN (BISA NILAI KETUA TIM JUGA) */}
                             {(user.role === 'pimpinan' || user.role === 'admin') && r.userId !== user.username && (r.status === 'dinilai_ketua' || (r.userRole === 'ketua' && r.status === 'pending')) && (
                                 <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-md">Pimpinan</button>
                             )}
-                            
                             {r.status === 'selesai' && user.role !== 'admin' && <CheckCircle2 className="text-green-500" size={24}/>}
-                         </div>
                       </td>
                     </tr>
                   ))}
@@ -249,10 +249,20 @@ const PIRUApp = () => {
             </div>
           </div>
         ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-                <div className="bg-white p-10 rounded-[3rem] shadow-sm border"><p className="text-slate-400 text-[10px] font-black uppercase mb-3">Total Laporan</p><p className="text-6xl font-black">{filteredReports.length}</p></div>
-                <div className="bg-white p-10 rounded-[3rem] shadow-sm border text-green-600"><p className="text-slate-400 text-[10px] font-black uppercase mb-3">Disetujui</p><p className="text-6xl font-black">{filteredReports.filter(r => r.status === 'selesai').length}</p></div>
-                <div className="bg-white p-10 rounded-[3rem] shadow-sm border text-amber-500"><p className="text-slate-400 text-[10px] font-black uppercase mb-3">Avg Nilai</p><p className="text-6xl font-black">{stats.avg}</p></div>
+            <div className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-center">
+                    <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border"><p className="text-slate-400 text-[10px] font-black uppercase mb-3">Kegiatan</p><p className="text-4xl font-black">{stats.total}</p></div>
+                    <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border text-indigo-500"><p className="text-slate-400 text-[10px] font-black uppercase mb-3">Rata-rata Capaian</p><p className="text-4xl font-black">{stats.avgCapaian}%</p></div>
+                    <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border text-green-600"><p className="text-slate-400 text-[10px] font-black uppercase mb-3">Rata-rata Pimpinan</p><p className="text-4xl font-black">{stats.avgPimpinan}</p></div>
+                    <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border text-amber-500 ring-4 ring-amber-100"><p className="text-slate-400 text-[10px] font-black uppercase mb-3 font-bold">NILAI AKHIR PEGAWAI</p><p className="text-5xl font-black">{stats.nilaiAkhir}</p></div>
+                </div>
+                <div className="bg-indigo-900 rounded-[3rem] p-10 text-white flex flex-col md:flex-row items-center justify-between gap-8">
+                    <div className="space-y-2"><h2 className="text-3xl font-black uppercase tracking-tighter">Evaluasi Hasil Kinerja</h2><p className="text-indigo-200">Perhitungan: (Rata-rata % Capaian + Rata-rata Nilai Pimpinan) / 2</p></div>
+                    <div className="bg-white/10 p-8 rounded-[2rem] text-center min-w-[200px] border border-white/10">
+                        <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">Grade Akhir</p>
+                        <p className="text-3xl font-black uppercase">{stats.nilaiAkhir >= 90 ? "Sangat Baik" : stats.nilaiAkhir >= 80 ? "Baik" : stats.nilaiAkhir > 0 ? "Cukup" : "-"}</p>
+                    </div>
+                </div>
             </div>
         )}
       </main>
@@ -260,7 +270,7 @@ const PIRUApp = () => {
       {/* Modal Laporan */}
       {showReportModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <form onSubmit={handleSubmitReport} className="bg-white w-full max-w-2xl rounded-[3.5rem] p-12 shadow-2xl space-y-6 animate-in zoom-in-95 duration-200">
+          <form onSubmit={handleSubmitReport} className="bg-white w-full max-w-2xl rounded-[3.5rem] p-12 shadow-2xl space-y-6 animate-in zoom-in-95 duration-200 text-slate-800">
             <h3 className="text-3xl font-black uppercase tracking-tighter">{isEditing ? "Edit Laporan" : "Entri Kinerja"}</h3>
             <div className="space-y-4">
                <input required type="text" placeholder="Pekerjaan" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700" value={newReport.title} onChange={e => setNewReport({...newReport, title: e.target.value})} />
@@ -268,8 +278,13 @@ const PIRUApp = () => {
                   <input required type="number" placeholder="Target" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700" value={newReport.target} onChange={e => setNewReport({...newReport, target: e.target.value})} />
                   <input required type="number" placeholder="Realisasi" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700" value={newReport.realisasi} onChange={e => setNewReport({...newReport, realisasi: e.target.value})} />
                </div>
-               <input list="satuan-list" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700" placeholder="Satuan" value={newReport.satuan} onChange={e => setNewReport({...newReport, satuan: e.target.value})} />
-               <datalist id="satuan-list"><option value="Dokumen"/><option value="Berkas"/><option value="Peta"/><option value="RT"/></datalist>
+               <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 ml-4 uppercase tracking-widest font-sans">Satuan (Pilih atau Entri Bebas)</label>
+                  <input list="satuan-list" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700" placeholder="Ketik satuan..." value={newReport.satuan} onChange={e => setNewReport({...newReport, satuan: e.target.value})} />
+                  <datalist id="satuan-list">
+                    <option value="Dokumen"/><option value="Kegiatan"/><option value="Laporan"/><option value="Paket"/><option value="BS"/><option value="Ruta"/>
+                  </datalist>
+               </div>
                <textarea className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black h-24 resize-none" placeholder="Keterangan Tambahan" value={newReport.keterangan} onChange={e => setNewReport({...newReport, keterangan: e.target.value})} />
             </div>
             <button type="submit" className="w-full bg-indigo-600 text-white font-black py-6 rounded-[2rem] shadow-xl uppercase transition-all active:scale-95">{isEditing ? "Simpan Perubahan" : "Kirim Laporan"}</button>
@@ -286,7 +301,7 @@ const PIRUApp = () => {
               addDoc(collection(db, "users"), { ...newUser, createdAt: serverTimestamp() });
               setShowUserModal(false);
               setNewUser({ name: '', username: '', password: '', role: 'pegawai', jabatan: '' });
-          }} className="bg-white w-full max-w-xl rounded-[3.5rem] p-12 shadow-2xl space-y-4">
+          }} className="bg-white w-full max-w-xl rounded-[3.5rem] p-12 shadow-2xl space-y-4 text-slate-800">
             <h3 className="text-2xl font-black uppercase text-slate-800 tracking-tighter">Tambah User Baru</h3>
             <input required type="text" placeholder="Nama Lengkap" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold" onChange={e => setNewUser({...newUser, name: e.target.value})} />
             <div className="grid grid-cols-2 gap-4">
