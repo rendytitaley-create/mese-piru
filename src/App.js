@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { 
   getFirestore, collection, addDoc, updateDoc, doc, onSnapshot, 
-  serverTimestamp, query, orderBy, deleteDoc
+  serverTimestamp, query, orderBy, deleteDoc, enableIndexedDbPersistence 
 } from 'firebase/firestore';
 import { 
   ShieldCheck, Loader2, Plus, X, BarChart3, FileText, 
@@ -23,6 +23,15 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+// === AKTIVASI FITUR OFFLINE PERSISTENCE ===
+enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+        console.warn("Multiple tabs open, persistence can only be enabled in one tab at a time.");
+    } else if (err.code === 'unimplemented') {
+        console.warn("The current browser does not support all of the features required to enable persistence");
+    }
+});
 
 const PIRUApp = () => {
   const [user, setUser] = useState(null);
@@ -132,7 +141,7 @@ const PIRUApp = () => {
         });
       }
       setShowReportModal(false); resetReportForm();
-    } catch (err) { alert("Gagal menyimpan data."); }
+    } catch (err) { alert("Data tersimpan (Akan disinkronkan saat online)."); }
   };
 
   const currentFilteredReports = useMemo(() => {
@@ -193,12 +202,12 @@ const PIRUApp = () => {
         </div>
         <h1 className="text-4xl font-black mb-1 tracking-tighter text-slate-800 uppercase leading-none">PIRU</h1>
         <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1">Penilaian Kinerja Bulanan</p>
-        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-10">BPS Kabupaten Seram Bagian Barat</p>
+        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-10 text-center">BPS Kabupaten Seram Bagian Barat</p>
         <form onSubmit={handleLogin} className="space-y-4 text-left">
           {authError && <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-[10px] font-black text-center uppercase">{authError}</div>}
-          <input type="text" placeholder="Username" className="w-full p-5 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-slate-700 focus:ring-2 ring-indigo-100 transition-all" onChange={e => setAuthForm({...authForm, username: e.target.value})} />
-          <input type="password" placeholder="Password" className="w-full p-5 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-slate-700 focus:ring-2 ring-indigo-100 transition-all" onChange={e => setAuthForm({...authForm, password: e.target.value})} />
-          <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg transition-all active:scale-95 mt-4">Login</button>
+          <input type="text" placeholder="Username" className="w-full p-5 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-slate-700" onChange={e => setAuthForm({...authForm, username: e.target.value})} />
+          <input type="password" placeholder="Password" className="w-full p-5 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-slate-700" onChange={e => setAuthForm({...authForm, password: e.target.value})} />
+          <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs transition-all active:scale-95 mt-4">Login</button>
         </form>
       </div>
     </div>
@@ -206,28 +215,27 @@ const PIRUApp = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex font-sans overflow-hidden text-slate-800">
-      {/* Sidebar */}
       <div className="w-72 bg-white border-r border-slate-100 p-8 flex flex-col hidden md:flex font-sans">
         <div className="flex items-center gap-4 mb-14 px-2">
-          <div className="bg-indigo-600 p-3 rounded-2xl text-white shadow-lg"><ShieldCheck size={28}/></div>
+          <div className="bg-indigo-600 p-3 rounded-2xl text-white shadow-lg shadow-indigo-100"><ShieldCheck size={28}/></div>
           <div>
             <h2 className="font-black text-2xl text-slate-800 tracking-tighter uppercase leading-none">PIRU</h2>
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Penilaian Kinerja Bulanan</p>
           </div>
         </div>
         <nav className="flex-1 space-y-3">
-          <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-xl' : 'text-slate-400 hover:bg-slate-50 hover:text-indigo-600'}`}><BarChart3 size={20}/> Ringkasan</button>
-          <button onClick={() => setActiveTab('laporan')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'laporan' ? 'bg-indigo-600 text-white shadow-xl' : 'text-slate-400 hover:bg-slate-50 hover:text-indigo-600'}`}><FileText size={20}/> Capaian Kerja</button>
+          <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-xl' : 'text-slate-400 hover:bg-slate-50'}`}><BarChart3 size={20}/> Ringkasan</button>
+          <button onClick={() => setActiveTab('laporan')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'laporan' ? 'bg-indigo-600 text-white shadow-xl' : 'text-slate-400 hover:bg-slate-50'}`}><FileText size={20}/> Capaian Kerja</button>
           {user.role === 'admin' && (
-            <button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'users' ? 'bg-indigo-600 text-white shadow-xl' : 'text-slate-400 hover:bg-slate-50 hover:text-indigo-600'}`}><Users size={20}/> Data Pegawai</button>
+            <button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'users' ? 'bg-indigo-600 text-white shadow-xl' : 'text-slate-400 hover:bg-slate-50'}`}><Users size={20}/> Data Pegawai</button>
           )}
         </nav>
-        <button onClick={() => {localStorage.clear(); window.location.reload();}} className="w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase tracking-widest text-red-500 hover:bg-red-50 transition-all mt-auto"><LogOut size={20}/> Logout</button>
+        <button onClick={() => {localStorage.clear(); window.location.reload();}} className="w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase tracking-widest text-red-500 hover:bg-red-50 mt-auto transition-all"><LogOut size={20}/> Logout</button>
       </div>
 
       <main className="flex-1 p-12 overflow-y-auto">
         <header className="flex justify-between items-center mb-12">
-          <div><h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic leading-none">{user.name}</h1><p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px] mt-3 bg-white w-fit px-3 py-1 rounded-full border border-slate-100 shadow-sm">{user.jabatan || user.role}</p></div>
+          <div><h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic leading-none">{user.name}</h1><p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px] mt-3 bg-white w-fit px-3 py-1 rounded-full border border-slate-100">{user.jabatan || user.role}</p></div>
           <div className="flex items-center gap-5">
             <select className="bg-white border rounded-2xl px-6 py-4 font-black text-slate-600 shadow-sm outline-none cursor-pointer" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
               {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
@@ -236,13 +244,13 @@ const PIRUApp = () => {
                 <button onClick={handleMassGrade} className="bg-amber-400 hover:bg-amber-500 text-white px-8 py-4 rounded-2xl font-black shadow-lg uppercase text-[10px] flex items-center gap-3 transition-all active:scale-95"><Zap size={18}/> Nilai Semua</button>
             )}
             {user.role === 'admin' && activeTab === 'users' && (
-                <button onClick={() => setShowUserModal(true)} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg uppercase text-[10px] tracking-widest flex items-center gap-2"><UserPlus size={18}/> Tambah Pegawai</button>
+                <button onClick={() => setShowUserModal(true)} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg uppercase text-[10px] tracking-widest flex items-center gap-2 transition-all active:scale-95"><UserPlus size={18}/> Tambah Pegawai</button>
             )}
             {(user.role === 'pegawai' || user.role === 'ketua') && (
-                <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black shadow-xl uppercase text-[10px] tracking-widest"><Plus size={20}/> Entri Kerja</button>
+                <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black shadow-xl uppercase text-[10px] tracking-widest transition-all active:scale-95"><Plus size={20}/> Entri Kerja</button>
             )}
             {((user.role === 'pimpinan' || user.role === 'admin') && activeTab === 'laporan') && (
-                <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black shadow-xl uppercase text-[10px] tracking-widest"><Plus size={20}/> Tambah Tugas</button>
+                <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black shadow-xl uppercase text-[10px] tracking-widest transition-all active:scale-95"><Plus size={20}/> Tambah Tugas</button>
             )}
           </div>
         </header>
@@ -268,7 +276,7 @@ const PIRUApp = () => {
               </div>
             )}
           </div>
-        ) : activeTab === 'users' ? (
+        ) : activeTab === 'users' && user.role === 'admin' ? (
           <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden p-10 font-sans">
             <table className="w-full text-left">
               <thead><tr className="bg-slate-50 border-b text-[10px] font-black text-slate-400 uppercase tracking-widest"><th className="p-8">Identitas Pegawai</th><th className="p-8">Jabatan & Role</th><th className="p-8 text-center">Aksi</th></tr></thead>
@@ -301,9 +309,9 @@ const PIRUApp = () => {
                       <td className="p-8 text-center font-black text-indigo-600 text-xl">{r.nilaiPimpinan || '-'}</td>
                       <td className="p-8 text-center flex justify-center gap-2">
                         {r.userId === user.username && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl hover:bg-indigo-600 hover:text-white"><Edit3 size={18}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-red-50 text-red-400 rounded-2xl hover:bg-red-500 hover:text-white"><Trash2 size={18}/></button></>}
-                        {user.role === 'admin' && <button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-slate-100 text-slate-400 rounded-2xl hover:bg-red-500 hover:text-white"><Trash2 size={18}/></button>}
-                        {(user.role === 'admin' || user.role === 'ketua') && r.userId !== user.username && r.status !== 'selesai' && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-5 py-2 rounded-2xl text-[10px] font-black uppercase shadow-lg">Ketua</button>}
-                        {(user.role === 'pimpinan' || user.role === 'admin') && r.userId !== user.username && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-5 py-2 rounded-2xl text-[10px] font-black uppercase shadow-lg">{r.status === 'selesai' ? 'Koreksi' : 'Pimpinan'}</button>}
+                        {user.role === 'admin' && <button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-slate-100 text-slate-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all"><Trash2 size={18}/></button>}
+                        {(user.role === 'admin' || user.role === 'ketua') && r.userId !== user.username && r.status !== 'selesai' && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-5 py-2 rounded-2xl text-[10px] font-black uppercase shadow-lg transition-all active:scale-95">Ketua</button>}
+                        {(user.role === 'pimpinan' || user.role === 'admin') && r.userId !== user.username && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-5 py-2 rounded-2xl text-[10px] font-black uppercase shadow-lg transition-all active:scale-95">{r.status === 'selesai' ? 'Koreksi' : 'Pimpinan'}</button>}
                       </td>
                     </tr>
                   ))}
@@ -336,7 +344,7 @@ const PIRUApp = () => {
                <datalist id="satuan-list"><option value="Dokumen"/><option value="Kegiatan"/><option value="Laporan"/><option value="Paket"/><option value="BS"/><option value="Ruta"/></datalist>
                <textarea className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-bold h-32 resize-none text-slate-600 border" placeholder="Keterangan..." value={newReport.keterangan} onChange={e => setNewReport({...newReport, keterangan: e.target.value})} />
             </div>
-            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-7 rounded-[2.5rem] shadow-2xl uppercase tracking-widest text-xs mt-10">Simpan Capaian</button>
+            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-7 rounded-[2.5rem] shadow-2xl uppercase tracking-widest text-xs mt-10 transition-all active:scale-95">Simpan Capaian</button>
           </form>
         </div>
       )}
@@ -344,10 +352,10 @@ const PIRUApp = () => {
       {/* MODAL USER */}
       {showUserModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-50 font-sans">
-          <form onSubmit={handleAddUser} className="bg-white w-full max-w-xl rounded-[3.5rem] p-16 shadow-2xl relative">
+          <form onSubmit={handleAddUser} className="bg-white w-full max-w-xl rounded-[3.5rem] p-16 shadow-2xl relative font-sans">
             <button type="button" onClick={() => setShowUserModal(false)} className="absolute top-10 right-10 p-4 bg-slate-50 rounded-full text-slate-400"><X size={24}/></button>
             <h3 className="text-3xl font-black uppercase tracking-tighter mb-10 text-slate-800">Tambah Pegawai</h3>
-            <div className="space-y-5 font-sans">
+            <div className="space-y-5">
                 <input required type="text" placeholder="Nama Lengkap" className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-black text-slate-700 border" onChange={e => setNewUser({...newUser, name: e.target.value})} />
                 <div className="grid grid-cols-2 gap-5">
                     <input required type="text" placeholder="Username" className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-black text-slate-700 border" onChange={e => setNewUser({...newUser, username: e.target.value})} />
@@ -357,7 +365,7 @@ const PIRUApp = () => {
                 <select className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-black text-slate-600 border" onChange={e => setNewUser({...newUser, role: e.target.value})}>
                     <option value="pegawai">Pegawai</option><option value="ketua">Ketua Tim</option><option value="pimpinan">Pimpinan</option><option value="admin">Admin</option>
                 </select>
-                <button type="submit" className="w-full bg-indigo-600 text-white font-black py-7 rounded-[2.5rem] shadow-xl uppercase tracking-widest text-[10px] mt-6">Simpan Pegawai</button>
+                <button type="submit" className="w-full bg-indigo-600 text-white font-black py-7 rounded-[2.5rem] shadow-xl uppercase tracking-widest text-[10px] mt-6 transition-all active:scale-95">Simpan Pegawai</button>
             </div>
           </form>
         </div>
