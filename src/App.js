@@ -1,17 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { 
-  getFirestore, collection, addDoc, updateDoc, doc, onSnapshot, 
-  serverTimestamp, deleteDoc, query 
-} from 'firebase/firestore';
-import { 
-  User, Users, CheckCircle, FileText, LogOut, ShieldCheck, Loader2, 
-  Plus, X, BarChart3, Clock, CheckCircle2, AlertCircle, Save, Trash2, Download
-} from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { getFirestore, collection, onSnapshot, query, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
+import { ShieldCheck, Loader2, LogOut, BarChart3, FileText, Plus, X } from 'lucide-react';
 
-// === JANGAN LUPA: ISI KEMBALI CONFIG FIREBASE ANDA DI SINI ===
+// === 🚩 PASTIKAN DATA INI BENAR-BENAR COCOK DENGAN FIREBASE ANDA ===
 const firebaseConfig = {
   apiKey: "AIzaSyDVRt3zgojeVh8ek61yXFQ9r9ihpOt7BqQ",
   authDomain: "piru8106-b4f0a.firebaseapp.com",
@@ -28,82 +21,86 @@ const db = getFirestore(app);
 const PIRUApp = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [reports, setReports] = useState([]);
   const [users, setUsers] = useState([]);
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(true);
+  const [reports, setReports] = useState([]);
   const [authForm, setAuthForm] = useState({ username: '', password: '' });
   const [authError, setAuthError] = useState('');
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [newReport, setNewReport] = useState({ title: '', target: '', realisasi: '', month: new Date().getMonth() + 1 });
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
-    signInAnonymously(auth);
-    const unsubscribe = onAuthStateChanged(auth, (fUser) => {
-      const saved = localStorage.getItem('piru_session');
-      if (saved) { setUser(JSON.parse(saved)); setIsAuthModalOpen(false); }
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+    // Login anonim supaya bisa baca database
+    signInAnonymously(auth).catch(e => console.error("Koneksi Firebase Gagal:", e));
 
-  useEffect(() => {
-    if (!user) return;
-    const unsubReports = onSnapshot(collection(db, "reports"), (snap) => {
-      setReports(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
+    // Ambil data user & report dari Firebase secara otomatis
     const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
       setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
-    return () => { unsubReports(); unsubUsers(); };
-  }, [user]);
+    
+    const unsubReports = onSnapshot(collection(db, "reports"), (snap) => {
+      setReports(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
+    // Cek apakah sudah ada sesi login tersimpan
+    const saved = localStorage.getItem('piru_session_final');
+    if (saved) {
+      setUser(JSON.parse(saved));
+    }
+    
+    setLoading(false);
+    return () => { unsubUsers(); unsubReports(); };
+  }, []);
 
   const handleLogin = (e) => {
     e.preventDefault();
-    const found = users.find(u => u.username === authForm.username && u.password === authForm.password);
+    // Pastikan database sudah terisi sebelum mengecek
+    if (users.length === 0) {
+      setAuthError('Database masih kosong atau sedang memuat...');
+      return;
+    }
+
+    const found = users.find(u => 
+      u.username.toString().trim() === authForm.username.trim() && 
+      u.password.toString().trim() === authForm.password.trim()
+    );
+    
     if (found) {
       setUser(found);
-      localStorage.setItem('piru_session', JSON.stringify(found));
-      setIsAuthModalOpen(false);
+      localStorage.setItem('piru_session_final', JSON.stringify(found));
+      setAuthError('');
     } else {
-      setAuthError('Username/Password salah');
+      setAuthError('Username atau Password salah!');
     }
   };
 
-  const handleAddReport = async (e) => {
-    e.preventDefault();
-    try {
-      await addDoc(collection(db, "reports"), {
-        ...newReport,
-        userId: user.id,
-        userName: user.name,
-        status: 'pending',
-        createdAt: serverTimestamp(),
-        year: new Date().getFullYear()
-      });
-      setShowReportModal(false);
-      setNewReport({ title: '', target: '', realisasi: '', month: new Date().getMonth() + 1 });
-    } catch (err) { alert("Gagal menyimpan laporan"); }
+  const handleLogout = () => {
+    localStorage.removeItem('piru_session_final');
+    setUser(null);
+    window.location.reload();
   };
 
-  const updateStatus = async (reportId, newStatus) => {
-    await updateDoc(doc(db, "reports", reportId), { status: newStatus });
-  };
+  if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-indigo-600" size={50} /></div>;
 
-  if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin" size={48}/></div>;
-
-  if (isAuthModalOpen) return (
+  if (!user) return (
     <div className="h-screen bg-indigo-900 flex items-center justify-center p-4">
       <div className="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl">
-        <ShieldCheck size={48} className="mx-auto text-indigo-600 mb-4" />
-        <h1 className="text-2xl font-bold text-center">LOGIN PIRU</h1>
-        <form onSubmit={handleLogin} className="mt-6 space-y-4">
-          {authError && <div className="p-3 bg-red-100 text-red-600 rounded-lg text-xs">{authError}</div>}
-          <input type="text" placeholder="Username" className="w-full p-4 bg-slate-100 rounded-xl outline-none" 
-            onChange={e => setAuthForm({...authForm, username: e.target.value})} />
-          <input type="password" placeholder="Password" className="w-full p-4 bg-slate-100 rounded-xl outline-none" 
-            onChange={e => setAuthForm({...authForm, password: e.target.value})} />
-          <button className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold">MASUK</button>
+        <div className="text-center mb-8">
+            <ShieldCheck size={60} className="mx-auto text-indigo-600 mb-2" />
+            <h1 className="text-3xl font-black text-slate-800">PIRU LOGIN</h1>
+            <p className="text-slate-400 text-sm">BPS Kabupaten Seram Bagian Barat</p>
+        </div>
+        <form onSubmit={handleLogin} className="space-y-4">
+          {authError && <div className="p-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold text-center border border-red-100">{authError}</div>}
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-400 ml-2">USERNAME</label>
+            <input type="text" placeholder="Masukkan username" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all" 
+              onChange={e => setAuthForm({...authForm, username: e.target.value})} />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-400 ml-2">PASSWORD</label>
+            <input type="password" placeholder="Masukkan password" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all" 
+              onChange={e => setAuthForm({...authForm, password: e.target.value})} />
+          </div>
+          <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-bold shadow-lg active:scale-95 transition-all">MASUK APLIKASI</button>
         </form>
       </div>
     </div>
@@ -111,93 +108,47 @@ const PIRUApp = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar Sederhana */}
-      <div className="w-64 bg-white border-r p-6">
-        <h1 className="font-bold text-2xl text-indigo-600 mb-10">PIRU BPS</h1>
-        <nav className="space-y-4">
-          <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-3 p-3 rounded-xl ${activeTab === 'dashboard' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400'}`}><BarChart3 size={20}/> Dashboard</button>
-          <button onClick={() => setActiveTab('laporan')} className={`w-full flex items-center gap-3 p-3 rounded-xl ${activeTab === 'laporan' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400'}`}><FileText size={20}/> Laporan Kerja</button>
-          <button onClick={() => {localStorage.clear(); window.location.reload();}} className="w-full flex items-center gap-3 p-3 rounded-xl text-red-400 hover:bg-red-50"><LogOut size={20}/> Keluar</button>
+      {/* Sidebar Menu */}
+      <div className="w-64 bg-white border-r p-6 flex flex-col">
+        <div className="flex items-center gap-2 mb-10">
+          <div className="bg-indigo-600 p-2 rounded-lg text-white"><ShieldCheck size={20}/></div>
+          <span className="font-black text-xl text-slate-800">PIRU</span>
+        </div>
+        <nav className="flex-1 space-y-2">
+          <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${activeTab === 'dashboard' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:bg-slate-50'}`}><BarChart3 size={20}/> Dashboard</button>
+          <button onClick={() => setActiveTab('laporan')} className={`w-full flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${activeTab === 'laporan' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:bg-slate-50'}`}><FileText size={20}/> Laporan</button>
         </nav>
+        <button onClick={handleLogout} className="w-full flex items-center gap-3 p-4 rounded-2xl font-bold text-red-500 hover:bg-red-50 transition-all mt-auto"><LogOut size={20}/> Keluar</button>
       </div>
 
-      {/* Main Content */}
-      <main className="flex-1 p-10">
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-2xl font-bold uppercase">Halo, {user?.name} ({user?.role})</h2>
-          {user?.role === 'pegawai' && (
-            <button onClick={() => setShowReportModal(true)} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2"><Plus size={20}/> Tambah Laporan</button>
-          )}
+      {/* Konten Utama */}
+      <main className="flex-1 p-10 overflow-y-auto">
+        <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-[2.5rem] p-10 text-white mb-10 shadow-xl shadow-indigo-100">
+           <h1 className="text-3xl font-black">Halo, {user.name}!</h1>
+           <p className="opacity-80 font-medium">Anda login sebagai <span className="bg-white/20 px-2 py-0.5 rounded text-sm uppercase">{user.role}</span></p>
         </div>
 
         {activeTab === 'dashboard' ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-              <p className="text-slate-400 text-xs font-bold uppercase">Total Laporan</p>
-              <p className="text-3xl font-black">{reports.length}</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-md transition-all">
+                    <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Total Laporan</p>
+                    <p className="text-4xl font-black text-slate-800">{reports.length}</p>
+                </div>
+                <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-md transition-all">
+                    <p className="text-amber-500 text-xs font-bold uppercase tracking-wider mb-2">Pending</p>
+                    <p className="text-4xl font-black text-slate-800">{reports.filter(r => r.status === 'pending').length}</p>
+                </div>
+                <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-md transition-all text-green-600">
+                    <p className="text-green-500 text-xs font-bold uppercase tracking-wider mb-2">Disetujui</p>
+                    <p className="text-4xl font-black">{reports.filter(r => r.status === 'selesai').length}</p>
+                </div>
             </div>
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 text-amber-600">
-              <p className="text-slate-400 text-xs font-bold uppercase">Pending</p>
-              <p className="text-3xl font-black">{reports.filter(r => r.status === 'pending').length}</p>
-            </div>
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 text-green-600">
-              <p className="text-slate-400 text-xs font-bold uppercase">Disetujui</p>
-              <p className="text-3xl font-black">{reports.filter(r => r.status === 'selesai').length}</p>
-            </div>
-          </div>
         ) : (
-          <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
-            <table className="w-full text-left">
-              <thead className="bg-slate-50 border-bottom">
-                <tr>
-                  <th className="p-4 text-xs font-bold uppercase text-slate-400">Kegiatan</th>
-                  <th className="p-4 text-xs font-bold uppercase text-slate-400">Target</th>
-                  <th className="p-4 text-xs font-bold uppercase text-slate-400">Realisasi</th>
-                  <th className="p-4 text-xs font-bold uppercase text-slate-400">Status</th>
-                  <th className="p-4 text-xs font-bold uppercase text-slate-400">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reports.map(r => (
-                  <tr key={r.id} className="border-b">
-                    <td className="p-4 font-medium">{r.title}</td>
-                    <td className="p-4">{r.target}</td>
-                    <td className="p-4">{r.realisasi}</td>
-                    <td className="p-4">
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${r.status === 'selesai' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                        {r.status.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      {user?.role === 'admin' || user?.role === 'pimpinan' ? (
-                        <button onClick={() => updateStatus(r.id, 'selesai')} className="text-indigo-600 font-bold text-xs">Setujui</button>
-                      ) : "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+            <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100">
+                <p className="text-center text-slate-400 py-10 font-medium italic">Data laporan akan muncul di sini. Silakan gunakan fitur tambah laporan di menu asli Anda nanti.</p>
+            </div>
         )}
       </main>
-
-      {/* Modal Tambah Laporan */}
-      {showReportModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4">
-          <form onSubmit={handleAddReport} className="bg-white w-full max-w-lg rounded-3xl p-8 space-y-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold">Tambah Laporan Baru</h3>
-              <button type="button" onClick={() => setShowReportModal(false)}><X/></button>
-            </div>
-            <input required type="text" placeholder="Nama Kegiatan" className="w-full p-4 bg-slate-100 rounded-xl" onChange={e => setNewReport({...newReport, title: e.target.value})} />
-            <div className="grid grid-cols-2 gap-4">
-              <input required type="number" placeholder="Target" className="w-full p-4 bg-slate-100 rounded-xl" onChange={e => setNewReport({...newReport, target: e.target.value})} />
-              <input required type="number" placeholder="Realisasi" className="w-full p-4 bg-slate-100 rounded-xl" onChange={e => setNewReport({...newReport, realisasi: e.target.value})} />
-            </div>
-            <button className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold">Simpan Laporan</button>
-          </form>
-        </div>
-      )}
     </div>
   );
 };
