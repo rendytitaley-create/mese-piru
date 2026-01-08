@@ -44,22 +44,18 @@ const PIRUApp = () => {
   const [newReport, setNewReport] = useState({ title: '', target: '', realisasi: '', satuan: '', keterangan: '', targetUser: '' });
   const [newUser, setNewUser] = useState({ name: '', username: '', password: '', role: 'pegawai', jabatan: '' });
 
-  const resetReportForm = () => {
-    setIsEditing(false);
-    setCurrentReportId(null);
-    setNewReport({ title: '', target: '', realisasi: '', satuan: '', keterangan: '', targetUser: '' });
-  };
-
+  // 1. DATA FETCHING & AUTH
   useEffect(() => {
     signInAnonymously(auth);
-    onAuthStateChanged(auth, (fUser) => {
+    const unsubAuth = onAuthStateChanged(auth, (fUser) => {
       const saved = localStorage.getItem('piru_session_final');
       if (saved) { setUser(JSON.parse(saved)); }
       setLoading(false);
     });
-    onSnapshot(collection(db, "users"), (snap) => {
+    const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
       setUsers(snap.docs.map(d => ({ firestoreId: d.id, ...d.data() })));
     });
+    return () => { unsubAuth(); unsubUsers(); };
   }, []);
 
   useEffect(() => {
@@ -70,6 +66,13 @@ const PIRUApp = () => {
     });
     return () => unsubReports();
   }, [user]);
+
+  // 2. LOGIKA UTAMA
+  const resetReportForm = () => {
+    setIsEditing(false);
+    setCurrentReportId(null);
+    setNewReport({ title: '', target: '', realisasi: '', satuan: '', keterangan: '', targetUser: '' });
+  };
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -89,7 +92,6 @@ const PIRUApp = () => {
           ...newReport, target: Number(newReport.target), realisasi: Number(newReport.realisasi),
         });
       } else {
-        // Logika Pimpinan Menambahkan Laporan Untuk Pegawai
         let finalUserId = user.username;
         let finalUserName = user.name;
         let finalUserRole = user.role;
@@ -113,6 +115,16 @@ const PIRUApp = () => {
     } catch (err) { alert("Gagal menyimpan."); }
   };
 
+  // 3. LOGIKA FILTER (Didefinisikan sebelum fungsi mass grade)
+  const currentFilteredReports = useMemo(() => {
+    let res = reports.filter(r => r.month === selectedMonth && r.year === selectedYear);
+    if (user?.role === 'pegawai') res = res.filter(r => r.userId === user.username);
+    if ((user?.role === 'pimpinan' || user?.role === 'admin' || user?.role === 'ketua') && filterStaffName !== 'Semua') {
+      res = res.filter(r => r.userName === filterStaffName);
+    }
+    return res;
+  }, [reports, user, selectedMonth, selectedYear, filterStaffName]);
+
   const submitGrade = async (reportId, roleName) => {
     const val = prompt(`Masukkan Nilai ${roleName === 'ketua' ? 'Ketua Tim' : 'Pimpinan'} (Bisa Desimal):`);
     if (val && !isNaN(val)) {
@@ -124,26 +136,18 @@ const PIRUApp = () => {
   };
 
   const handleMassGrade = async () => {
-    if (filterStaffName === 'Semua') return alert("Pilih satu nama pegawai dulu!");
-    const val = prompt(`Beri Nilai Pimpinan untuk SEMUA kegiatan ${filterStaffName} bulan ini:`);
+    if (filterStaffName === 'Semua') return alert("Pilih satu nama pegawai dulu di filter!");
+    const val = prompt(`NILAI MASSAL: Masukkan nilai Pimpinan untuk SEMUA kegiatan ${filterStaffName} bulan ini:`);
     if (val && !isNaN(val)) {
       const grade = parseFloat(val);
-      const targets = currentFilteredReports.filter(r => r.status !== 'selesai');
+      const targets = currentFilteredReports.filter(r => r.status !== 'selesai' && r.userName === filterStaffName);
+      if (targets.length === 0) return alert("Tidak ada kegiatan yang perlu dinilai untuk pegawai ini.");
       for (const r of targets) {
         await updateDoc(doc(db, "reports", r.id), { nilaiPimpinan: grade, status: 'selesai' });
       }
-      alert(`Berhasil menilai ${targets.length} kegiatan.`);
+      alert(`Sukses! ${targets.length} kegiatan telah dinilai massal.`);
     }
   };
-
-  const currentFilteredReports = useMemo(() => {
-    let res = reports.filter(r => r.month === selectedMonth && r.year === selectedYear);
-    if (user?.role === 'pegawai') res = res.filter(r => r.userId === user.username);
-    if ((user?.role === 'pimpinan' || user?.role === 'admin' || user?.role === 'ketua') && filterStaffName !== 'Semua') {
-      res = res.filter(r => r.userName === filterStaffName);
-    }
-    return res;
-  }, [reports, user, selectedMonth, selectedYear, filterStaffName]);
 
   const dashboardStats = useMemo(() => {
     const periodReports = reports.filter(r => r.month === selectedMonth && r.year === selectedYear);
@@ -160,20 +164,18 @@ const PIRUApp = () => {
     const myReports = periodReports.filter(r => r.userId === user?.username);
     const myTotal = myReports.length;
     const mySelesai = myReports.filter(r => r.status === 'selesai').length;
-    const myAvgCap = myTotal > 0 ? (myReports.reduce((acc, curr) => acc + Math.min((curr.realisasi / curr.target) * 100, 100), 0) / myTotal) : 0;
-    const myAvgPimp = myTotal > 0 ? (myReports.reduce((acc, curr) => acc + (Number(curr.nilaiPimpinan) || 0), 0) / myTotal) : 0;
-    return { myTotal, myNilaiAkhir: ((myAvgCap + myAvgPimp) / 2).toFixed(2), staffSummary, myStatus: myTotal === 0 ? "Belum Lapor" : (mySelesai === myTotal ? "Selesai" : "Progres"), myDetailCount: `${mySelesai}/${myTotal} Selesai` };
+    return { myTotal, myNilaiAkhir: (myTotal > 0 ? (( (myReports.reduce((a,c)=>a+Math.min((c.realisasi/c.target)*100, 100),0)/myTotal) + (myReports.reduce((a,c)=>a+(Number(c.nilaiPimpinan)||0),0)/myTotal) )/2).toFixed(2) : 0), staffSummary, myStatus: myTotal === 0 ? "Belum Lapor" : (mySelesai === myTotal ? "Selesai" : "Progres"), myDetailCount: `${mySelesai}/${myTotal}` };
   }, [reports, users, user, selectedMonth, selectedYear]);
 
-  if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-indigo-600" size={50} /></div>;
+  if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50 font-sans"><Loader2 className="animate-spin text-indigo-600" size={50} /></div>;
 
   if (!user) return (
     <div className="h-screen bg-indigo-900 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl text-center">
+      <div className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl text-center font-sans">
         <ShieldCheck size={60} className="mx-auto text-indigo-600 mb-4" />
-        <h1 className="text-3xl font-black mb-8 tracking-tighter uppercase font-sans">PIRU BPS</h1>
+        <h1 className="text-3xl font-black mb-8 tracking-tighter uppercase">PIRU LOGIN</h1>
         <form onSubmit={handleLogin} className="space-y-4 text-left">
-          {authError && <div className="p-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold text-center border border-red-100">{authError}</div>}
+          {authError && <div className="p-3 bg-red-50 text-red-600 rounded-xl text-[10px] font-black text-center border">{authError}</div>}
           <input type="text" placeholder="Username" className="w-full p-4 bg-slate-50 border rounded-2xl outline-none font-bold" onChange={e => setAuthForm({...authForm, username: e.target.value})} />
           <input type="password" placeholder="Password" className="w-full p-4 bg-slate-50 border rounded-2xl outline-none font-bold" onChange={e => setAuthForm({...authForm, password: e.target.value})} />
           <button className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase">Masuk</button>
@@ -185,16 +187,16 @@ const PIRUApp = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex font-sans overflow-hidden text-slate-800">
       {/* Sidebar */}
-      <div className="w-72 bg-white border-r p-8 flex flex-col hidden md:flex">
+      <div className="w-72 bg-white border-r p-8 flex flex-col hidden md:flex font-sans">
         <div className="flex items-center gap-3 mb-12">
           <div className="bg-indigo-600 p-2.5 rounded-2xl text-white shadow-lg"><ShieldCheck size={24}/></div>
           <span className="font-black text-2xl text-slate-800 tracking-tighter uppercase text-indigo-600">PIRU BPS</span>
         </div>
         <nav className="flex-1 space-y-3">
-          <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-4 p-4 rounded-2xl font-bold ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><BarChart3 size={20}/> Dashboard</button>
-          <button onClick={() => setActiveTab('laporan')} className={`w-full flex items-center gap-4 p-4 rounded-2xl font-bold ${activeTab === 'laporan' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><FileText size={20}/> Penilaian Kerja</button>
+          <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-4 p-4 rounded-2xl font-bold ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-400 hover:bg-slate-50'}`}><BarChart3 size={20}/> Dashboard</button>
+          <button onClick={() => setActiveTab('laporan')} className={`w-full flex items-center gap-4 p-4 rounded-2xl font-bold ${activeTab === 'laporan' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-400 hover:bg-slate-50'}`}><FileText size={20}/> Penilaian Kerja</button>
           {user.role === 'admin' && (
-            <button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-4 p-4 rounded-2xl font-bold ${activeTab === 'users' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Users size={20}/> Data Pegawai</button>
+            <button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-4 p-4 rounded-2xl font-bold ${activeTab === 'users' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-400 hover:bg-slate-50'}`}><Users size={20}/> Data Pegawai</button>
           )}
         </nav>
         <button onClick={() => {localStorage.clear(); window.location.reload();}} className="w-full flex items-center gap-4 p-4 rounded-2xl font-bold text-red-500 hover:bg-red-50 mt-auto"><LogOut size={20}/> Keluar</button>
@@ -207,14 +209,16 @@ const PIRUApp = () => {
             <select className="bg-white border rounded-2xl px-6 py-3 font-black text-slate-600 shadow-sm" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
               {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
             </select>
+            {/* FITUR NILAI MASSAL UNTUK PIMPINAN/ADMIN */}
             {user.role !== 'pegawai' && activeTab === 'laporan' && filterStaffName !== 'Semua' && (
-                <button onClick={handleMassGrade} className="bg-amber-500 text-white px-6 py-3.5 rounded-2xl font-black shadow-lg uppercase text-[10px] flex items-center gap-2 animate-bounce"><Zap size={16}/> Nilai Semua</button>
+                <button onClick={handleMassGrade} className="bg-amber-500 text-white px-6 py-3.5 rounded-2xl font-black shadow-lg uppercase text-[10px] flex items-center gap-2"><Zap size={16}/> Nilai Semua</button>
             )}
-            {user.role !== 'pimpinan' && (
+            {/* TOMBOL LAPOR (DIBEDAKAN WARNA UNTUK PIMPINAN) */}
+            {user.role !== 'pimpinan' && user.role !== 'admin' && (
                 <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-8 py-3.5 rounded-2xl font-black shadow-lg uppercase text-xs"><Plus size={18}/> Lapor</button>
             )}
-            {user.role === 'pimpinan' && (
-                <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-green-600 text-white px-8 py-3.5 rounded-2xl font-black shadow-lg uppercase text-xs"><Plus size={18}/> Tambah Pekerjaan Pegawai</button>
+            {(user.role === 'pimpinan' || user.role === 'admin') && (
+                <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-green-600 text-white px-8 py-3.5 rounded-2xl font-black shadow-lg uppercase text-xs"><Plus size={18}/> Tambah Kerja Pegawai</button>
             )}
           </div>
         </header>
@@ -223,40 +227,40 @@ const PIRUApp = () => {
           <div className="space-y-8 animate-in fade-in">
             {(user.role === 'pimpinan' || user.role === 'admin') ? (
               <div className="bg-white rounded-[3rem] shadow-sm border p-8">
-                <h3 className="font-black text-xl mb-6 flex items-center gap-2 uppercase tracking-tighter"><TrendingUp className="text-indigo-600"/> Monitor Nilai Akhir</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <h3 className="font-black text-xl mb-6 flex items-center gap-2 uppercase tracking-tighter font-sans"><TrendingUp className="text-indigo-600"/> Monitor Nilai Akhir</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 font-sans">
                   {dashboardStats.staffSummary.map((s, i) => (
                     <div key={i} className="p-7 bg-slate-50 rounded-[2.5rem] border flex flex-col justify-between hover:border-indigo-300 transition-all">
-                      <div><p className="text-xs font-black text-slate-500 uppercase">{s.name}</p><span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-white border">{s.status} ({s.detailCount})</span></div>
-                      <div className="flex justify-between items-end mt-4"><p className="text-xs font-bold text-slate-400">{s.total} Keg.</p><p className="text-4xl font-black text-indigo-600">{s.nilaiAkhir}</p></div>
+                      <div><p className="text-xs font-black text-slate-500 uppercase">{s.name}</p><span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${s.status === 'Selesai' ? 'bg-green-100 text-green-600' : 'bg-white border'}`}>{s.status} ({s.detailCount})</span></div>
+                      <div className="flex justify-between items-end mt-4"><p className="text-xs font-bold text-slate-400">{s.total} Keg.</p><p className="text-4xl font-black text-indigo-600 tracking-tighter">{s.nilaiAkhir}</p></div>
                     </div>
                   ))}
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-center">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-center font-sans">
                 <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border text-amber-500 ring-4 ring-amber-50"><p className="text-slate-400 text-[10px] font-black uppercase mb-3">NILAI AKHIR SAYA</p><p className="text-6xl font-black">{dashboardStats.myNilaiAkhir}</p></div>
                 <div className="bg-indigo-900 rounded-[2.5rem] p-10 text-white flex flex-col items-center justify-center">
-                  <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-2">PROGRES</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-2">STATUS PENILAIAN</p>
                   <div className="flex items-center gap-3"><Clock className="text-amber-400 animate-pulse"/><p className="text-3xl font-black uppercase">{dashboardStats.myStatus}</p></div>
-                  <p className="text-[10px] font-black text-indigo-200 mt-2 uppercase">{dashboardStats.myDetailCount}</p>
+                  <p className="text-[10px] font-black text-indigo-200 mt-2 uppercase">{dashboardStats.myDetailCount} Selesai</p>
                 </div>
               </div>
             )}
           </div>
         ) : activeTab === 'users' ? (
           <div className="bg-white rounded-[2.5rem] shadow-sm border overflow-hidden p-8">
-            <table className="w-full text-left">
+            <table className="w-full text-left font-sans text-sm">
               <thead><tr className="bg-slate-50 border-b text-[10px] font-black text-slate-400 uppercase tracking-widest"><th className="p-6">Pegawai</th><th className="p-6">Jabatan</th><th className="p-6 text-center">Aksi</th></tr></thead>
               <tbody>{users.map(u => (<tr key={u.firestoreId} className="border-b">
-                <td className="p-6 font-black text-slate-800 uppercase text-sm">{u.name} <span className="text-indigo-400 lowercase text-[10px] ml-2">@{u.username}</span></td>
-                <td className="p-6 font-bold text-slate-500 text-xs uppercase">{u.jabatan} ({u.role})</td>
+                <td className="p-6 font-black text-slate-800 uppercase">{u.name} <span className="text-indigo-400 lowercase text-[10px] ml-2">@{u.username}</span></td>
+                <td className="p-6 font-bold text-slate-500 uppercase">{u.jabatan} ({u.role})</td>
                 <td className="p-6 text-center"><button onClick={() => deleteDoc(doc(db, "users", u.firestoreId))} className="text-slate-300 hover:text-red-500"><Trash2 size={20}/></button></td>
               </tr>))}</tbody>
             </table>
           </div>
         ) : (
-          <div className="bg-white rounded-[3rem] shadow-sm border p-8 space-y-6">
+          <div className="bg-white rounded-[3rem] shadow-sm border p-8 space-y-6 font-sans">
             <div className="flex flex-col md:flex-row justify-between gap-4">
               <h3 className="font-black text-xl uppercase tracking-tighter flex items-center gap-2"><CheckCircle2 className="text-indigo-600"/> Penilaian Pegawai</h3>
               {(user.role === 'admin' || user.role === 'pimpinan' || user.role === 'ketua') && (
@@ -300,19 +304,18 @@ const PIRUApp = () => {
       {showReportModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50 text-slate-800 font-sans">
           <form onSubmit={handleSubmitReport} className="bg-white w-full max-w-2xl rounded-[3.5rem] p-12 shadow-2xl space-y-6">
-            <h3 className="text-3xl font-black uppercase tracking-tighter">{isEditing ? "Edit Laporan" : (user.role === 'pimpinan' ? "Input Untuk Pegawai" : "Entri Pekerjaan")}</h3>
+            <h3 className="text-3xl font-black uppercase tracking-tighter">{isEditing ? "Edit Laporan" : (user.role === 'pimpinan' || user.role === 'admin' ? "Input Untuk Pegawai" : "Entri Pekerjaan")}</h3>
             <div className="space-y-4">
-               {/* PILIH PEGAWAI JIKA PIMPINAN YANG INPUT */}
                {(user.role === 'pimpinan' || user.role === 'admin') && !isEditing && (
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 ml-4 uppercase">Target Pegawai</label>
-                    <select required className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-indigo-600 border-2 border-indigo-50" onChange={e => setNewReport({...newReport, targetUser: e.target.value})}>
-                        <option value="">Pilih Nama Pegawai...</option>
+                    <label className="text-[10px] font-black text-slate-400 ml-4 uppercase tracking-widest leading-none">Pilih Penerima Pekerjaan</label>
+                    <select required className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-indigo-600 border" onChange={e => setNewReport({...newReport, targetUser: e.target.value})}>
+                        <option value="">-- Pilih Nama Pegawai --</option>
                         {users.filter(u => u.role !== 'admin' && u.role !== 'pimpinan').map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                     </select>
                   </div>
                )}
-               <input required type="text" placeholder="Pekerjaan" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black" value={newReport.title} onChange={e => setNewReport({...newReport, title: e.target.value})} />
+               <input required type="text" placeholder="Nama Pekerjaan" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black" value={newReport.title} onChange={e => setNewReport({...newReport, title: e.target.value})} />
                <div className="grid grid-cols-2 gap-4">
                   <input required type="number" placeholder="Target" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black" value={newReport.target} onChange={e => setNewReport({...newReport, target: e.target.value})} />
                   <input required type="number" placeholder="Realisasi" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black" value={newReport.realisasi} onChange={e => setNewReport({...newReport, realisasi: e.target.value})} />
@@ -321,17 +324,17 @@ const PIRUApp = () => {
                <datalist id="satuan-list"><option value="Dokumen"/><option value="Kegiatan"/><option value="Laporan"/><option value="Paket"/><option value="BS"/><option value="Ruta"/></datalist>
                <textarea className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black h-24 resize-none" placeholder="Keterangan" value={newReport.keterangan} onChange={e => setNewReport({...newReport, keterangan: e.target.value})} />
             </div>
-            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-6 rounded-[2rem] uppercase">Simpan</button>
-            <button type="button" onClick={() => { resetReportForm(); setShowReportModal(false); }} className="w-full text-slate-400 font-bold uppercase text-[10px]">Batal</button>
+            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-6 rounded-[2rem] shadow-xl uppercase">Simpan Laporan</button>
+            <button type="button" onClick={() => { resetReportForm(); setShowReportModal(false); }} className="w-full text-slate-400 font-bold uppercase text-[10px] mt-2 tracking-widest">Batal</button>
           </form>
         </div>
       )}
 
       {/* MODAL USER (ADMIN) */}
       {showUserModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50 text-slate-800">
-          <form onSubmit={handleAddUser} className="bg-white w-full max-w-xl rounded-[3.5rem] p-12 shadow-2xl space-y-4 font-sans">
-            <h3 className="text-2xl font-black uppercase tracking-tighter">Tambah Pegawai</h3>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50 text-slate-800 font-sans">
+          <form onSubmit={handleAddUser} className="bg-white w-full max-w-xl rounded-[3.5rem] p-12 shadow-2xl space-y-4">
+            <h3 className="text-2xl font-black uppercase tracking-tighter">Tambah Akun Pegawai</h3>
             <input required type="text" placeholder="Nama Lengkap" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold" onChange={e => setNewUser({...newUser, name: e.target.value})} />
             <div className="grid grid-cols-2 gap-4">
                 <input required type="text" placeholder="Username" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold" onChange={e => setNewUser({...newUser, username: e.target.value})} />
@@ -341,7 +344,8 @@ const PIRUApp = () => {
             <select className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold text-slate-600" onChange={e => setNewUser({...newUser, role: e.target.value})}>
                 <option value="pegawai">Pegawai</option><option value="ketua">Ketua Tim</option><option value="pimpinan">Pimpinan</option><option value="admin">Admin</option>
             </select>
-            <button type="submit" className="w-full bg-green-600 text-white font-black py-5 rounded-[2rem] uppercase">Simpan</button>
+            <button type="submit" className="w-full bg-green-600 text-white font-black py-5 rounded-[2rem] uppercase shadow-xl">Simpan Akun</button>
+            <button type="button" onClick={() => setShowUserModal(false)} className="w-full text-slate-400 font-bold uppercase text-[10px] mt-4">Batal</button>
           </form>
         </div>
       )}
