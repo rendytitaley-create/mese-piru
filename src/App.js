@@ -44,6 +44,13 @@ const PIRUApp = () => {
   const [newReport, setNewReport] = useState({ title: '', target: '', realisasi: '', satuan: '', keterangan: '' });
   const [newUser, setNewUser] = useState({ name: '', username: '', password: '', role: 'pegawai', jabatan: '' });
 
+  // FUNGSI RESET FORM AGAR BERSIH TOTAL
+  const resetForm = () => {
+    setIsEditing(false);
+    setCurrentReportId(null);
+    setNewReport({ title: '', target: '', realisasi: '', satuan: '', keterangan: '' });
+  };
+
   useEffect(() => {
     signInAnonymously(auth);
     const unsubscribe = onAuthStateChanged(auth, (fUser) => {
@@ -78,7 +85,7 @@ const PIRUApp = () => {
   const handleSubmitReport = async (e) => {
     e.preventDefault();
     try {
-      if (isEditing) {
+      if (isEditing && currentReportId) {
         await updateDoc(doc(db, "reports", currentReportId), {
           ...newReport, target: Number(newReport.target), realisasi: Number(newReport.realisasi),
         });
@@ -89,9 +96,16 @@ const PIRUApp = () => {
           month: selectedMonth, year: selectedYear, status: 'pending', nilaiKetua: 0, nilaiPimpinan: 0, createdAt: serverTimestamp()
         });
       }
-      setShowReportModal(false); setIsEditing(false);
-      setNewReport({ title: '', target: '', realisasi: '', satuan: '', keterangan: '' });
+      setShowReportModal(false);
+      resetForm(); // PEMBERSIHAN SETELAH SUBMIT
     } catch (err) { alert("Gagal menyimpan laporan."); }
+  };
+
+  const handleEditClick = (r) => {
+    setIsEditing(true);
+    setCurrentReportId(r.id);
+    setNewReport({ title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || '' });
+    setShowReportModal(true);
   };
 
   const submitGrade = async (reportId, roleName) => {
@@ -115,20 +129,16 @@ const PIRUApp = () => {
 
   const dashboardStats = useMemo(() => {
     const periodReports = reports.filter(r => r.month === selectedMonth && r.year === selectedYear);
-    
     const getStatusInfo = (userReports) => {
       const total = userReports.length;
       if (total === 0) return { text: "Belum Lapor", count: "0/0" };
       const selesai = userReports.filter(r => r.status === 'selesai').length;
       const progress = userReports.filter(r => r.status === 'dinilai_ketua').length;
-      
       let statusText = "Pending (Ketua Tim)";
       if (selesai === total) statusText = "Selesai";
       else if (progress > 0 || selesai > 0) statusText = "Progres Penilaian";
-      
       return { text: statusText, count: `${selesai} dari ${total} Selesai` };
     };
-
     const staffSummary = users.filter(u => u.role !== 'admin' && u.role !== 'pimpinan').map(s => {
       const sReports = periodReports.filter(r => r.userId === s.username);
       const total = sReports.length;
@@ -137,22 +147,12 @@ const PIRUApp = () => {
       const statusInfo = getStatusInfo(sReports);
       return { name: s.name, total, nilaiAkhir: ((avgCap + avgPimp) / 2).toFixed(2), status: statusInfo.text, detailCount: statusInfo.count };
     });
-
     const myReports = periodReports.filter(r => r.userId === user?.username);
     const myTotal = myReports.length;
     const myAvgCap = myTotal > 0 ? (myReports.reduce((acc, curr) => acc + Math.min((curr.realisasi / curr.target) * 100, 100), 0) / myTotal) : 0;
     const myAvgPimp = myTotal > 0 ? (myReports.reduce((acc, curr) => acc + (Number(curr.nilaiPimpinan) || 0), 0) / myTotal) : 0;
     const myStatusInfo = getStatusInfo(myReports);
-
-    return { 
-      myTotal, 
-      myNilaiAkhir: ((myAvgCap + myAvgPimp) / 2).toFixed(2),
-      staffSummary,
-      myAvgCap: myAvgCap.toFixed(2),
-      myAvgPimp: myAvgPimp.toFixed(2),
-      myStatus: myStatusInfo.text,
-      myDetailCount: myStatusInfo.count
-    };
+    return { myTotal, myNilaiAkhir: ((myAvgCap + myAvgPimp) / 2).toFixed(2), staffSummary, myAvgCap: myAvgCap.toFixed(2), myAvgPimp: myAvgPimp.toFixed(2), myStatus: myStatusInfo.text, myDetailCount: myStatusInfo.count };
   }, [reports, users, user, selectedMonth, selectedYear]);
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50 font-sans"><Loader2 className="animate-spin text-indigo-600" size={50} /></div>;
@@ -161,7 +161,7 @@ const PIRUApp = () => {
     <div className="h-screen bg-indigo-900 flex items-center justify-center p-4 text-slate-800 font-sans">
       <div className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl text-center">
         <ShieldCheck size={60} className="mx-auto text-indigo-600 mb-4" />
-        <h1 className="text-3xl font-black mb-8 tracking-tighter uppercase font-sans leading-none">PIRU LOGIN</h1>
+        <h1 className="text-3xl font-black mb-8 tracking-tighter uppercase leading-none font-sans">PIRU LOGIN</h1>
         <form onSubmit={handleLogin} className="space-y-4 text-left font-sans">
           <input type="text" placeholder="Username" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold" onChange={e => setAuthForm({...authForm, username: e.target.value})} />
           <input type="password" placeholder="Password" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold" onChange={e => setAuthForm({...authForm, password: e.target.value})} />
@@ -175,7 +175,7 @@ const PIRUApp = () => {
     <div className="min-h-screen bg-slate-50 flex font-sans overflow-hidden text-slate-800">
       <div className="w-72 bg-white border-r p-8 flex flex-col hidden md:flex">
         <div className="flex items-center gap-3 mb-12">
-          <div className="bg-indigo-600 p-2.5 rounded-2xl text-white shadow-lg"><ShieldCheck size={24}/></div>
+          <div className="bg-indigo-600 p-2.5 rounded-2xl text-white shadow-lg shadow-indigo-100"><ShieldCheck size={24}/></div>
           <span className="font-black text-2xl text-slate-800 tracking-tighter uppercase font-sans text-indigo-600 leading-none">PIRU BPS</span>
         </div>
         <nav className="flex-1 space-y-3 font-sans">
@@ -192,14 +192,14 @@ const PIRUApp = () => {
         <header className="flex justify-between items-center mb-10">
           <div>
             <h1 className="text-3xl font-black text-slate-800 tracking-tighter uppercase italic leading-none font-sans tracking-tight">HALO, {user.name}</h1>
-            <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-2 font-sans">{user.jabatan || user.role}</p>
+            <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-2 font-sans leading-none">{user.jabatan || user.role}</p>
           </div>
-          <div className="flex items-center gap-4 font-sans">
+          <div className="flex items-center gap-4">
             <select className="bg-white border rounded-2xl px-6 py-3 font-black text-slate-600 shadow-sm outline-none cursor-pointer" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
               {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
             </select>
             {(user.role === 'pegawai' || user.role === 'ketua') && (
-                <button onClick={() => {setIsEditing(false); setShowReportModal(true)}} className="bg-indigo-600 text-white px-8 py-3.5 rounded-2xl font-black shadow-lg uppercase tracking-widest text-xs active:scale-95 transition-all"><Plus size={18}/> Lapor</button>
+                <button onClick={() => { resetForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-8 py-3.5 rounded-2xl font-black shadow-lg uppercase tracking-widest text-xs active:scale-95 transition-all"><Plus size={18}/> Lapor</button>
             )}
           </div>
         </header>
@@ -280,7 +280,6 @@ const PIRUApp = () => {
                 {(user.role === 'admin' || user.role === 'pimpinan' || user.role === 'ketua') && (
                     <select className="p-3 bg-slate-50 border-none rounded-xl font-bold text-xs outline-none cursor-pointer" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
                         <option value="Semua">Semua Pegawai</option>
-                        {/* FILTER: Nama Pimpinan Tidak Muncul di Role Ketua Tim/Admin saat filter */}
                         {users.filter(u => u.role !== 'admin' && u.role !== 'pimpinan').map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                     </select>
                 )}
@@ -304,7 +303,7 @@ const PIRUApp = () => {
                       <td className="p-8 text-center">
                          <div className="flex justify-center items-center gap-2">
                             {(r.userId === user.username && r.status === 'pending') && (
-                                <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan}); setShowReportModal(true); }} className="text-indigo-600 p-2"><Edit3 size={18}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="text-red-400 p-2"><Trash2 size={18}/></button></>
+                                <><button onClick={() => handleEditClick(r)} className="text-indigo-600 p-2 hover:bg-indigo-50 rounded-xl"><Edit3 size={18}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="text-red-400 p-2 hover:bg-red-50 rounded-xl"><Trash2 size={18}/></button></>
                             )}
                             {user.role === 'admin' && (
                                <button onClick={() => { if(window.confirm("Hapus laporan?")) deleteDoc(doc(db, "reports", r.id)) }} className="text-red-200 hover:text-red-500 p-2"><Trash2 size={18}/></button>
@@ -342,8 +341,8 @@ const PIRUApp = () => {
                <datalist id="satuan-list"><option value="Dokumen"/><option value="Kegiatan"/><option value="Laporan"/><option value="Paket"/><option value="BS"/><option value="Ruta"/></datalist>
                <textarea className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black h-24 resize-none text-slate-700" placeholder="Keterangan" value={newReport.keterangan} onChange={e => setNewReport({...newReport, keterangan: e.target.value})} />
             </div>
-            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-6 rounded-[2rem] shadow-xl uppercase transition-all active:scale-95 tracking-widest font-sans">Simpan Laporan</button>
-            <button type="button" onClick={() => setShowReportModal(false)} className="w-full text-slate-400 font-bold uppercase text-[10px] font-sans">Batal</button>
+            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-6 rounded-[2rem] shadow-xl uppercase transition-all active:scale-95 tracking-widest">Simpan Laporan</button>
+            <button type="button" onClick={() => { resetForm(); setShowReportModal(false); }} className="w-full text-slate-400 font-bold uppercase text-[10px]">Batal</button>
           </form>
         </div>
       )}
@@ -362,7 +361,7 @@ const PIRUApp = () => {
             <select className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold text-slate-600 font-sans" onChange={e => setNewUser({...newUser, role: e.target.value})}>
                 <option value="pegawai">Pegawai</option><option value="ketua">Ketua Tim</option><option value="pimpinan">Pimpinan</option><option value="admin">Admin</option>
             </select>
-            <button type="submit" className="w-full bg-green-600 text-white font-black py-5 rounded-[2rem] shadow-xl transition-all active:scale-95 uppercase font-sans">Simpan</button>
+            <button type="submit" className="w-full bg-green-600 text-white font-black py-5 rounded-[2rem] shadow-xl transition-all active:scale-95 uppercase">Simpan</button>
           </form>
         </div>
       )}
