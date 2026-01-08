@@ -12,7 +12,7 @@ import {
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
-// === CONFIG FIREBASE ANDA ===
+// === CONFIG FIREBASE ANDA (PASTIKAN TETAP SAMA) ===
 const firebaseConfig = {
   apiKey: "AIzaSyDVRt3zgojeVh8ek61yXFQ9r9ihpOt7BqQ",
   authDomain: "piru8106-b4f0a.firebaseapp.com",
@@ -144,6 +144,7 @@ const PIRUApp = () => {
   const currentFilteredReports = useMemo(() => {
     let res = reports.filter(r => r.month === selectedMonth && r.year === selectedYear);
     if (user?.role === 'pegawai') res = res.filter(r => r.userId === user.username);
+    // Role 'ketua' sekarang bisa memfilter semua nama untuk dinilai
     if (['pimpinan', 'admin', 'ketua'].includes(user?.role) && filterStaffName !== 'Semua') {
       res = res.filter(r => r.userName === filterStaffName);
     }
@@ -348,6 +349,7 @@ const PIRUApp = () => {
           </div>
           
           <div className="flex flex-wrap items-center gap-3 not-italic xl:justify-end">
+             {/* PERBAIKAN: Ketua sekarang bisa memfilter nama pegawai */}
              {['admin','pimpinan','ketua'].includes(user.role) && activeTab === 'laporan' && (
                 <select className="p-3 bg-white border border-slate-200 rounded-xl font-black text-[10px] text-slate-600 shadow-sm outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
                   <option value="Semua">Semua Pegawai</option>
@@ -367,7 +369,7 @@ const PIRUApp = () => {
         {activeTab === 'dashboard' ? (
           <div className="space-y-10 animate-in fade-in duration-500 font-sans italic">
              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div className="bg-white p-14 rounded-[3.5rem] shadow-sm border border-slate-100 text-center relative overflow-hidden group">
+                <div className="bg-white p-14 rounded-[3.5rem] shadow-sm border border-slate-100 text-center relative overflow-hidden">
                     <p className="text-slate-400 text-[11px] font-black uppercase mb-6 tracking-widest leading-none">Estimasi Nilai Akhir Saya</p>
                     <p className="text-8xl font-black text-amber-500 tracking-tighter leading-none">{dashboardStats.myNilaiAkhir}</p>
                 </div>
@@ -404,8 +406,17 @@ const PIRUApp = () => {
                         <div className="flex justify-center gap-2">
                           {r.userId === user.username && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm"><Edit3 size={18}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-red-50 text-red-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-sm"><Trash2 size={18}/></button></>}
                           {user.role === 'admin' && <button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-slate-100 text-slate-400 rounded-2xl hover:bg-red-500 transition-all shadow-sm"><Trash2 size={18}/></button>}
-                          {(user.role === 'admin' || user.role === 'ketua') && r.userId !== user.username && r.status !== 'selesai' && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-md active:scale-95 transition-all italic">Ketua</button>}
-                          {(user.role === 'pimpinan' || user.role === 'admin') && r.userId !== user.username && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-md active:scale-95 transition-all italic">{r.status === 'selesai' ? 'Koreksi' : 'Pimpinan'}</button>}
+                          
+                          {/* PERBAIKAN: Syarat Tombol Ketua & Pimpinan agar selalu presisi sesuai role */}
+                          {(user.role === 'admin' || user.role === 'ketua') && r.userId !== user.username && r.status !== 'selesai' && (
+                            <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-md active:scale-95 transition-all italic">Ketua</button>
+                          )}
+                          
+                          {(user.role === 'pimpinan' || user.role === 'admin') && r.userId !== user.username && (
+                            <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-md active:scale-95 transition-all italic">
+                              {r.status === 'selesai' ? 'Koreksi' : 'Pimpinan'}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -458,7 +469,10 @@ const PIRUApp = () => {
                 </div>
                 <input type="text" placeholder="Jabatan" className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-black text-slate-700 border border-slate-100 italic" onChange={e => setNewUser({...newUser, jabatan: e.target.value})} />
                 <select className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-black text-slate-600 border border-slate-100 italic" onChange={e => setNewUser({...newUser, role: e.target.value})}>
-                    <option value="pegawai italic">Pegawai</option><option value="ketua italic">Ketua Tim</option><option value="pimpinan italic">Pimpinan</option><option value="admin italic">Admin</option>
+                    <option value="pegawai">Pegawai</option>
+                    <option value="ketua">Ketua Tim</option>
+                    <option value="pimpinan">Pimpinan</option>
+                    <option value="admin">Admin</option>
                 </select>
                 <button type="submit" className="w-full bg-indigo-600 text-white font-black py-7 rounded-[2.5rem] shadow-xl uppercase tracking-widest text-[10px] mt-6 transition-all active:scale-95 italic">Simpan Pegawai</button>
             </div>
