@@ -44,7 +44,6 @@ const PIRUApp = () => {
   const [newReport, setNewReport] = useState({ title: '', target: '', realisasi: '', satuan: '', keterangan: '' });
   const [newUser, setNewUser] = useState({ name: '', username: '', password: '', role: 'pegawai', jabatan: '' });
 
-  // FUNGSI RESET FORM AGAR BERSIH TOTAL
   const resetForm = () => {
     setIsEditing(false);
     setCurrentReportId(null);
@@ -75,7 +74,10 @@ const PIRUApp = () => {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    const found = users.find(u => u.username === authForm.username && u.password === authForm.password);
+    // LOGIKA LOGIN: Case Insensitive (Huruf besar/kecil diabaikan)
+    const inputUser = authForm.username.trim().toLowerCase();
+    const found = users.find(u => u.username.toLowerCase() === inputUser && u.password === authForm.password);
+    
     if (found) {
       setUser(found);
       localStorage.setItem('piru_session_final', JSON.stringify(found));
@@ -97,15 +99,22 @@ const PIRUApp = () => {
         });
       }
       setShowReportModal(false);
-      resetForm(); // PEMBERSIHAN SETELAH SUBMIT
+      resetForm();
     } catch (err) { alert("Gagal menyimpan laporan."); }
   };
 
-  const handleEditClick = (r) => {
-    setIsEditing(true);
-    setCurrentReportId(r.id);
-    setNewReport({ title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || '' });
-    setShowReportModal(true);
+  const handleAddUser = async (e) => {
+    e.preventDefault();
+    try {
+      await addDoc(collection(db, "users"), { 
+        ...newUser, 
+        username: newUser.username.trim().toLowerCase(), // Simpan username selalu huruf kecil
+        createdAt: serverTimestamp() 
+      });
+      setShowUserModal(false);
+      setNewUser({ name: '', username: '', password: '', role: 'pegawai', jabatan: '' });
+      alert("Pegawai Berhasil Ditambahkan!");
+    } catch (err) { alert("Gagal menambah pegawai."); }
   };
 
   const submitGrade = async (reportId, roleName) => {
@@ -191,15 +200,18 @@ const PIRUApp = () => {
       <main className="flex-1 p-10 overflow-y-auto">
         <header className="flex justify-between items-center mb-10">
           <div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tighter uppercase italic leading-none font-sans tracking-tight">HALO, {user.name}</h1>
-            <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-2 font-sans leading-none">{user.jabatan || user.role}</p>
+            <h1 className="text-3xl font-black text-slate-800 tracking-tighter uppercase italic leading-none font-sans">HALO, {user.name}</h1>
+            <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-2 font-sans">{user.jabatan || user.role}</p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 font-sans">
             <select className="bg-white border rounded-2xl px-6 py-3 font-black text-slate-600 shadow-sm outline-none cursor-pointer" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
               {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
             </select>
             {(user.role === 'pegawai' || user.role === 'ketua') && (
                 <button onClick={() => { resetForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-8 py-3.5 rounded-2xl font-black shadow-lg uppercase tracking-widest text-xs active:scale-95 transition-all"><Plus size={18}/> Lapor</button>
+            )}
+            {user.role === 'admin' && activeTab === 'users' && (
+                <button onClick={() => setShowUserModal(true)} className="bg-green-600 text-white px-8 py-3.5 rounded-2xl font-black shadow-lg uppercase tracking-widest text-xs active:scale-95 transition-all"><Plus size={18}/> Pegawai</button>
             )}
           </div>
         </header>
@@ -242,8 +254,7 @@ const PIRUApp = () => {
                           <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border text-green-600"><p className="text-slate-400 text-[10px] font-black uppercase mb-3 tracking-widest leading-none font-sans">Avg Pimpinan</p><p className="text-4xl font-black tracking-tighter">{dashboardStats.myAvgPimp}</p></div>
                           <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border text-amber-500 ring-4 ring-amber-100"><p className="text-slate-400 text-[10px] font-black uppercase mb-3 font-bold tracking-widest leading-none font-sans">NILAI AKHIR</p><p className="text-5xl font-black tracking-tighter">{dashboardStats.myNilaiAkhir}</p></div>
                       </div>
-
-                      <div className="bg-indigo-900 rounded-[3rem] p-10 text-white flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl">
+                      <div className="bg-indigo-900 rounded-[3rem] p-10 text-white flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl shadow-indigo-200">
                           <div className="space-y-2">
                               <h2 className="text-3xl font-black uppercase tracking-tighter leading-none font-sans">Status Penilaian</h2>
                               <p className="text-indigo-200 font-sans text-sm">Update progres penyelesaian laporan kinerja bulan {selectedMonth}.</p>
@@ -264,7 +275,7 @@ const PIRUApp = () => {
           </div>
         ) : activeTab === 'users' && user.role === 'admin' ? (
             <div className="bg-white rounded-[2.5rem] shadow-sm border overflow-hidden p-8 text-sm font-sans">
-                <table className="w-full text-left font-sans">
+                <table className="w-full text-left font-sans text-slate-800">
                     <thead><tr className="bg-slate-50 border-b text-[10px] font-black text-slate-400 uppercase tracking-widest"><th className="p-6">Pegawai</th><th className="p-6">Jabatan</th><th className="p-6 text-center">Aksi</th></tr></thead>
                     <tbody>{users.map(u => (<tr key={u.firestoreId} className="border-b hover:bg-slate-50 transition-colors">
                         <td className="p-6 font-black text-slate-800 uppercase text-sm">{u.name} <span className="text-indigo-400 text-[10px] font-bold lowercase ml-2">@{u.username}</span></td>
@@ -276,9 +287,9 @@ const PIRUApp = () => {
         ) : (
           <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden p-8 space-y-6 animate-in fade-in duration-500 font-sans text-slate-800">
             <div className="flex flex-col md:flex-row justify-between gap-4 font-sans">
-                <h3 className="font-black text-xl uppercase tracking-tighter flex items-center gap-2 font-sans"><CheckCircle2 className="text-indigo-600"/> Daftar Penilaian Pegawai</h3>
+                <h3 className="font-black text-xl uppercase tracking-tighter flex items-center gap-2 font-sans text-slate-800"><CheckCircle2 className="text-indigo-600"/> Daftar Penilaian Pegawai</h3>
                 {(user.role === 'admin' || user.role === 'pimpinan' || user.role === 'ketua') && (
-                    <select className="p-3 bg-slate-50 border-none rounded-xl font-bold text-xs outline-none cursor-pointer" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
+                    <select className="p-3 bg-slate-50 border-none rounded-xl font-bold text-xs outline-none cursor-pointer text-slate-600" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
                         <option value="Semua">Semua Pegawai</option>
                         {users.filter(u => u.role !== 'admin' && u.role !== 'pimpinan').map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                     </select>
@@ -331,7 +342,7 @@ const PIRUApp = () => {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50 text-slate-800 font-sans">
           <form onSubmit={handleSubmitReport} className="bg-white w-full max-w-2xl rounded-[3.5rem] p-12 shadow-2xl space-y-6 animate-in zoom-in-95 font-sans">
             <h3 className="text-3xl font-black uppercase tracking-tighter">{isEditing ? "Edit Laporan" : "Entri Kinerja"}</h3>
-            <div className="space-y-4">
+            <div className="space-y-4 font-sans text-slate-800">
                <input required type="text" placeholder="Pekerjaan" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700" value={newReport.title} onChange={e => setNewReport({...newReport, title: e.target.value})} />
                <div className="grid grid-cols-2 gap-4">
                   <input required type="number" placeholder="Target" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700" value={newReport.target} onChange={e => setNewReport({...newReport, target: e.target.value})} />
@@ -350,18 +361,19 @@ const PIRUApp = () => {
       {/* Modal User */}
       {showUserModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50 text-slate-800 font-sans">
-          <form onSubmit={(e) => { e.preventDefault(); addDoc(collection(db, "users"), { ...newUser, createdAt: serverTimestamp() }); setShowUserModal(false); setNewUser({ name: '', username: '', password: '', role: 'pegawai', jabatan: '' }); }} className="bg-white w-full max-w-xl rounded-[3.5rem] p-12 shadow-2xl space-y-4 font-sans text-slate-800">
+          <form onSubmit={handleAddUser} className="bg-white w-full max-w-xl rounded-[3.5rem] p-12 shadow-2xl space-y-4 font-sans text-slate-800">
             <h3 className="text-2xl font-black uppercase tracking-tighter">Tambah Pegawai</h3>
-            <input required type="text" placeholder="Nama Lengkap" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold" onChange={e => setNewUser({...newUser, name: e.target.value})} />
+            <input required type="text" placeholder="Nama Lengkap" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold text-slate-700" onChange={e => setNewUser({...newUser, name: e.target.value})} />
             <div className="grid grid-cols-2 gap-4">
-                <input required type="text" placeholder="Username" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold" onChange={e => setNewUser({...newUser, username: e.target.value})} />
-                <input required type="password" placeholder="Password" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold" onChange={e => setNewUser({...newUser, password: e.target.value})} />
+                <input required type="text" placeholder="Username" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold text-slate-700" onChange={e => setNewUser({...newUser, username: e.target.value})} />
+                <input required type="password" placeholder="Password" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold text-slate-700" onChange={e => setNewUser({...newUser, password: e.target.value})} />
             </div>
-            <input type="text" placeholder="Jabatan" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold" onChange={e => setNewUser({...newUser, jabatan: e.target.value})} />
+            <input type="text" placeholder="Jabatan" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold text-slate-700" onChange={e => setNewUser({...newUser, jabatan: e.target.value})} />
             <select className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold text-slate-600 font-sans" onChange={e => setNewUser({...newUser, role: e.target.value})}>
                 <option value="pegawai">Pegawai</option><option value="ketua">Ketua Tim</option><option value="pimpinan">Pimpinan</option><option value="admin">Admin</option>
             </select>
-            <button type="submit" className="w-full bg-green-600 text-white font-black py-5 rounded-[2rem] shadow-xl transition-all active:scale-95 uppercase">Simpan</button>
+            <button type="submit" className="w-full bg-green-600 text-white font-black py-5 rounded-[2rem] shadow-xl transition-all active:scale-95 uppercase tracking-widest font-sans">Simpan Pegawai</button>
+            <button type="button" onClick={() => setShowUserModal(false)} className="w-full text-slate-400 font-bold uppercase text-[10px] mt-2">Batal</button>
           </form>
         </div>
       )}
