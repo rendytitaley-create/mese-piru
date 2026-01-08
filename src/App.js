@@ -215,22 +215,43 @@ const PIRUApp = () => {
         cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
     });
 
-    // 3. Data Loop
+    // 3. Data Loop & Auto Width Calculation (selective)
     let curRow = 11;
     let sumKuan = 0; let sumKual = 0;
+    let maxUraianLength = 20; // Default min width
+
     currentFilteredReports.forEach((r, i) => {
         const row = sheet.getRow(curRow);
         const kP = (r.realisasi / r.target) * 100;
         const qP = r.nilaiPimpinan || 0;
+        
+        // Hitung panjang uraian untuk auto width kolom B
+        if(r.title.length > maxUraianLength) maxUraianLength = r.title.length;
+
         row.values = [i+1, r.title, r.satuan, r.target, r.realisasi, kP, qP, r.keterangan || ''];
+        
         row.eachCell({ includeEmpty: true }, (cell) => {
             cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-            cell.alignment = { horizontal: cell.col >= 4 && cell.col <= 7 ? 'center' : 'left', vertical: 'middle' };
+            // Paksa Center kecuali Kolom B (Uraian)
+            cell.alignment = { 
+                horizontal: cell.col === 2 ? 'left' : 'center', 
+                vertical: 'middle' 
+            };
         });
         sumKuan += Math.min(kP, 100); sumKual += qP; curRow++;
     });
 
-    // 4. Baris Rata-Rata (Centre)
+    // Set Manual Lebar Kolom
+    sheet.getColumn(1).width = 5; // No
+    sheet.getColumn(2).width = maxUraianLength > 60 ? 60 : maxUraianLength + 5; // Uraian
+    sheet.getColumn(3).width = 12; // Satuan
+    sheet.getColumn(4).width = 10; // Target
+    sheet.getColumn(5).width = 10; // Realisasi
+    sheet.getColumn(6).width = 8;  // % Kuan
+    sheet.getColumn(7).width = 10; // Kualitas
+    sheet.getColumn(8).width = 15; // Keterangan
+
+    // 4. Baris Rata-Rata
     const avgKuan = currentFilteredReports.length > 0 ? sumKuan / currentFilteredReports.length : 0;
     const avgKual = currentFilteredReports.length > 0 ? sumKual / currentFilteredReports.length : 0;
 
@@ -253,7 +274,7 @@ const PIRUApp = () => {
     });
     curRow++;
 
-    // 5. Baris CKP (Centre)
+    // 5. Baris CKP
     sheet.mergeCells(`A${curRow}:E${curRow}`);
     const ckpLabel = sheet.getCell(`A${curRow}`);
     ckpLabel.value = 'Capaian Kinerja Pegawai (CKP)';
@@ -288,16 +309,6 @@ const PIRUApp = () => {
     nmPCell.value = pimpinan.name;
     nmPCell.font = { bold: true, underline: true };
     nmPCell.alignment = { horizontal: 'center' };
-
-    // 7. Auto-adjust Column Width
-    sheet.columns.forEach(column => {
-        let maxColumnLength = 0;
-        column.eachCell({ includeEmpty: true }, cell => {
-            const cellValue = cell.value ? cell.value.toString() : "";
-            maxColumnLength = Math.max(maxColumnLength, cellValue.length);
-        });
-        column.width = maxColumnLength < 10 ? 10 : maxColumnLength + 2;
-    });
 
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), `CKP_${targetStaff?.name}.xlsx`);
@@ -391,7 +402,7 @@ const PIRUApp = () => {
                    <div className="flex items-center gap-3 mb-10"><TrendingUp className="text-indigo-600" size={28}/><h3 className="font-black text-2xl uppercase tracking-tighter italic">Monitoring Progres Pegawai</h3></div>
                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                      {dashboardStats.staffSummary.map((s, i) => (
-                       <div key={i} className="p-8 bg-slate-50 rounded-[2.5rem] border flex flex-col justify-between hover:border-indigo-300 transition-all shadow-sm">
+                       <div key={i} className="p-8 bg-slate-50 rounded-[2.5rem] border flex flex-col justify-between hover:border-indigo-200 transition-all shadow-sm">
                          <div className="mb-6"><p className="text-[11px] font-black text-slate-400 uppercase mb-2">{s.name}</p><span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-lg ${s.status === 'Selesai' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>{s.status} ({s.total} Keg.)</span></div>
                          <div className="flex justify-between items-end"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nilai Akhir</p><p className="text-4xl font-black text-indigo-600 tracking-tighter">{s.nilaiAkhir}</p></div>
                        </div>
@@ -425,7 +436,7 @@ const PIRUApp = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {currentFilteredReports.map(r => (
-                    <tr key={r.id} className="hover:bg-slate-50/50 transition-all">
+                    <tr key={r.id} className="hover:bg-slate-50/50 transition-all font-sans">
                       <td className="p-8"><p className="font-black text-xl text-slate-800 uppercase tracking-tighter leading-none mb-2">{r.title}</p><span className="text-indigo-600 text-[9px] font-black uppercase bg-indigo-50 px-2 py-1 rounded-lg">{r.userName}</span></td>
                       <td className="p-8 text-center font-black">{r.realisasi} / {r.target} <span className="text-[10px] block text-slate-400 lowercase">{r.satuan}</span></td>
                       <td className="p-8 text-center font-black text-indigo-600">{((r.realisasi/r.target)*100).toFixed(1)}%</td>
