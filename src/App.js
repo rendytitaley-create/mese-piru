@@ -88,20 +88,6 @@ const PIRUApp = () => {
     } else { setAuthError('Username atau password salah.'); }
   };
 
-  const handleAddUser = async (e) => {
-    e.preventDefault();
-    try {
-      await addDoc(collection(db, "users"), { 
-        ...newUser, 
-        username: newUser.username.trim().toLowerCase(),
-        createdAt: serverTimestamp() 
-      });
-      setShowUserModal(false);
-      setNewUser({ name: '', username: '', password: '', role: 'pegawai', jabatan: '' });
-      alert("Pegawai berhasil ditambahkan.");
-    } catch (err) { alert("Gagal menambah pegawai."); }
-  };
-
   const handleSubmitReport = async (e) => {
     e.preventDefault();
     try {
@@ -215,15 +201,15 @@ const PIRUApp = () => {
         cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
     });
 
-    // 3. Set Fixed Column Widths
-    sheet.getColumn(1).width = 12; // Menjaga identitas atas agar tidak tertutup
-    sheet.getColumn(2).width = 60; // Uraian Kegiatan (Fixed 60)
-    sheet.getColumn(3).width = 15;
-    sheet.getColumn(4).width = 12;
-    sheet.getColumn(5).width = 12;
-    sheet.getColumn(6).width = 10;
-    sheet.getColumn(7).width = 20; // Sesuai judul Tingkat Kualitas
-    sheet.getColumn(8).width = 45; // Keterangan (Fixed 45)
+    // 3. SET PRECISE COLUMN WIDTHS (Instruksi Bapak)
+    sheet.getColumn(1).width = 8.2;  // Kolom A
+    sheet.getColumn(2).width = 60;   // Kolom B (Uraian)
+    sheet.getColumn(3).width = 15;   // Kolom C (Satuan)
+    sheet.getColumn(4).width = 7.07; // Kolom D (Target)
+    sheet.getColumn(5).width = 7.07; // Kolom E (Realisasi)
+    sheet.getColumn(6).width = 7.07; // Kolom F (%)
+    sheet.getColumn(7).width = 13;   // Kolom G (Kualitas)
+    sheet.getColumn(8).width = 45;   // Kolom H (Keterangan)
 
     // 4. Data Loop
     let curRow = 11;
@@ -239,7 +225,7 @@ const PIRUApp = () => {
         row.eachCell({ includeEmpty: true }, (cell) => {
             cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
             
-            // Logika Wrap Text: Aktif untuk Uraian (2) & Keterangan (8)
+            // Logika Wrap Text & Alignment
             if (cell.col === 2 || cell.col === 8) {
                 cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
             } else {
@@ -309,6 +295,7 @@ const PIRUApp = () => {
     saveAs(new Blob([buffer]), `CKP_${targetStaff?.name}.xlsx`);
   };
 
+  // --- SISA FUNGSI UTAMA (TIDAK BERUBAH) ---
   const submitGrade = async (reportId, roleName) => {
     const val = prompt(`Masukkan Nilai ${roleName === 'ketua' ? 'Ketua Tim' : 'Pimpinan'}:`);
     if (val && !isNaN(val)) {
@@ -351,7 +338,6 @@ const PIRUApp = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex font-sans overflow-hidden text-slate-800 italic">
-      {/* SIDEBAR DLL (Sama dengan versi sebelumnya) */}
       <div className="w-72 bg-white border-r p-8 flex flex-col hidden md:flex font-sans">
         <div className="flex items-center gap-4 mb-14 px-2 italic">
           <div className="bg-indigo-600 p-3 rounded-2xl text-white shadow-lg"><ShieldCheck size={28}/></div>
@@ -383,8 +369,15 @@ const PIRUApp = () => {
         {activeTab === 'dashboard' ? (
           <div className="space-y-10 animate-in fade-in duration-500 font-sans italic">
              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div className="bg-white p-14 rounded-[3.5rem] shadow-sm border border-slate-100 text-center"><p className="text-slate-400 text-[11px] font-black uppercase mb-6 tracking-widest leading-none">Estimasi Nilai Akhir Saya</p><p className="text-8xl font-black text-amber-500 tracking-tighter leading-none">{dashboardStats.myNilaiAkhir}</p></div>
-                <div className="bg-indigo-900 rounded-[3.5rem] p-14 text-white flex flex-col items-center justify-center shadow-2xl italic"><p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50 mb-6 leading-none italic">Tahapan Penilaian</p><div className="flex items-center gap-5"><Clock size={32} className="text-amber-400"/><p className="text-4xl font-black uppercase italic leading-none">{dashboardStats.myStatus}</p></div><p className="text-[10px] font-black text-indigo-300 mt-8 uppercase tracking-widest leading-none italic">{dashboardStats.myDetailCount}</p></div>
+                <div className="bg-white p-14 rounded-[3.5rem] shadow-sm border border-slate-100 text-center relative overflow-hidden group">
+                    <p className="text-slate-400 text-[11px] font-black uppercase mb-6 tracking-widest leading-none">Estimasi Nilai Akhir Saya</p>
+                    <p className="text-8xl font-black text-amber-500 tracking-tighter leading-none">{dashboardStats.myNilaiAkhir}</p>
+                </div>
+                <div className="bg-indigo-900 rounded-[3.5rem] p-14 text-white flex flex-col items-center justify-center shadow-2xl relative overflow-hidden italic">
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50 mb-6 leading-none italic">Tahapan Penilaian</p>
+                    <div className="flex items-center gap-5"><Clock size={32} className="text-amber-400"/><p className="text-4xl font-black uppercase italic leading-none">{dashboardStats.myStatus}</p></div>
+                    <p className="text-[10px] font-black text-indigo-300 mt-8 uppercase tracking-widest leading-none italic">{dashboardStats.myDetailCount}</p>
+                </div>
              </div>
           </div>
         ) : activeTab === 'users' ? (
@@ -396,16 +389,8 @@ const PIRUApp = () => {
           </div>
         ) : (
           <div className="bg-white rounded-[3.5rem] shadow-sm border p-10 space-y-8 animate-in fade-in duration-700 font-sans italic">
-            <div className="flex flex-col md:flex-row justify-between gap-6 px-4 italic">
-              <div className="flex items-center gap-3"><div className="w-1.5 h-8 bg-indigo-600 rounded-full"></div><h3 className="font-black text-2xl uppercase tracking-tighter italic leading-none">Form Capaian Kinerja</h3></div>
-              {['admin','pimpinan','ketua'].includes(user.role) && (
-                <select className="p-4 bg-slate-50 border rounded-2xl font-black text-xs text-slate-600 cursor-pointer focus:ring-2 ring-indigo-50 outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
-                  <option value="Semua">Semua Pegawai</option>
-                  {users.filter(u => !['admin','pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
-                </select>
-              )}
-            </div>
-            <div className="overflow-x-auto text-sm italic">
+             {/* Tabel Konten Utama */}
+             <div className="overflow-x-auto text-sm italic">
               <table className="w-full text-left italic">
                 <thead className="bg-slate-50 border-b text-[10px] font-black text-slate-400 uppercase tracking-widest">
                   <tr><th className="p-8">Kegiatan</th><th className="p-8 text-center">Volume</th><th className="p-8 text-center">Capaian %</th><th className="p-8 text-center">Ketua</th><th className="p-8 text-center">Pimpinan</th><th className="p-8 text-center">Aksi</th></tr>
@@ -418,11 +403,13 @@ const PIRUApp = () => {
                       <td className="p-8 text-center font-black text-indigo-600">{((r.realisasi/r.target)*100).toFixed(1)}%</td>
                       <td className="p-8 text-center font-black text-slate-300 text-xl">{r.nilaiKetua || '-'}</td>
                       <td className="p-8 text-center font-black text-indigo-600 text-xl">{r.nilaiPimpinan || '-'}</td>
-                      <td className="p-8 text-center flex justify-center gap-2">
-                        {r.userId === user.username && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl hover:bg-indigo-600 hover:text-white"><Edit3 size={18}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-red-50 text-red-400 rounded-2xl hover:bg-red-500 hover:text-white"><Trash2 size={18}/></button></>}
-                        {user.role === 'admin' && <button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-slate-100 text-slate-400 rounded-2xl hover:bg-red-500 transition-all"><Trash2 size={18}/></button>}
-                        {(user.role === 'admin' || user.role === 'ketua') && r.userId !== user.username && r.status !== 'selesai' && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-md active:scale-95 transition-all">Ketua</button>}
-                        {(user.role === 'pimpinan' || user.role === 'admin') && r.userId !== user.username && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-md active:scale-95 transition-all">{r.status === 'selesai' ? 'Koreksi' : 'Pimpinan'}</button>}
+                      <td className="p-8 text-center">
+                        <div className="flex justify-center gap-2">
+                          {r.userId === user.username && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl hover:bg-indigo-600 hover:text-white shadow-sm"><Edit3 size={18}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-red-50 text-red-400 rounded-2xl hover:bg-red-500 hover:text-white shadow-sm"><Trash2 size={18}/></button></>}
+                          {user.role === 'admin' && <button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-slate-100 text-slate-400 rounded-2xl hover:bg-red-500 transition-all shadow-sm"><Trash2 size={18}/></button>}
+                          {(user.role === 'admin' || user.role === 'ketua') && r.userId !== user.username && r.status !== 'selesai' && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-md active:scale-95 transition-all">Ketua</button>}
+                          {(user.role === 'pimpinan' || user.role === 'admin') && r.userId !== user.username && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-md active:scale-95 transition-all">{r.status === 'selesai' ? 'Koreksi' : 'Pimpinan'}</button>}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -433,7 +420,7 @@ const PIRUApp = () => {
         )}
       </main>
 
-      {/* MODAL LAPORAN DLL (Tetap sama) */}
+      {/* MODAL LAPORAN & USER (Tetap sama) */}
     </div>
   );
 };
