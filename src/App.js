@@ -90,6 +90,7 @@ const PIRUApp = () => {
           realisasi: Number(newReport.realisasi),
           userId: user.username,
           userName: user.name,
+          userRole: user.role, // Menyimpan role pengentri
           month: selectedMonth,
           year: selectedYear,
           status: 'pending',
@@ -102,25 +103,6 @@ const PIRUApp = () => {
       setIsEditing(false);
       setNewReport({ title: '', target: '', realisasi: '', satuan: '', keterangan: '' });
     } catch (err) { alert("Gagal menyimpan laporan."); }
-  };
-
-  const handleEditClick = (report) => {
-    setIsEditing(true);
-    setCurrentReportId(report.id);
-    setNewReport({
-      title: report.title,
-      target: report.target,
-      realisasi: report.realisasi,
-      satuan: report.satuan,
-      keterangan: report.keterangan || ''
-    });
-    setShowReportModal(true);
-  };
-
-  const handleDeleteReport = async (id) => {
-    if (window.confirm("Hapus entrian ini?")) {
-      await deleteDoc(doc(db, "reports", id));
-    }
   };
 
   const submitGrade = async (reportId, roleName) => {
@@ -138,8 +120,6 @@ const PIRUApp = () => {
 
   const filteredReports = useMemo(() => {
     let res = reports.filter(r => r.month === selectedMonth && r.year === selectedYear);
-    // Jika admin, biarkan melihat semua laporan (untuk fungsi penilaian & pengawasan)
-    // Jika pegawai, hanya lihat milik sendiri
     if (user?.role === 'pegawai') res = res.filter(r => r.userId === user.username);
     return res;
   }, [reports, user, selectedMonth, selectedYear]);
@@ -157,7 +137,7 @@ const PIRUApp = () => {
     <div className="h-screen bg-indigo-900 flex items-center justify-center p-4">
       <div className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl text-center">
         <ShieldCheck size={60} className="mx-auto text-indigo-600 mb-4" />
-        <h1 className="text-3xl font-black mb-8 text-slate-800 tracking-tighter uppercase">PIRU LOGIN</h1>
+        <h1 className="text-3xl font-black mb-8 text-slate-800 tracking-tighter uppercase font-sans">PIRU LOGIN</h1>
         <form onSubmit={handleLogin} className="space-y-4">
           {authError && <div className="p-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold text-center border border-red-100">{authError}</div>}
           <input type="text" placeholder="Username" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold" onChange={e => setAuthForm({...authForm, username: e.target.value})} />
@@ -169,7 +149,7 @@ const PIRUApp = () => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 flex font-sans overflow-hidden">
+    <div className="min-h-screen bg-slate-50 flex font-sans overflow-hidden text-slate-800">
       {/* Sidebar */}
       <div className="w-72 bg-white border-r p-8 flex flex-col hidden md:flex">
         <div className="flex items-center gap-3 mb-12">
@@ -186,17 +166,16 @@ const PIRUApp = () => {
         <button onClick={() => {localStorage.clear(); window.location.reload();}} className="w-full flex items-center gap-4 p-4 rounded-2xl font-bold text-red-500 hover:bg-red-50 transition-all mt-auto"><LogOut size={20}/> Keluar</button>
       </div>
 
-      <main className="flex-1 p-10 overflow-y-auto text-slate-800">
+      <main className="flex-1 p-10 overflow-y-auto">
         <header className="flex justify-between items-center mb-10">
           <div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tighter uppercase italic">HALO, {user.name}</h1>
-            <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-1">{user.jabatan || user.role} • BPS KAB. SBB</p>
+            <h1 className="text-3xl font-black text-slate-800 tracking-tighter uppercase italic leading-none">HALO, {user.name}</h1>
+            <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-2">{user.jabatan || user.role} • BPS KAB. SBB</p>
           </div>
           <div className="flex items-center gap-4">
             <select className="bg-white border rounded-2xl px-6 py-3 font-black text-slate-600 shadow-sm outline-none" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
               {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
             </select>
-            {/* MULTI-ROLE: Admin sekarang bisa Lapor juga (tombol muncul untuk Admin, Pegawai, Ketua) */}
             {(user.role === 'pegawai' || user.role === 'ketua' || user.role === 'admin') && activeTab === 'laporan' && (
                 <button onClick={() => {setIsEditing(false); setShowReportModal(true)}} className="bg-indigo-600 text-white px-8 py-3.5 rounded-2xl font-black shadow-lg uppercase tracking-widest text-xs active:scale-95 transition-all"><Plus size={18}/> Lapor</button>
             )}
@@ -237,25 +216,30 @@ const PIRUApp = () => {
                       <td className="p-8 text-center font-black text-indigo-600 text-xl">{r.nilaiPimpinan || '-'}</td>
                       <td className="p-8 text-center">
                          <div className="flex justify-center items-center gap-2">
-                            {/* MULTI-ROLE: Admin bisa Edit/Hapus miliknya sendiri, Pegawai juga bisa */}
-                            {(r.userId === user.username) && r.status === 'pending' && (
+                            {/* PEGAWAI & ADMIN EDIT MILIK SENDIRI */}
+                            {((r.userId === user.username) && r.status === 'pending') && (
                                 <>
-                                   <button onClick={() => handleEditClick(r)} className="text-indigo-600 p-2 hover:bg-indigo-50 rounded-xl transition-all"><Edit3 size={18}/></button>
-                                   <button onClick={() => handleDeleteReport(r.id)} className="text-red-400 p-2 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={18}/></button>
+                                   <button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan}); setShowReportModal(true); }} className="text-indigo-600 p-2"><Edit3 size={18}/></button>
+                                   <button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="text-red-400 p-2"><Trash2 size={18}/></button>
                                 </>
                             )}
 
-                            {/* LOGIKA PENILAIAN */}
-                            {user.role === 'admin' && r.userId !== user.username && r.status === 'pending' && (
-                                <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-md">Ketua</button>
+                            {/* ADMIN (SUPER USER) BISA HAPUS APA PUN MESKIPUN SELESAI */}
+                            {user.role === 'admin' && (r.status === 'selesai' || r.status === 'dinilai_ketua') && (
+                               <button onClick={() => { if(window.confirm("Admin: Hapus permanen laporan ini?")) deleteDoc(doc(db, "reports", r.id)) }} className="text-red-200 hover:text-red-500 p-2"><Trash2 size={18}/></button>
                             )}
-                            {user.role === 'ketua' && r.status === 'pending' && (
-                                <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-md">Ketua</button>
+
+                            {/* PENILAIAN KETUA TIM (BISA EDIT NILAI) */}
+                            {(user.role === 'admin' || user.role === 'ketua') && r.userId !== user.username && (r.status === 'pending' || r.status === 'dinilai_ketua') && (
+                                <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-md">{r.status === 'dinilai_ketua' ? 'Edit Nilai' : 'Ketua'}</button>
                             )}
-                            {(user.role === 'pimpinan' || user.role === 'admin') && r.status === 'dinilai_ketua' && (
+
+                            {/* PENILAIAN PIMPINAN (BISA NILAI KETUA TIM JUGA) */}
+                            {(user.role === 'pimpinan' || user.role === 'admin') && r.userId !== user.username && (r.status === 'dinilai_ketua' || (r.userRole === 'ketua' && r.status === 'pending')) && (
                                 <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-md">Pimpinan</button>
                             )}
-                            {r.status === 'selesai' && <CheckCircle2 className="text-green-500" size={24}/>}
+                            
+                            {r.status === 'selesai' && user.role !== 'admin' && <CheckCircle2 className="text-green-500" size={24}/>}
                          </div>
                       </td>
                     </tr>
@@ -279,7 +263,7 @@ const PIRUApp = () => {
           <form onSubmit={handleSubmitReport} className="bg-white w-full max-w-2xl rounded-[3.5rem] p-12 shadow-2xl space-y-6 animate-in zoom-in-95 duration-200">
             <h3 className="text-3xl font-black uppercase tracking-tighter">{isEditing ? "Edit Laporan" : "Entri Kinerja"}</h3>
             <div className="space-y-4">
-               <input required type="text" placeholder="Nama Pekerjaan" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700" value={newReport.title} onChange={e => setNewReport({...newReport, title: e.target.value})} />
+               <input required type="text" placeholder="Pekerjaan" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700" value={newReport.title} onChange={e => setNewReport({...newReport, title: e.target.value})} />
                <div className="grid grid-cols-2 gap-4">
                   <input required type="number" placeholder="Target" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700" value={newReport.target} onChange={e => setNewReport({...newReport, target: e.target.value})} />
                   <input required type="number" placeholder="Realisasi" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700" value={newReport.realisasi} onChange={e => setNewReport({...newReport, realisasi: e.target.value})} />
@@ -294,7 +278,7 @@ const PIRUApp = () => {
         </div>
       )}
 
-      {/* Modal User (Hanya Admin) */}
+      {/* Modal User */}
       {showUserModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <form onSubmit={(e) => {
@@ -303,7 +287,7 @@ const PIRUApp = () => {
               setShowUserModal(false);
               setNewUser({ name: '', username: '', password: '', role: 'pegawai', jabatan: '' });
           }} className="bg-white w-full max-w-xl rounded-[3.5rem] p-12 shadow-2xl space-y-4">
-            <h3 className="text-2xl font-black uppercase text-slate-800 tracking-tighter">Daftarkan User Baru</h3>
+            <h3 className="text-2xl font-black uppercase text-slate-800 tracking-tighter">Tambah User Baru</h3>
             <input required type="text" placeholder="Nama Lengkap" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold" onChange={e => setNewUser({...newUser, name: e.target.value})} />
             <div className="grid grid-cols-2 gap-4">
                 <input required type="text" placeholder="Username" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold" onChange={e => setNewUser({...newUser, username: e.target.value})} />
