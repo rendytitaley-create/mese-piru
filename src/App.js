@@ -12,7 +12,7 @@ import {
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
-// === CONFIG FIREBASE ANDA (PASTIKAN TETAP SAMA) ===
+// === CONFIG FIREBASE ANDA (JANGAN DIUBAH) ===
 const firebaseConfig = {
   apiKey: "AIzaSyDVRt3zgojeVh8ek61yXFQ9r9ihpOt7BqQ",
   authDomain: "piru8106-b4f0a.firebaseapp.com",
@@ -144,7 +144,6 @@ const PIRUApp = () => {
   const currentFilteredReports = useMemo(() => {
     let res = reports.filter(r => r.month === selectedMonth && r.year === selectedYear);
     if (user?.role === 'pegawai') res = res.filter(r => r.userId === user.username);
-    // Role 'ketua' sekarang bisa memfilter semua nama untuk dinilai
     if (['pimpinan', 'admin', 'ketua'].includes(user?.role) && filterStaffName !== 'Semua') {
       res = res.filter(r => r.userName === filterStaffName);
     }
@@ -349,7 +348,7 @@ const PIRUApp = () => {
           </div>
           
           <div className="flex flex-wrap items-center gap-3 not-italic xl:justify-end">
-             {/* PERBAIKAN: Ketua sekarang bisa memfilter nama pegawai */}
+             {/* KETUA SEKARANG BISA FILTER NAMA */}
              {['admin','pimpinan','ketua'].includes(user.role) && activeTab === 'laporan' && (
                 <select className="p-3 bg-white border border-slate-200 rounded-xl font-black text-[10px] text-slate-600 shadow-sm outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
                   <option value="Semua">Semua Pegawai</option>
@@ -405,13 +404,16 @@ const PIRUApp = () => {
                       <td className="p-8 text-center">
                         <div className="flex justify-center gap-2">
                           {r.userId === user.username && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm"><Edit3 size={18}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-red-50 text-red-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-sm"><Trash2 size={18}/></button></>}
+                          
+                          {/* LOGIKA PENILAIAN DIBUAT SANGAT TELITI */}
                           {user.role === 'admin' && <button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-slate-100 text-slate-400 rounded-2xl hover:bg-red-500 transition-all shadow-sm"><Trash2 size={18}/></button>}
                           
-                          {/* PERBAIKAN: Syarat Tombol Ketua & Pimpinan agar selalu presisi sesuai role */}
-                          {(user.role === 'admin' || user.role === 'ketua') && r.userId !== user.username && r.status !== 'selesai' && (
+                          {/* TOMBOL KETUA: Muncul jika role adalah 'ketua' ATAU 'admin', dan ini laporan orang lain */}
+                          {(user.role === 'ketua' || user.role === 'admin') && r.userId !== user.username && r.status !== 'selesai' && (
                             <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-md active:scale-95 transition-all italic">Ketua</button>
                           )}
                           
+                          {/* TOMBOL PIMPINAN: Muncul jika role adalah 'pimpinan' ATAU 'admin', dan ini laporan orang lain */}
                           {(user.role === 'pimpinan' || user.role === 'admin') && r.userId !== user.username && (
                             <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-md active:scale-95 transition-all italic">
                               {r.status === 'selesai' ? 'Koreksi' : 'Pimpinan'}
