@@ -116,7 +116,7 @@ const PIRUApp = () => {
         let initialStatus = 'pending';
         let initialNilaiPimpinan = 0;
 
-        if ((user.role === 'pimpinan' || user.role === 'admin') && newReport.targetUser) {
+        if (['pimpinan', 'admin', 'ketua'].includes(user.role) && newReport.targetUser) { {
            const targetStaff = users.find(u => u.name === newReport.targetUser);
            if (targetStaff) {
               finalUserId = targetStaff.username;
@@ -467,7 +467,7 @@ const PIRUApp = () => {
             <button type="button" onClick={() => { resetReportForm(); setShowReportModal(false); }} className="absolute top-10 right-10 p-4 bg-slate-50 rounded-full text-slate-400 hover:text-slate-900 transition-all italic"><X size={24}/></button>
             <h3 className="text-4xl font-black uppercase tracking-tighter mb-10 text-slate-800 italic">{isEditing ? "Update Kinerja" : "Form Kinerja"}</h3>
             <div className="space-y-6 italic">
-               {(user.role === 'pimpinan' || user.role === 'admin') && !isEditing && (
+               {['pimpinan', 'admin', 'ketua'].includes(user.role) && !isEditing && (
                   <select required className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-black text-indigo-600 border border-slate-100 italic" onChange={e => setNewReport({...newReport, targetUser: e.target.value})}>
                         <option value="">-- Pilih Nama Pegawai --</option>
                         {users.filter(u => u.role !== 'admin' && u.role !== 'pimpinan').map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
@@ -512,3 +512,4 @@ const PIRUApp = () => {
 };
 
 export default PIRUApp;
+
