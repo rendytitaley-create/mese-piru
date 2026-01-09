@@ -165,7 +165,13 @@ const PIRUApp = () => {
     const myReports = periodReports.filter(r => r.userId === user?.username);
     const myTotal = myReports.length;
     const mySelesai = myReports.filter(r => r.status === 'selesai').length;
-    return { myTotal, myNilaiAkhir: (myTotal > 0 ? (( (myReports.reduce((a,c)=>a+Math.min((c.realisasi/c.target)*100, 100),0)/myTotal) + (myReports.reduce((a,c)=>a+(Number(c.nilaiPimpinan)||0)/myTotal) )/2).toFixed(2) : 0), staffSummary, myStatus: myTotal === 0 ? "N/A" : (mySelesai === myTotal ? "Selesai" : "Progres"), myDetailCount: `${mySelesai}/${myTotal} Selesai` };
+    return { 
+      myTotal, 
+      myNilaiAkhir: (myTotal > 0 ? (( (myReports.reduce((a,c)=>a+Math.min((c.realisasi/c.target)*100, 100),0)/myTotal) + (myReports.reduce((a,c)=>a+(Number(c.nilaiPimpinan)||0),0)/myTotal) )/2).toFixed(2) : 0), 
+      staffSummary, 
+      myStatus: myTotal === 0 ? "N/A" : (mySelesai === myTotal ? "Selesai" : "Progres"), 
+      myDetailCount: `${mySelesai}/${myTotal} Selesai` 
+    };
   }, [reports, users, user, selectedMonth, selectedYear]);
 
   const exportToExcel = async () => {
@@ -314,7 +320,7 @@ const PIRUApp = () => {
       <div className="bg-white w-full max-w-md rounded-[2.5rem] p-12 shadow-2xl text-center font-sans">
         <ShieldCheck size={45} className="text-indigo-600 mx-auto mb-6" />
         <h1 className="text-4xl font-black mb-1 tracking-tighter text-slate-800 uppercase italic leading-none">PIRU</h1>
-        <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1 leading-none italic">Penilaian Kinerja Bulanan</p>
+        <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-10 leading-none italic">Penilaian Kinerja Bulanan</p>
         <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-10 text-center leading-none italic">BPS Kabupaten Seram Bagian Barat</p>
         <form onSubmit={handleLogin} className="space-y-4 text-left font-sans not-italic">
           <input type="text" placeholder="Username" className="w-full p-5 bg-slate-50 border rounded-2xl outline-none font-bold" onChange={e => setAuthForm({...authForm, username: e.target.value})} />
@@ -377,26 +383,26 @@ const PIRUApp = () => {
                       <td className="p-8 italic"><p className="font-black text-xl text-slate-800 uppercase tracking-tighter leading-none mb-2 italic">{r.title}</p><span className="text-indigo-600 text-[9px] font-black uppercase bg-indigo-50 px-2 py-1 rounded-lg italic">{r.userName}</span></td>
                       <td className="p-8 text-center font-black italic">{r.realisasi} / {r.target} <span className="text-[10px] block text-slate-400 lowercase italic">{r.satuan}</span></td>
                       <td className="p-8 text-center font-black text-indigo-600 italic">{((r.realisasi/r.target)*100).toFixed(1)}%</td>
-                      <td className="p-8 text-center font-black text-slate-300 text-xl relative group">
-                      <div className="relative group inline-block">
-                        {r.nilaiKetua || '-'}
-                        {user.role === 'admin' && r.nilaiKetua > 0 && (
-                          <button onClick={() => clearGrade(r.id, 'nilaiKetua')} className="absolute -top-1 -right-4 p-1 text-red-400 opacity-0 group-hover:opacity-100 transition-all hover:text-red-600">
-                            <Trash2 size={12}/>
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                      <td className="p-8 text-center font-black text-indigo-600 text-xl relative group">
-                      <div className="relative group inline-block">
-                        {r.nilaiPimpinan || '-'}
-                        {user.role === 'admin' && r.nilaiPimpinan > 0 && (
-                          <button onClick={() => clearGrade(r.id, 'nilaiPimpinan')} className="absolute -top-1 -right-4 p-1 text-red-400 opacity-0 group-hover:opacity-100 transition-all hover:text-red-600">
-                            <Trash2 size={12}/>
-                          </button>
-                        )}
-                      </div>
-                    </td>
+                      <td className="p-8 text-center font-black text-slate-300 text-xl">
+                        <div className="relative group inline-block">
+                          {r.nilaiKetua || '-'}
+                          {user.role === 'admin' && r.nilaiKetua > 0 && (
+                            <button onClick={() => clearGrade(r.id, 'nilaiKetua')} className="absolute -top-1 -right-4 p-1 text-red-400 opacity-0 group-hover:opacity-100 transition-all hover:text-red-600">
+                              <Trash2 size={12}/>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-8 text-center font-black text-indigo-600 text-xl">
+                        <div className="relative group inline-block">
+                          {r.nilaiPimpinan || '-'}
+                          {user.role === 'admin' && r.nilaiPimpinan > 0 && (
+                            <button onClick={() => clearGrade(r.id, 'nilaiPimpinan')} className="absolute -top-1 -right-4 p-1 text-red-400 opacity-0 group-hover:opacity-100 transition-all hover:text-red-600">
+                              <Trash2 size={12}/>
+                            </button>
+                          )}
+                        </div>
+                      </td>
                       <td className="p-8 text-center italic">
                         <div className="flex justify-center gap-2 italic">
                           {r.userId === user.username && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl italic"><Edit3 size={18}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-red-50 text-red-400 rounded-2xl italic"><Trash2 size={18}/></button></>}
