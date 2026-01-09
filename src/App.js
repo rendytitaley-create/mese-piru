@@ -12,7 +12,7 @@ import {
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
-// === CONFIG FIREBASE ANDA (JANGAN DIUBAH) ===
+// === CONFIG FIREBASE ANDA ===
 const firebaseConfig = {
   apiKey: "AIzaSyDVRt3zgojeVh8ek61yXFQ9r9ihpOt7BqQ",
   authDomain: "piru8106-b4f0a.firebaseapp.com",
@@ -348,19 +348,28 @@ const PIRUApp = () => {
           </div>
           
           <div className="flex flex-wrap items-center gap-3 not-italic xl:justify-end">
-             {/* KETUA SEKARANG BISA FILTER NAMA */}
+             {/* --- FIX: DROPDOWN FILTER UNTUK ADMIN, PIMPINAN, & KETUA --- */}
              {['admin','pimpinan','ketua'].includes(user.role) && activeTab === 'laporan' && (
                 <select className="p-3 bg-white border border-slate-200 rounded-xl font-black text-[10px] text-slate-600 shadow-sm outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
                   <option value="Semua">Semua Pegawai</option>
                   {users.filter(u => !['admin','pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                 </select>
               )}
-            <select className="bg-white border border-slate-200 rounded-xl px-4 py-3 font-black text-[10px] text-slate-600 outline-none shadow-sm cursor-pointer" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
+            
+            <select className="bg-white border border-slate-200 rounded-xl px-4 py-3 font-black text-[10px] text-slate-600 outline-none shadow-sm cursor-pointer focus:ring-2 ring-indigo-50" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
               {["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
             </select>
+
             <button onClick={exportToExcel} className="bg-green-600 text-white px-4 py-3 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 transition-all active:scale-95 shadow-md"><Download size={14}/> Cetak</button>
-            {user.role !== 'pegawai' && activeTab === 'laporan' && filterStaffName !== 'Semua' && (<button onClick={handleMassGrade} className="bg-amber-400 text-white px-4 py-3 rounded-xl font-black uppercase text-[10px] flex items-center gap-3 transition-all active:scale-95 shadow-md"><Zap size={14}/> Nilai</button>)}
-            {user.role === 'admin' && activeTab === 'users' && (<button onClick={() => setShowUserModal(true)} className="bg-indigo-600 text-white px-4 py-3 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 transition-all active:scale-95 shadow-md"><UserPlus size={14}/> Pegawai</button>)}
+            
+            {user.role !== 'pegawai' && activeTab === 'laporan' && filterStaffName !== 'Semua' && (
+              <button onClick={handleMassGrade} className="bg-amber-400 text-white px-4 py-3 rounded-xl font-black uppercase text-[10px] flex items-center gap-3 transition-all active:scale-95 shadow-md"><Zap size={14}/> Nilai</button>
+            )}
+            
+            {user.role === 'admin' && activeTab === 'users' && (
+              <button onClick={() => setShowUserModal(true)} className="bg-indigo-600 text-white px-4 py-3 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 transition-all active:scale-95 shadow-md"><UserPlus size={14}/> Pegawai</button>
+            )}
+            
             <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black uppercase text-[10px] transition-all active:scale-95 shadow-lg flex items-center gap-2"><Plus size={14}/> Entri</button>
           </div>
         </header>
@@ -368,10 +377,7 @@ const PIRUApp = () => {
         {activeTab === 'dashboard' ? (
           <div className="space-y-10 animate-in fade-in duration-500 font-sans italic">
              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div className="bg-white p-14 rounded-[3.5rem] shadow-sm border border-slate-100 text-center relative overflow-hidden">
-                    <p className="text-slate-400 text-[11px] font-black uppercase mb-6 tracking-widest leading-none">Estimasi Nilai Akhir Saya</p>
-                    <p className="text-8xl font-black text-amber-500 tracking-tighter leading-none">{dashboardStats.myNilaiAkhir}</p>
-                </div>
+                <div className="bg-white p-14 rounded-[3.5rem] shadow-sm border border-slate-100 text-center"><p className="text-slate-400 text-[11px] font-black uppercase mb-6 tracking-widest leading-none">Estimasi Nilai Akhir Saya</p><p className="text-8xl font-black text-amber-500 tracking-tighter leading-none">{dashboardStats.myNilaiAkhir}</p></div>
                 <div className="bg-indigo-900 rounded-[3.5rem] p-14 text-white flex flex-col items-center justify-center shadow-2xl relative overflow-hidden italic">
                     <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50 mb-6 leading-none italic">Tahapan Penilaian</p>
                     <div className="flex items-center gap-5"><Clock size={32} className="text-amber-400"/><p className="text-4xl font-black uppercase italic leading-none">{dashboardStats.myStatus}</p></div>
@@ -405,15 +411,12 @@ const PIRUApp = () => {
                         <div className="flex justify-center gap-2">
                           {r.userId === user.username && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm"><Edit3 size={18}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-red-50 text-red-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-sm"><Trash2 size={18}/></button></>}
                           
-                          {/* LOGIKA PENILAIAN DIBUAT SANGAT TELITI */}
-                          {user.role === 'admin' && <button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-slate-100 text-slate-400 rounded-2xl hover:bg-red-500 transition-all shadow-sm"><Trash2 size={18}/></button>}
-                          
-                          {/* TOMBOL KETUA: Muncul jika role adalah 'ketua' ATAU 'admin', dan ini laporan orang lain */}
+                          {/* --- FIX TOMBOL KETUA: Muncul untuk role Ketua/Admin pada laporan orang lain --- */}
                           {(user.role === 'ketua' || user.role === 'admin') && r.userId !== user.username && r.status !== 'selesai' && (
                             <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-md active:scale-95 transition-all italic">Ketua</button>
                           )}
                           
-                          {/* TOMBOL PIMPINAN: Muncul jika role adalah 'pimpinan' ATAU 'admin', dan ini laporan orang lain */}
+                          {/* --- FIX TOMBOL PIMPINAN: Muncul untuk role Pimpinan/Admin pada laporan orang lain --- */}
                           {(user.role === 'pimpinan' || user.role === 'admin') && r.userId !== user.username && (
                             <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-md active:scale-95 transition-all italic">
                               {r.status === 'selesai' ? 'Koreksi' : 'Pimpinan'}
@@ -430,7 +433,7 @@ const PIRUApp = () => {
         )}
       </main>
 
-      {/* MODAL LAPORAN */}
+      {/* MODAL LAPORAN & USER (DIPASTIKAN LENGKAP) */}
       {showReportModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-50 font-sans italic">
           <form onSubmit={handleSubmitReport} className="bg-white w-full max-w-2xl rounded-[3.5rem] p-16 shadow-2xl relative italic">
@@ -457,7 +460,6 @@ const PIRUApp = () => {
         </div>
       )}
 
-      {/* MODAL USER */}
       {showUserModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-50 font-sans italic">
           <form onSubmit={handleAddUser} className="bg-white w-full max-w-xl rounded-[3.5rem] p-16 shadow-2xl relative italic">
