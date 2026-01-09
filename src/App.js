@@ -93,6 +93,7 @@ const PIRUApp = () => {
     try {
       await addDoc(collection(db, "users"), { 
         ...newUser, 
+        role: newUser.role.toLowerCase().trim(), // Paksa huruf kecil
         username: newUser.username.trim().toLowerCase(),
         createdAt: serverTimestamp() 
       });
@@ -112,29 +113,22 @@ const PIRUApp = () => {
       } else {
         let finalUserId = user.username;
         let finalUserName = user.name;
-        let finalUserRole = user.role;
-        let initialStatus = 'pending';
-        let initialNilaiPimpinan = 0;
+        let finalUserRole = user.role.toLowerCase();
 
-        if ((user.role === 'pimpinan' || user.role === 'admin') && newReport.targetUser) {
+        if ((finalUserRole === 'pimpinan' || finalUserRole === 'admin') && newReport.targetUser) {
            const targetStaff = users.find(u => u.name === newReport.targetUser);
            if (targetStaff) {
               finalUserId = targetStaff.username;
               finalUserName = targetStaff.name;
-              finalUserRole = targetStaff.role;
-              const val = prompt(`Entri untuk: ${finalUserName}\nMasukkan Nilai Pimpinan (Opsional):`);
-              if (val && !isNaN(val)) {
-                initialNilaiPimpinan = parseFloat(val);
-                initialStatus = 'selesai';
-              }
+              finalUserRole = targetStaff.role.toLowerCase();
            }
         }
 
         await addDoc(collection(db, "reports"), {
           ...newReport, target: Number(newReport.target), realisasi: Number(newReport.realisasi),
           userId: finalUserId, userName: finalUserName, userRole: finalUserRole,
-          month: selectedMonth, year: selectedYear, status: initialStatus, 
-          nilaiKetua: 0, nilaiPimpinan: initialNilaiPimpinan, createdAt: serverTimestamp()
+          month: selectedMonth, year: selectedYear, status: 'pending', 
+          nilaiKetua: 0, nilaiPimpinan: 0, createdAt: serverTimestamp()
         });
       }
       setShowReportModal(false); resetReportForm();
@@ -143,8 +137,9 @@ const PIRUApp = () => {
 
   const currentFilteredReports = useMemo(() => {
     let res = reports.filter(r => r.month === selectedMonth && r.year === selectedYear);
-    if (user?.role === 'pegawai') res = res.filter(r => r.userId === user.username);
-    if (['pimpinan', 'admin', 'ketua'].includes(user?.role) && filterStaffName !== 'Semua') {
+    const role = user?.role?.toLowerCase();
+    if (role === 'pegawai') res = res.filter(r => r.userId === user.username);
+    if (['pimpinan', 'admin', 'ketua'].includes(role) && filterStaffName !== 'Semua') {
       res = res.filter(r => r.userName === filterStaffName);
     }
     return res;
@@ -152,20 +147,15 @@ const PIRUApp = () => {
 
   const dashboardStats = useMemo(() => {
     const periodReports = reports.filter(r => r.month === selectedMonth && r.year === selectedYear);
-    const staffSummary = users.filter(u => u.role !== 'admin' && u.role !== 'pimpinan').map(s => {
+    const staffSummary = users.filter(u => !['admin','pimpinan'].includes(u.role.toLowerCase())).map(s => {
       const sReports = periodReports.filter(r => r.userId === s.username);
       const total = sReports.length;
       const selesai = sReports.filter(r => r.status === 'selesai').length;
-      const progress = sReports.filter(r => r.status === 'dinilai_ketua').length;
-      let statusText = total === 0 ? "Belum Lapor" : (selesai === total ? "Selesai" : (progress > 0 || selesai > 0 ? "Progres" : "Pending"));
-      const avgCap = total > 0 ? (sReports.reduce((acc, curr) => acc + Math.min((curr.realisasi / curr.target) * 100, 100), 0) / total) : 0;
-      const avgPimp = total > 0 ? (sReports.reduce((acc, curr) => acc + (Number(curr.nilaiPimpinan) || 0), 0) / total) : 0;
-      return { name: s.name, total, nilaiAkhir: ((avgCap + avgPimp) / 2).toFixed(2), status: statusText, detailCount: `${selesai}/${total}` };
+      return { name: s.name, total, detailCount: `${selesai}/${total}` };
     });
     const myReports = periodReports.filter(r => r.userId === user?.username);
     const myTotal = myReports.length;
-    const mySelesai = myReports.filter(r => r.status === 'selesai').length;
-    return { myTotal, myNilaiAkhir: (myTotal > 0 ? (( (myReports.reduce((a,c)=>a+Math.min((c.realisasi/c.target)*100, 100),0)/myTotal) + (myReports.reduce((a,c)=>a+(Number(c.nilaiPimpinan)||0),0)/myTotal) )/2).toFixed(2) : 0), staffSummary, myStatus: myTotal === 0 ? "N/A" : (mySelesai === myTotal ? "Selesai" : "Progres"), myDetailCount: `${mySelesai}/${myTotal} Selesai` };
+    return { myTotal, staffSummary };
   }, [reports, users, user, selectedMonth, selectedYear]);
 
   const exportToExcel = async () => {
@@ -174,7 +164,7 @@ const PIRUApp = () => {
         return;
     }
     const targetStaff = user.role === 'pegawai' ? user : users.find(u => u.name === filterStaffName);
-    const pimpinan = users.find(u => u.role === 'pimpinan') || { name: '..........................' };
+    const pimpinan = users.find(u => u.role.toLowerCase() === 'pimpinan') || { name: '..........................' };
     const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
     const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
 
@@ -213,7 +203,6 @@ const PIRUApp = () => {
         cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
     });
 
-    // --- UKURAN KOLOM PRESISI (8.2, 7.07, 13) ---
     sheet.getColumn(1).width = 8.2;  
     sheet.getColumn(2).width = 60;   
     sheet.getColumn(3).width = 15;   
@@ -233,55 +222,10 @@ const PIRUApp = () => {
         row.values = [i+1, r.title, r.satuan, r.target, r.realisasi, kP, qP, r.keterangan || ''];
         row.eachCell({ includeEmpty: true }, (cell) => {
             cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-            if (cell.col === 2 || cell.col === 8) {
-                cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
-            } else {
-                cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            }
+            cell.alignment = { horizontal: (cell.col === 2 || cell.col === 8) ? 'left' : 'center', vertical: 'middle', wrapText: true };
         });
         sumKuan += Math.min(kP, 100); sumKual += qP; curRow++;
     });
-
-    const avgKuan = currentFilteredReports.length > 0 ? sumKuan / currentFilteredReports.length : 0;
-    const avgKual = currentFilteredReports.length > 0 ? sumKual / currentFilteredReports.length : 0;
-
-    sheet.mergeCells(`A${curRow}:E${curRow}`);
-    sheet.getCell(`A${curRow}`).value = 'Rata-Rata';
-    sheet.getCell(`A${curRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
-    sheet.getCell(`F${curRow}`).value = avgKuan.toFixed(2);
-    sheet.getCell(`G${curRow}`).value = avgKual.toFixed(2);
-    sheet.getCell(`F${curRow}`).alignment = { horizontal: 'center' };
-    sheet.getCell(`G${curRow}`).alignment = { horizontal: 'center' };
-    [`A${curRow}`,`F${curRow}`,`G${curRow}`,`H${curRow}`].forEach(c => {
-        sheet.getCell(c).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-        sheet.getCell(c).font = { bold: true };
-    });
-    curRow++;
-
-    sheet.mergeCells(`A${curRow}:E${curRow}`);
-    sheet.getCell(`A${curRow}`).value = 'Capaian Kinerja Pegawai (CKP)';
-    sheet.getCell(`A${curRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
-    sheet.mergeCells(`F${curRow}:G${curRow}`);
-    sheet.getCell(`F${curRow}`).value = ((avgKuan + avgKual) / 2).toFixed(2);
-    sheet.getCell(`F${curRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
-    [`A${curRow}`,`F${curRow}`,`H${curRow}`].forEach(c => {
-        sheet.getCell(c).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-        sheet.getCell(c).font = { bold: true };
-    });
-    curRow += 2;
-
-    sheet.mergeCells(`F${curRow}:H${curRow}`);
-    sheet.getCell(`F${curRow}`).value = `Penilaian Kinerja: ${lastDay} ${monthNames[selectedMonth-1]} ${selectedYear}`;
-    sheet.getCell(`F${curRow}`).alignment = { horizontal: 'center' };
-    curRow += 2;
-    sheet.mergeCells(`F${curRow}:H${curRow}`);
-    sheet.getCell(`F${curRow}`).value = 'Pejabat Penilai,';
-    sheet.getCell(`F${curRow}`).alignment = { horizontal: 'center' };
-    curRow += 4;
-    sheet.mergeCells(`F${curRow}:H${curRow}`);
-    sheet.getCell(`F${curRow}`).value = pimpinan.name;
-    sheet.getCell(`F${curRow}`).font = { bold: true, underline: true };
-    sheet.getCell(`F${curRow}`).alignment = { horizontal: 'center' };
 
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), `CKP_${targetStaff?.name}.xlsx`);
@@ -325,7 +269,7 @@ const PIRUApp = () => {
         <nav className="flex-1 space-y-3 font-sans not-italic">
           <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><BarChart3 size={20}/> Dashboard</button>
           <button onClick={() => setActiveTab('laporan')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'laporan' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><FileText size={20}/> Capaian Kerja</button>
-          {user.role === 'admin' && (<button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'users' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Users size={20}/> Data Pegawai</button>)}
+          {user.role.toLowerCase() === 'admin' && (<button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'users' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Users size={20}/> Data Pegawai</button>)}
         </nav>
         <button onClick={() => {localStorage.clear(); window.location.reload();}} className="w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase text-red-500 mt-auto transition-all italic"><LogOut size={20}/> Logout</button>
       </div>
@@ -338,11 +282,11 @@ const PIRUApp = () => {
           </div>
           
           <div className="flex flex-wrap items-center gap-3 not-italic xl:justify-end">
-             {/* --- FILTER DROP-DOWN: ADMIN, PIMPINAN, & KETUA --- */}
-             {['admin', 'pimpinan', 'ketua'].includes(user.role) && activeTab === 'laporan' && (
+             {/* --- HAK AKSES FILTER: UNTUK ADMIN, PIMPINAN, & KETUA (CASE INSENSITIVE) --- */}
+             {['admin', 'pimpinan', 'ketua'].includes(user.role.toLowerCase()) && activeTab === 'laporan' && (
                 <select className="p-3 bg-white border border-slate-200 rounded-xl font-black text-[10px] text-slate-600 shadow-sm outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
                   <option value="Semua">Semua Pegawai</option>
-                  {users.filter(u => u.role !== 'admin' && u.role !== 'pimpinan').map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
+                  {users.filter(u => !['admin','pimpinan'].includes(u.role.toLowerCase())).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                 </select>
               )}
             
@@ -374,12 +318,12 @@ const PIRUApp = () => {
                         <div className="flex justify-center gap-2 italic">
                           {r.userId === user.username && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl italic"><Edit3 size={18}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-red-50 text-red-400 rounded-2xl italic"><Trash2 size={18}/></button></>}
                           
-                          {/* --- LOGIKA TOMBOL NILAI: JAMINAN MUNCUL --- */}
-                          {['ketua', 'admin'].includes(user.role) && r.userId !== user.username && (
+                          {/* --- TOMBOL NILAI: SYARAT CASE INSENSITIVE --- */}
+                          {['ketua', 'admin'].includes(user.role.toLowerCase()) && r.userId !== user.username && (
                             <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-md active:scale-95 transition-all italic">Ketua</button>
                           )}
                           
-                          {['pimpinan', 'admin'].includes(user.role) && r.userId !== user.username && (
+                          {['pimpinan', 'admin'].includes(user.role.toLowerCase()) && r.userId !== user.username && (
                             <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-md active:scale-95 transition-all italic">Pimpinan</button>
                           )}
                         </div>
@@ -391,13 +335,6 @@ const PIRUApp = () => {
             </div>
           </div>
         )}
-
-        {activeTab === 'dashboard' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 animate-in fade-in duration-500 italic">
-            <div className="bg-white p-14 rounded-[3.5rem] shadow-sm border border-slate-100 text-center italic"><p className="text-slate-400 text-[11px] font-black uppercase mb-6 tracking-widest leading-none italic">Estimasi Nilai Akhir Saya</p><p className="text-8xl font-black text-amber-500 tracking-tighter leading-none italic">{dashboardStats.myNilaiAkhir}</p></div>
-            <div className="bg-indigo-900 rounded-[3.5rem] p-14 text-white flex flex-col items-center justify-center shadow-2xl relative overflow-hidden italic"><p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50 mb-6 leading-none italic">Tahapan Penilaian</p><div className="flex items-center gap-5 italic"><Clock size={32} className="text-amber-400"/><p className="text-4xl font-black uppercase italic leading-none italic">{dashboardStats.myStatus}</p></div><p className="text-[10px] font-black text-indigo-300 mt-8 uppercase tracking-widest leading-none italic">{dashboardStats.myDetailCount}</p></div>
-          </div>
-        )}
       </main>
 
       {/* MODAL LAPORAN */}
@@ -407,10 +344,10 @@ const PIRUApp = () => {
             <button type="button" onClick={() => { resetReportForm(); setShowReportModal(false); }} className="absolute top-10 right-10 p-4 bg-slate-50 rounded-full text-slate-400 hover:text-slate-900 transition-all italic"><X size={24}/></button>
             <h3 className="text-4xl font-black uppercase tracking-tighter mb-10 text-slate-800 italic">{isEditing ? "Update Kinerja" : "Form Kinerja"}</h3>
             <div className="space-y-6 italic">
-               {(user.role === 'pimpinan' || user.role === 'admin') && !isEditing && (
+               {(user.role.toLowerCase() === 'pimpinan' || user.role.toLowerCase() === 'admin') && !isEditing && (
                   <select required className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-black text-indigo-600 border border-slate-100 italic" onChange={e => setNewReport({...newReport, targetUser: e.target.value})}>
                         <option value="">-- Pilih Nama Pegawai --</option>
-                        {users.filter(u => u.role !== 'admin' && u.role !== 'pimpinan').map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
+                        {users.filter(u => !['admin','pimpinan'].includes(u.role.toLowerCase())).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                   </select>
                )}
                <input required type="text" placeholder="Nama Pekerjaan" className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-black text-slate-800 border border-slate-100 italic" value={newReport.title} onChange={e => setNewReport({...newReport, title: e.target.value})} />
