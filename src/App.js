@@ -195,21 +195,6 @@ const PIRUApp = () => {
     };
   }, [reports, user, selectedMonth, selectedYear]);
 
-  const exportToExcel = async () => {
-    if (activeTab === 'penilaian' && filterStaffName === 'Semua') return alert("Pilih pegawai dahulu.");
-    const targetStaff = activeTab === 'laporan' ? user : users.find(u => u.name === filterStaffName);
-    const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-    const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
-    const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('CKP');
-    sheet.mergeCells('A2:H2');
-    sheet.getCell('A2').value = `Capaian Kinerja Pegawai Tahun ${selectedYear}`;
-    sheet.getCell('A2').font = { bold: true, size: 12 };
-    sheet.getCell('A2').alignment = { horizontal: 'center' };
-    const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `CKP_${targetStaff?.name}.xlsx`);
-  };
-
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50 font-sans"><Loader2 className="animate-spin text-indigo-600" size={50} /></div>;
 
   if (!user) return (
@@ -219,8 +204,8 @@ const PIRUApp = () => {
         <h1 className="text-4xl font-black mb-1 tracking-tighter text-slate-800 uppercase italic leading-none">PIRU</h1>
         <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-10 leading-none italic">BPS KABUPATEN SERAM BAGIAN BARAT</p>
         <form onSubmit={handleLogin} className="space-y-4 text-left font-sans not-italic">
-          <input type="text" placeholder="Username" className="w-full p-5 bg-slate-50 border rounded-2xl outline-none font-bold" />
-          <input type="password" placeholder="Password" className="w-full p-5 bg-slate-50 border rounded-2xl outline-none font-bold" />
+          <input type="text" placeholder="Username" className="w-full p-5 bg-slate-50 border rounded-2xl outline-none font-bold" value={authForm.username} onChange={e => setAuthForm({...authForm, username: e.target.value})} />
+          <input type="password" placeholder="Password" className="w-full p-5 bg-slate-50 border rounded-2xl outline-none font-bold" value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})} />
           <button className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black uppercase text-xs mt-4 transition-all active:scale-95 shadow-lg">Login</button>
         </form>
       </div>
@@ -263,7 +248,7 @@ const PIRUApp = () => {
             <select className="bg-white border border-slate-200 rounded-xl px-3 py-2 font-black text-[10px] text-slate-600 outline-none shadow-sm cursor-pointer italic" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
               {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
             </select>
-            <button onClick={exportToExcel} className="bg-green-600 text-white px-4 py-2.5 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-md italic"><Download size={14}/> Cetak</button>
+            <button className="bg-green-600 text-white px-4 py-2.5 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-md italic"><Download size={14}/> Cetak</button>
             <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-black uppercase text-[10px] shadow-lg flex items-center gap-2 italic"><Plus size={14}/> {activeTab === 'penilaian' ? 'Entri & Nilai' : 'Entri'}</button>
           </div>
         </header>
@@ -325,7 +310,6 @@ const PIRUApp = () => {
         </div>
       </main>
 
-      {/* MODAL LAPORAN */}
       {showReportModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-50 font-sans italic">
           <form onSubmit={handleSubmitReport} className="bg-white w-full max-w-2xl rounded-[3.5rem] p-12 shadow-2xl relative italic">
@@ -333,7 +317,7 @@ const PIRUApp = () => {
             <h3 className="text-3xl font-black uppercase tracking-tighter mb-8 text-slate-800 italic">{isEditing ? "Update Pekerjaan" : (activeTab === 'penilaian' ? "Entri & Nilai" : "Entri Pekerjaan")}</h3>
             <div className="space-y-5 italic">
                {activeTab === 'penilaian' && !isEditing && (
-                  <select required className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-indigo-600 border border-slate-100 italic" onChange={e => setNewReport({...newReport, targetUser: e.target.value})}>
+                  <select required className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-indigo-600 border border-slate-100 italic" value={newReport.targetUser} onChange={e => setNewReport({...newReport, targetUser: e.target.value})}>
                         <option value="">-- Pilih Nama Pegawai --</option>
                         {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                   </select>
