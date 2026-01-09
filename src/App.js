@@ -213,7 +213,6 @@ const PIRUApp = () => {
         cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
     });
 
-    // --- UKURAN KOLOM PRESISI INSTRUKSI BAPAK ---
     sheet.getColumn(1).width = 8.2;  
     sheet.getColumn(2).width = 60;   
     sheet.getColumn(3).width = 15;   
@@ -349,11 +348,11 @@ const PIRUApp = () => {
           </div>
           
           <div className="flex flex-wrap items-center gap-3 not-italic xl:justify-end">
-             {/* --- FILTER DROP-DOWN: WAJIB UNTUK ADMIN, PIMPINAN, & KETUA --- */}
-             {['admin', 'pimpinan', 'ketua'].includes(user.role) && activeTab === 'laporan' && (
+             {/* --- FILTER DROP-DOWN: ADMIN, PIMPINAN, & KETUA --- */}
+             {(user.role === 'admin' || user.role === 'pimpinan' || user.role === 'ketua') && activeTab === 'laporan' && (
                 <select className="p-3 bg-white border border-slate-200 rounded-xl font-black text-[10px] text-slate-600 shadow-sm outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
                   <option value="Semua">Semua Pegawai</option>
-                  {users.filter(u => !['admin','pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
+                  {users.filter(u => u.role !== 'admin' && u.role !== 'pimpinan').map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                 </select>
               )}
             
@@ -374,10 +373,7 @@ const PIRUApp = () => {
         {activeTab === 'dashboard' ? (
           <div className="space-y-10 animate-in fade-in duration-500 font-sans italic">
              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div className="bg-white p-14 rounded-[3.5rem] shadow-sm border border-slate-100 text-center relative overflow-hidden group">
-                    <p className="text-slate-400 text-[11px] font-black uppercase mb-6 tracking-widest leading-none">Estimasi Nilai Akhir Saya</p>
-                    <p className="text-8xl font-black text-amber-500 tracking-tighter leading-none">{dashboardStats.myNilaiAkhir}</p>
-                </div>
+                <div className="bg-white p-14 rounded-[3.5rem] shadow-sm border border-slate-100 text-center"><p className="text-slate-400 text-[11px] font-black uppercase mb-6 tracking-widest leading-none">Estimasi Nilai Akhir Saya</p><p className="text-8xl font-black text-amber-500 tracking-tighter leading-none">{dashboardStats.myNilaiAkhir}</p></div>
                 <div className="bg-indigo-900 rounded-[3.5rem] p-14 text-white flex flex-col items-center justify-center shadow-2xl relative overflow-hidden italic">
                     <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50 mb-6 leading-none italic">Tahapan Penilaian</p>
                     <div className="flex items-center gap-5"><Clock size={32} className="text-amber-400"/><p className="text-4xl font-black uppercase italic leading-none">{dashboardStats.myStatus}</p></div>
@@ -409,10 +405,9 @@ const PIRUApp = () => {
                       <td className="p-8 text-center font-black text-indigo-600 text-xl italic">{r.nilaiPimpinan || '-'}</td>
                       <td className="p-8 text-center">
                         <div className="flex justify-center gap-2">
-                          {r.userId === user.username && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm"><Edit3 size={18}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-red-50 text-red-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-sm"><Trash2 size={18}/></button></>}
-                          {user.role === 'admin' && <button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-slate-100 text-slate-400 rounded-2xl hover:bg-red-500 transition-all shadow-sm"><Trash2 size={18}/></button>}
+                          {r.userName === user.name && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm"><Edit3 size={18}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-3 bg-red-50 text-red-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-sm"><Trash2 size={18}/></button></>}
                           
-                          {/* --- LOGIKA TOMBOL NILAI: AUDIT 100% MUNCUL --- */}
+                          {/* --- TOMBOL NILAI: JAMINAN BARIS DEMI BARIS --- */}
                           {(user.role === 'ketua' || user.role === 'admin') && r.userName !== user.name && r.status !== 'selesai' && (
                             <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-md active:scale-95 transition-all italic">Ketua</button>
                           )}
@@ -433,7 +428,7 @@ const PIRUApp = () => {
         )}
       </main>
 
-      {/* MODAL LAPORAN & USER (DIPASTIKAN LENGKAP) */}
+      {/* MODAL USER & LAPORAN TETAP UTUH */}
       {showReportModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-50 font-sans italic">
           <form onSubmit={handleSubmitReport} className="bg-white w-full max-w-2xl rounded-[3.5rem] p-16 shadow-2xl relative italic">
@@ -443,7 +438,7 @@ const PIRUApp = () => {
                {(user.role === 'pimpinan' || user.role === 'admin') && !isEditing && (
                   <select required className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-black text-indigo-600 border border-slate-100 italic" onChange={e => setNewReport({...newReport, targetUser: e.target.value})}>
                         <option value="">-- Pilih Nama Pegawai --</option>
-                        {users.filter(u => !['admin','pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
+                        {users.filter(u => u.role !== 'admin' && u.role !== 'pimpinan').map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                   </select>
                )}
                <input required type="text" placeholder="Nama Pekerjaan" className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-black text-slate-800 border border-slate-100 italic" value={newReport.title} onChange={e => setNewReport({...newReport, title: e.target.value})} />
@@ -456,27 +451,6 @@ const PIRUApp = () => {
                <textarea className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-bold h-32 resize-none text-slate-600 border border-slate-100 italic" placeholder="Keterangan..." value={newReport.keterangan} onChange={e => setNewReport({...newReport, keterangan: e.target.value})} />
             </div>
             <button type="submit" className="w-full bg-indigo-600 text-white font-black py-7 rounded-[2.5rem] shadow-2xl uppercase tracking-widest text-xs mt-10 transition-all active:scale-95 italic">Simpan Capaian</button>
-          </form>
-        </div>
-      )}
-
-      {showUserModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-50 font-sans italic">
-          <form onSubmit={handleAddUser} className="bg-white w-full max-w-xl rounded-[3.5rem] p-16 shadow-2xl relative italic">
-            <button type="button" onClick={() => setShowUserModal(false)} className="absolute top-10 right-10 p-4 bg-slate-50 rounded-full text-slate-400 hover:text-slate-900 transition-all italic"><X size={24}/></button>
-            <h3 className="text-3xl font-black uppercase tracking-tighter mb-10 text-slate-800 italic">Tambah Pegawai</h3>
-            <div className="space-y-5 italic">
-                <input required type="text" placeholder="Nama Lengkap" className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-black text-slate-700 border border-slate-100 italic" onChange={e => setNewUser({...newUser, name: e.target.value})} />
-                <div className="grid grid-cols-2 gap-5 italic">
-                    <input required type="text" placeholder="Username" className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-black text-slate-700 border border-slate-100 italic" onChange={e => setNewUser({...newUser, username: e.target.value})} />
-                    <input required type="password" placeholder="Password" className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-black text-slate-700 border border-slate-100 italic" onChange={e => setNewUser({...newUser, password: e.target.value})} />
-                </div>
-                <input type="text" placeholder="Jabatan" className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-black text-slate-700 border border-slate-100 italic" onChange={e => setNewUser({...newUser, jabatan: e.target.value})} />
-                <select className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-black text-slate-600 border border-slate-100 italic" onChange={e => setNewUser({...newUser, role: e.target.value})}>
-                    <option value="pegawai">Pegawai</option><option value="ketua">Ketua Tim</option><option value="pimpinan">Pimpinan</option><option value="admin">Admin</option>
-                </select>
-                <button type="submit" className="w-full bg-indigo-600 text-white font-black py-7 rounded-[2.5rem] shadow-xl uppercase tracking-widest text-[10px] mt-6 transition-all active:scale-95 italic">Simpan Pegawai</button>
-            </div>
           </form>
         </div>
       )}
