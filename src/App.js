@@ -345,6 +345,8 @@ const PIRUApp = () => {
 
   const dashboardStats = useMemo(() => {
     const periodReports = reports.filter(r => r.month === selectedMonth && r.year === selectedYear);
+    const yearlyReports = reports.filter(r => r.year === selectedYear && r.userId === user?.username);
+
     const staffSummary = users.filter(u => u.role !== 'admin' && u.role !== 'pimpinan').map(s => {
       const sReports = periodReports.filter(r => r.userId === s.username);
       const total = sReports.length;
@@ -355,10 +357,26 @@ const PIRUApp = () => {
       const avgPimp = total > 0 ? (sReports.reduce((acc, curr) => acc + (Number(curr.nilaiPimpinan) || 0), 0) / total) : 0;
       return { name: s.name, total, nilaiAkhir: ((avgCap + avgPimp) / 2).toFixed(2), status: statusText, detailCount: `${selesai}/${total}` };
     });
+
     const myReports = periodReports.filter(r => r.userId === user?.username);
     const myTotal = myReports.length;
     const mySelesai = myReports.filter(r => r.status === 'selesai').length;
-    return { myTotal, myNilaiAkhir: (myTotal > 0 ? (( (myReports.reduce((a,c)=>a+Math.min((c.realisasi/c.target)*100, 100),0)/myTotal) + (myReports.reduce((a,c)=>a+(Number(c.nilaiPimpinan)||0),0)/myTotal) )/2).toFixed(2) : 0), staffSummary, myStatus: myTotal === 0 ? "N/A" : (mySelesai === myTotal ? "Selesai" : "Progres"), myDetailCount: `${mySelesai}/${myTotal} Selesai` };
+    const isReady = myTotal > 0 && mySelesai === myTotal;
+
+    const currentScore = (myTotal > 0 ? (( (myReports.reduce((a,c)=>a+Math.min((c.realisasi/c.target)*100, 100),0)/myTotal) + (myReports.reduce((a,c)=>a+(Number(c.nilaiPimpinan)||0),0)/myTotal) )/2).toFixed(2) : "0.00");
+    
+    // Hitung Rata-Rata Tahunan (Januari - Desember)
+    const yearlyAvg = yearlyReports.length > 0 ? ( (yearlyReports.reduce((a,c)=>a+Math.min((c.realisasi/c.target)*100, 100),0)/yearlyReports.length) + (yearlyReports.reduce((a,c)=>a+(Number(c.nilaiPimpinan)||0),0)/yearlyReports.length) ) / 2 : 0;
+
+    return { 
+      myTotal, 
+      myNilaiAkhir: currentScore, 
+      isFinal: isReady,
+      myYearly: yearlyAvg.toFixed(2),
+      staffSummary, 
+      myStatus: myTotal === 0 ? "N/A" : (mySelesai === myTotal ? "Selesai" : "Progres"), 
+      myDetailCount: `${mySelesai}/${myTotal} Selesai` 
+    };
   }, [reports, users, user, selectedMonth, selectedYear]);
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50 font-sans"><Loader2 className="animate-spin text-indigo-600" size={50} /></div>;
@@ -434,24 +452,37 @@ const PIRUApp = () => {
               {['admin', 'pimpinan'].includes(user.role) ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-10">
                   {dashboardStats.staffSummary.map((s, i) => (
-                    <div key={i} className="bg-slate-900 p-6 rounded-[2rem] border border-slate-800 shadow-xl italic group hover:border-indigo-500 transition-all">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="bg-slate-800 p-3 rounded-2xl group-hover:bg-indigo-900 transition-colors"><Users size={20} className="text-indigo-400"/></div>
-                        <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-full ${s.status === 'Selesai' ? 'bg-green-900/30 text-green-400' : 'bg-amber-900/30 text-amber-400'}`}>{s.status}</span>
-                      </div>
-                      <p className="font-black text-lg text-white uppercase tracking-tighter leading-none mb-1 italic">{s.name}</p>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase mb-4 italic">{s.detailCount} Laporan</p>
-                      <div className="flex justify-between items-end border-t border-slate-800 pt-4">
-                        <p className="text-[9px] font-black text-slate-500 uppercase italic">Estimasi Nilai</p>
-                        <p className="text-3xl font-black text-indigo-400 italic">{s.nilaiAkhir}</p>
+                    <div key={i} className="bg-slate-900 p-6 rounded-[2.5rem] border border-slate-800 shadow-xl italic group hover:border-indigo-500 transition-all flex flex-col items-center text-center">
+                      <div className="bg-slate-800 p-4 rounded-3xl mb-6 group-hover:bg-indigo-900 transition-colors"><Users size={24} className="text-indigo-400"/></div>
+                      <p className="font-black text-xl text-white uppercase tracking-tighter leading-none mb-2 italic">{s.name}</p>
+                      <span className={`text-[9px] font-black uppercase px-4 py-1.5 rounded-full mb-6 ${s.status === 'Selesai' ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-400'}`}>{s.status}</span>
+                      <div className="w-full border-t border-slate-800 pt-6 mt-auto">
+                        <p className="text-[9px] font-black text-slate-500 uppercase italic mb-1">Capaian Akhir</p>
+                        <p className="text-4xl font-black text-indigo-400 italic">{s.nilaiAkhir}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10 italic mb-10">
-                  <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100 text-center italic"><p className="text-slate-400 text-[11px] font-black uppercase mb-6 tracking-widest leading-none italic">Estimasi Nilai Akhir Saya</p><p className="text-8xl font-black text-amber-500 tracking-tighter leading-none italic">{dashboardStats.myNilaiAkhir}</p></div>
-                  <div className="bg-indigo-900 rounded-[3rem] p-10 text-white flex flex-col items-center justify-center shadow-2xl relative overflow-hidden italic"><p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50 mb-6 leading-none italic">Tahapan Penilaian</p><div className="flex items-center gap-5 italic"><Clock size={32} className="text-amber-400"/><p className="text-4xl font-black uppercase italic leading-none italic">{dashboardStats.myStatus}</p></div><p className="text-[10px] font-black text-indigo-300 mt-8 uppercase tracking-widest leading-none italic">{dashboardStats.myDetailCount}</p></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 italic mb-10">
+                  <div className="bg-slate-900 p-10 rounded-[3.5rem] shadow-2xl border border-slate-800 flex flex-col items-center text-center group hover:border-amber-500 transition-all">
+                    <div className="bg-amber-500/10 p-5 rounded-3xl mb-8"><TrendingUp size={32} className="text-amber-500"/></div>
+                    <p className="text-slate-400 text-[10px] font-black uppercase mb-2 tracking-[0.2em] italic">{dashboardStats.isFinal ? "Nilai Akhir Capaian" : "Estimasi Nilai Akhir"}</p>
+                    <p className="text-7xl font-black text-amber-500 tracking-tighter italic mb-8">{dashboardStats.myNilaiAkhir}</p>
+                    <div className="w-full border-t border-slate-800 pt-8 mt-auto flex flex-col items-center">
+                       <p className="text-[9px] font-black text-slate-500 uppercase italic mb-2 tracking-widest">{dashboardStats.myStatus}</p>
+                       <p className="text-[10px] font-black text-white italic opacity-40">{dashboardStats.myDetailCount}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900 p-10 rounded-[3.5rem] shadow-2xl border border-slate-800 flex flex-col items-center text-center group hover:border-indigo-500 transition-all">
+                    <div className="bg-indigo-500/10 p-5 rounded-3xl mb-8"><BarChart3 size={32} className="text-indigo-400"/></div>
+                    <p className="text-slate-400 text-[10px] font-black uppercase mb-2 tracking-[0.2em] italic">Akumulasi Capaian {selectedYear}</p>
+                    <p className="text-7xl font-black text-indigo-400 tracking-tighter italic mb-8">{dashboardStats.myYearly}</p>
+                    <div className="w-full border-t border-slate-800 pt-8 mt-auto">
+                       <p className="text-[9px] font-black text-slate-500 uppercase italic tracking-widest leading-none">Rata-rata Kumulatif</p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -473,18 +504,31 @@ const PIRUApp = () => {
           )}
 
           {(activeTab === 'laporan' || activeTab === 'penilaian') && (
-            <div className="bg-white rounded-[2.5rem] shadow-sm border p-6 space-y-8 italic mb-10">
-                <table className="w-full text-left italic text-xs">
+            <div className="bg-white rounded-[2.5rem] shadow-sm border p-6 space-y-8 italic mb-10 overflow-hidden">
+                <table className="w-full text-left italic text-xs border-collapse">
                   <thead className="bg-slate-50 border-b text-[9px] font-black text-slate-400 uppercase tracking-widest italic sticky top-0 z-10">
-                    <tr><th className="p-4 italic">No</th><th className="p-4 italic">Kegiatan</th><th className="p-4 text-center italic">Volume</th><th className="p-4 text-center italic">Cap %</th><th className="p-4 text-center italic">Ketua</th><th className="p-4 text-center italic">Pimp</th><th className="p-4 text-center italic">Aksi</th></tr>
+                    <tr>
+                      <th className="p-4 italic w-12 text-center">No</th>
+                      <th className="p-4 italic">Uraian Pekerjaan</th>
+                      <th className="p-4 italic w-24 text-center">Satuan</th>
+                      <th className="p-4 text-center italic w-28">Volume</th>
+                      <th className="p-4 text-center italic w-16">Cap%</th>
+                      <th className="p-4 text-center italic w-16">Ketua</th>
+                      <th className="p-4 text-center italic w-16">Pimp</th>
+                      <th className="p-4 text-center italic w-24">Aksi</th>
+                    </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 italic">
                     {currentFilteredReports.map((r, idx) => (
                       <tr key={r.id} className="hover:bg-slate-50/50 transition-all italic group">
-                        <td className="p-4 font-bold text-slate-400">{idx + 1}</td>
-                        <td className="p-4 italic"><p className="font-black text-sm text-slate-800 uppercase tracking-tight leading-none mb-1 italic">{r.title}</p><span className="text-indigo-600 text-[8px] font-black uppercase bg-indigo-50 px-2 py-0.5 rounded-lg italic">{r.userName}</span></td>
+                        <td className="p-4 font-bold text-slate-400 text-center">{idx + 1}</td>
+                        <td className="p-4 italic">
+                          <p className="font-black text-[12px] text-slate-800 uppercase tracking-tight leading-none mb-1 italic">{r.title}</p>
+                          <span className="text-indigo-600 text-[8px] font-black uppercase bg-indigo-50 px-2 py-0.5 rounded-lg italic">{r.userName}</span>
+                        </td>
+                        <td className="p-4 text-center font-bold text-slate-500 uppercase text-[10px]">{r.satuan || '-'}</td>
                         <td className="p-4 text-center font-black italic">{r.realisasi} / {r.target}</td>
-                        <td className="p-4 text-center font-black text-indigo-600 italic">{((r.realisasi/r.target)*100).toFixed(1)}%</td>
+                        <td className="p-4 text-center font-black text-indigo-600 italic">{((r.realisasi/r.target)*100).toFixed(0)}%</td>
                         <td className="p-4 text-center font-black text-slate-300 text-lg relative italic">
                           <div className="relative group inline-block">
                             {r.nilaiKetua || '-'}
