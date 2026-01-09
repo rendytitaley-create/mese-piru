@@ -286,7 +286,7 @@ const PIRUApp = () => {
 
   if (!user) return (
     <div className="h-screen bg-slate-900 flex items-center justify-center p-4 italic">
-      <div className="bg-white w-full max-md rounded-[2.5rem] p-12 shadow-2xl text-center font-sans">
+      <div className="bg-white w-full max-w-md rounded-[2.5rem] p-12 shadow-2xl text-center font-sans">
         <ShieldCheck size={45} className="text-indigo-600 mx-auto mb-6" />
         <h1 className="text-4xl font-black mb-1 tracking-tighter text-slate-800 uppercase italic leading-none">PIRU</h1>
         <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-10 leading-none italic">BPS KABUPATEN SERAM BAGIAN BARAT</p>
@@ -355,19 +355,23 @@ const PIRUApp = () => {
                       <td className="p-8 italic"><p className="font-black text-xl text-slate-800 uppercase tracking-tighter leading-none mb-2 italic">{r.title}</p><span className="text-indigo-600 text-[9px] font-black uppercase bg-indigo-50 px-2 py-1 rounded-lg italic">{r.userName}</span></td>
                       <td className="p-8 text-center font-black italic">{r.realisasi} / {r.target}</td>
                       <td className="p-8 text-center font-black text-indigo-600 italic">{((r.realisasi/r.target)*100).toFixed(1)}%</td>
-                      <td className="p-8 text-center font-black text-slate-300 text-xl relative group">
+                      <td className="p-8 text-center font-black text-slate-300 text-xl">
                         <div className="relative group inline-block">
                           {r.nilaiKetua || '-'}
                           {user.role === 'admin' && r.nilaiKetua > 0 && (
-                            <button onClick={() => clearGrade(r.id, 'nilaiKetua')} className="absolute -top-1 -right-4 p-1 text-red-400 opacity-0 group-hover:opacity-100 transition-all hover:text-red-600"><Trash2 size={12}/></button>
+                            <button onClick={() => clearGrade(r.id, 'nilaiKetua')} className="absolute -top-1 -right-4 p-1 text-red-400 opacity-0 group-hover:opacity-100 transition-all hover:text-red-600">
+                              <Trash2 size={12}/>
+                            </button>
                           )}
                         </div>
                       </td>
-                      <td className="p-8 text-center font-black text-indigo-600 text-xl relative group">
+                      <td className="p-8 text-center font-black text-indigo-600 text-xl">
                         <div className="relative group inline-block">
                           {r.nilaiPimpinan || '-'}
                           {user.role === 'admin' && r.nilaiPimpinan > 0 && (
-                            <button onClick={() => clearGrade(r.id, 'nilaiPimpinan')} className="absolute -top-1 -right-4 p-1 text-red-400 opacity-0 group-hover:opacity-100 transition-all hover:text-red-600"><Trash2 size={12}/></button>
+                            <button onClick={() => clearGrade(r.id, 'nilaiPimpinan')} className="absolute -top-1 -right-4 p-1 text-red-400 opacity-0 group-hover:opacity-100 transition-all hover:text-red-600">
+                              <Trash2 size={12}/>
+                            </button>
                           )}
                         </div>
                       </td>
