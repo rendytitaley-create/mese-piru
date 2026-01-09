@@ -124,20 +124,13 @@ const PIRUApp = () => {
               finalUserId = targetStaff.username;
               finalUserName = targetStaff.name;
               finalUserRole = targetStaff.role;
-              
               if (user.role === 'ketua' || user.role === 'admin') {
                 const val = prompt(`Entri untuk: ${finalUserName}\nMasukkan Nilai Ketua Tim:`);
-                if (val && !isNaN(val)) {
-                  initialNilaiKetua = parseFloat(val);
-                  initialStatus = 'dinilai_ketua';
-                }
+                if (val && !isNaN(val)) { initialNilaiKetua = parseFloat(val); initialStatus = 'dinilai_ketua'; }
               }
               if (user.role === 'pimpinan' || user.role === 'admin') {
                 const val = prompt(`Entri untuk: ${finalUserName}\nMasukkan Nilai Pimpinan (Opsional):`);
-                if (val && !isNaN(val)) {
-                  initialNilaiPimpinan = parseFloat(val);
-                  initialStatus = 'selesai';
-                }
+                if (val && !isNaN(val)) { initialNilaiPimpinan = parseFloat(val); initialStatus = 'selesai'; }
               }
            }
         }
@@ -195,6 +188,19 @@ const PIRUApp = () => {
     };
   }, [reports, user, selectedMonth, selectedYear]);
 
+  const exportToExcel = async () => {
+    if (activeTab === 'penilaian' && filterStaffName === 'Semua') return alert("Pilih pegawai dahulu.");
+    const targetStaff = activeTab === 'laporan' ? user : users.find(u => u.name === filterStaffName);
+    const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('CKP');
+    sheet.mergeCells('A2:H2');
+    sheet.getCell('A2').value = `Capaian Kinerja Pegawai Tahun ${selectedYear}`;
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `CKP_${targetStaff?.name}.xlsx`);
+  };
+
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50 font-sans"><Loader2 className="animate-spin text-indigo-600" size={50} /></div>;
 
   if (!user) return (
@@ -215,14 +221,14 @@ const PIRUApp = () => {
   return (
     <div className="h-screen bg-slate-50 flex font-sans overflow-hidden text-slate-800 italic">
       {/* SIDEBAR FIXED */}
-      <div className="w-72 bg-white border-r p-8 flex flex-col font-sans not-italic h-full sticky top-0">
+      <div className="w-72 bg-white border-r p-8 flex flex-col font-sans h-full sticky top-0 not-italic">
         <div className="flex items-center gap-4 mb-14 px-2 italic">
           <div className="bg-indigo-600 p-3 rounded-2xl text-white shadow-lg"><ShieldCheck size={28}/></div>
           <div><h2 className="font-black text-2xl uppercase tracking-tighter leading-none italic">PIRU</h2></div>
         </div>
         <nav className="flex-1 space-y-3 font-sans not-italic">
           <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><BarChart3 size={20}/> Dashboard</button>
-          <button onClick={() => setActiveTab('laporan')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'laporan' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><FileText size={20}/> Entri Pekerjaan</button>
+          <button onClick={() => setActiveTab('laporan')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'laporan' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><FileText size={20}/> Capaian Kerja</button>
           {['admin', 'pimpinan', 'ketua'].includes(user.role) && (
             <button onClick={() => setActiveTab('penilaian')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'penilaian' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><ClipboardCheck size={20}/> Penilaian Anggota</button>
           )}
@@ -248,12 +254,12 @@ const PIRUApp = () => {
             <select className="bg-white border border-slate-200 rounded-xl px-3 py-2 font-black text-[10px] text-slate-600 outline-none shadow-sm cursor-pointer italic" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
               {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
             </select>
-            <button className="bg-green-600 text-white px-4 py-2.5 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-md italic"><Download size={14}/> Cetak</button>
+            <button onClick={exportToExcel} className="bg-green-600 text-white px-4 py-2.5 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-md italic"><Download size={14}/> Cetak</button>
             <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-black uppercase text-[10px] shadow-lg flex items-center gap-2 italic"><Plus size={14}/> {activeTab === 'penilaian' ? 'Entri & Nilai' : 'Entri'}</button>
           </div>
         </header>
 
-        {/* SCROLLABLE CONTENT */}
+        {/* AREA SCROLL KHUSUS TABEL */}
         <div className="flex-1 overflow-y-auto p-10 pt-0 custom-scrollbar">
           {activeTab === 'dashboard' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10 animate-in fade-in duration-500 italic mb-10">
