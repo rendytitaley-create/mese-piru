@@ -8,12 +8,12 @@ import {
 import { 
   ShieldCheck, Loader2, Plus, X, BarChart3, FileText, 
   LogOut, Trash2, Edit3, TrendingUp, Clock, Zap, UserPlus, Users, Download, ClipboardCheck, CheckCircle2,
-  LayoutDashboard, Send
+  LayoutDashboard
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
-// === CONFIG FIREBASE ANDA ===
+// === CONFIG FIREBASE ANDA (TETAP SAMA) ===
 const firebaseConfig = {
   apiKey: "AIzaSyDVRt3zgojeVh8ek61yXFQ9r9ihpOt7BqQ",
   authDomain: "piru8106-b4f0a.firebaseapp.com",
@@ -344,11 +344,11 @@ const PIRUApp = () => {
   return (
     <div className="h-screen bg-slate-50 flex flex-col md:flex-row font-sans overflow-hidden text-slate-800 italic">
       
-      {/* DESKTOP SIDEBAR */}
+      {/* SIDEBAR - HIDDEN ON MOBILE */}
       <div className="hidden md:flex w-72 bg-white border-r p-8 flex-col font-sans h-full sticky top-0 not-italic">
         <div className="flex items-center gap-4 mb-14 px-2 italic">
           <div className="bg-indigo-600 p-3 rounded-2xl text-white shadow-lg"><ShieldCheck size={28}/></div>
-          <div><h2 className="font-black text-2xl uppercase tracking-tighter leading-none italic">PIRU</h2></div>
+          <div><h2 className="font-black text-2xl uppercase tracking-tighter leading-none italic">PIRU</h2><p className="text-[8px] font-black text-indigo-600 uppercase italic">Kinerja Bulanan</p></div>
         </div>
         <nav className="flex-1 space-y-3 font-sans not-italic">
           <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><LayoutDashboard size={20}/> Dashboard</button>
@@ -362,7 +362,7 @@ const PIRUApp = () => {
       <main className="flex-1 flex flex-col h-screen overflow-hidden font-sans italic relative">
         <header className="p-6 md:p-10 pb-4 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 md:gap-8 italic sticky top-0 bg-slate-50 z-20">
           <div className="flex-1 max-w-md italic">
-            <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tighter uppercase leading-none italic break-words">{user.name}</h1>
+            <h1 className="text-xl font-black text-slate-900 tracking-tighter uppercase leading-none italic break-words">{user.name}</h1>
             <p className="text-slate-400 font-bold uppercase tracking-widest text-[8px] mt-2 inline-block bg-white px-3 py-1 rounded-full border border-slate-100 italic">{user.jabatan || user.role}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3 not-italic w-full md:w-auto">
@@ -384,7 +384,7 @@ const PIRUApp = () => {
           {activeTab === 'dashboard' && (
             <div className="animate-in fade-in duration-500 italic space-y-6">
               {['admin', 'pimpinan'].includes(user.role) ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 mb-10">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                   {dashboardStats.staffSummary.map((s, i) => (
                     <div key={i} className="bg-slate-900 p-6 rounded-[2.5rem] border border-slate-800 shadow-xl italic flex flex-col items-center text-center">
                       <div className="bg-slate-800 p-4 rounded-3xl mb-6"><Users size={24} className="text-indigo-400"/></div>
@@ -398,20 +398,22 @@ const PIRUApp = () => {
                   ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 italic mb-10">
-                  <div className="bg-slate-900 p-8 md:p-10 rounded-[3rem] shadow-2xl border border-slate-800 flex flex-col items-center text-center">
-                    <p className="text-slate-400 text-[10px] font-black uppercase mb-4 tracking-[0.2em] italic">{dashboardStats.isFinal ? "Nilai Akhir" : "Estimasi Nilai"}</p>
-                    <p className="text-6xl md:text-7xl font-black text-amber-500 tracking-tighter italic mb-8">{dashboardStats.myNilaiAkhir}</p>
-                    <div className="w-full border-t border-slate-800 pt-6 mt-auto">
-                       <p className="text-[9px] font-black text-slate-500 uppercase italic mb-1 tracking-widest">{dashboardStats.myStatus}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-10">
+                  <div className="bg-slate-900 p-10 rounded-[3.5rem] shadow-2xl border border-slate-800 flex flex-col items-center text-center group">
+                    <div className="bg-amber-500/10 p-5 rounded-3xl mb-8"><TrendingUp size={32} className="text-amber-500"/></div>
+                    <p className="text-slate-400 text-[10px] font-black uppercase mb-2 tracking-[0.2em] italic">{dashboardStats.isFinal ? "Nilai Akhir Capaian" : "Estimasi Nilai Akhir"}</p>
+                    <p className="text-7xl font-black text-amber-500 tracking-tighter italic mb-8">{dashboardStats.myNilaiAkhir}</p>
+                    <div className="w-full border-t border-slate-800 pt-8 mt-auto flex flex-col items-center">
+                       <p className="text-[9px] font-black text-slate-500 uppercase italic mb-2 tracking-widest">{dashboardStats.myStatus}</p>
                        <p className="text-[10px] font-black text-white italic opacity-40">{dashboardStats.myDetailCount}</p>
                     </div>
                   </div>
-                  <div className="bg-slate-900 p-8 md:p-10 rounded-[3rem] shadow-2xl border border-slate-800 flex flex-col items-center text-center">
-                    <p className="text-slate-400 text-[10px] font-black uppercase mb-4 tracking-[0.2em] italic">Akumulasi {selectedYear}</p>
-                    <p className="text-6xl md:text-7xl font-black text-indigo-400 tracking-tighter italic mb-8">{dashboardStats.myYearly}</p>
-                    <div className="w-full border-t border-slate-800 pt-6 mt-auto">
-                       <p className="text-[9px] font-black text-slate-500 uppercase italic tracking-widest leading-none">Kumulatif Setahun</p>
+                  <div className="bg-slate-900 p-10 rounded-[3.5rem] shadow-2xl border border-slate-800 flex flex-col items-center text-center group">
+                    <div className="bg-indigo-500/10 p-5 rounded-3xl mb-8"><BarChart3 size={32} className="text-indigo-400"/></div>
+                    <p className="text-slate-400 text-[10px] font-black uppercase mb-2 tracking-[0.2em] italic">Akumulasi Capaian {selectedYear}</p>
+                    <p className="text-7xl font-black text-indigo-400 tracking-tighter italic mb-8">{dashboardStats.myYearly}</p>
+                    <div className="w-full border-t border-slate-800 pt-8 mt-auto">
+                       <p className="text-[9px] font-black text-slate-500 uppercase italic tracking-widest leading-none">Rata-rata Kumulatif</p>
                     </div>
                   </div>
                 </div>
@@ -419,64 +421,49 @@ const PIRUApp = () => {
             </div>
           )}
 
-          {/* TABEL / KARTU RESPONSIVE */}
+          {/* TABEL / CARD VIEW */}
           {(activeTab === 'laporan' || activeTab === 'penilaian') && (
             <div className="space-y-4">
-              {/* VIEW DESKTOP (TABLE) */}
+              {/* DESKTOP TABLE - TETAP SIMETRIS DAN ADA SATUAN */}
               <div className="hidden md:block bg-white rounded-[2.5rem] shadow-sm border p-6 overflow-hidden">
                 <table className="w-full text-left italic text-xs border-collapse">
                   <thead className="bg-slate-50 border-b text-[9px] font-black text-slate-400 uppercase tracking-widest italic sticky top-0 z-10">
-                    <tr><th className="p-4 w-12 text-center">No</th><th>Pekerjaan</th><th className="text-center w-24">Satuan</th><th className="text-center w-28">Volume</th><th className="text-center w-16">Cap%</th><th className="text-center w-16">Ketua</th><th className="text-center w-16">Pimp</th><th className="text-center w-24">Aksi</th></tr>
+                    <tr><th className="p-4 w-12 text-center">No</th><th>Uraian Pekerjaan</th><th className="w-24 text-center">Satuan</th><th className="text-center w-28">Volume</th><th className="text-center w-16">Cap%</th><th className="text-center w-16">Ketua</th><th className="text-center w-16">Pimp</th><th className="text-center w-24">Aksi</th></tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {currentFilteredReports.map((r, idx) => (
                       <tr key={r.id} className="hover:bg-slate-50/50 transition-all italic">
                         <td className="p-4 font-bold text-slate-400 text-center">{idx + 1}</td>
-                        <td className="p-4 italic"><p className="font-black text-sm text-slate-800 uppercase tracking-tight leading-none mb-1">{r.title}</p><span className="text-indigo-600 text-[8px] font-black uppercase bg-indigo-50 px-2 py-0.5 rounded-lg">{r.userName}</span></td>
+                        <td className="p-4 italic"><p className="font-black text-[12px] text-slate-800 uppercase tracking-tight leading-none mb-1">{r.title}</p><span className="text-indigo-600 text-[8px] font-black uppercase bg-indigo-50 px-2 py-0.5 rounded-lg">{r.userName}</span></td>
                         <td className="p-4 text-center font-bold text-slate-500 uppercase text-[10px]">{r.satuan || '-'}</td>
                         <td className="p-4 text-center font-black">{r.realisasi} / {r.target}</td>
-                        <td className="p-4 text-center font-black text-indigo-600">{((r.realisasi/r.target)*100).toFixed(0)}%</td>
-                        <td className="p-4 text-center font-black text-slate-300 text-lg relative">
-                          <div className="relative group inline-block">{r.nilaiKetua || '-'}{user.role === 'admin' && activeTab === 'penilaian' && r.nilaiKetua > 0 && (<button onClick={() => clearGrade(r.id, 'nilaiKetua')} className="absolute -top-1 -right-3 p-1 text-red-400 opacity-0 group-hover:opacity-100 transition-all italic"><Trash2 size={10}/></button>)}</div>
-                        </td>
-                        <td className="p-4 text-center font-black text-indigo-600 text-lg relative">
-                          <div className="relative group inline-block">{r.nilaiPimpinan || '-'}{user.role === 'admin' && activeTab === 'penilaian' && r.nilaiPimpinan > 0 && (<button onClick={() => clearGrade(r.id, 'nilaiPimpinan')} className="absolute -top-1 -right-3 p-1 text-red-400 opacity-0 group-hover:opacity-100 transition-all italic"><Trash2 size={10}/></button>)}</div>
-                        </td>
-                        <td className="p-4 text-center">
-                          <div className="flex justify-center gap-1">
-                            {activeTab === 'laporan' && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl"><Edit3 size={14}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-2 bg-red-50 text-red-400 rounded-xl"><Trash2 size={14}/></button></>}
-                            {activeTab === 'penilaian' && (<>{['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase shadow-sm">Ketua</button>}{['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase shadow-sm">Pimp</button>}</>)}
-                          </div>
-                        </td>
+                        <td className="p-4 text-center font-black text-indigo-600 italic">{((r.realisasi/r.target)*100).toFixed(0)}%</td>
+                        <td className="p-4 text-center font-black text-slate-300 text-lg relative italic"><div className="relative group inline-block">{r.nilaiKetua || '-'}{user.role === 'admin' && activeTab === 'penilaian' && r.nilaiKetua > 0 && (<button onClick={() => clearGrade(r.id, 'nilaiKetua')} className="absolute -top-1 -right-3 p-1 text-red-400 opacity-0 group-hover:opacity-100 transition-all italic"><Trash2 size={10}/></button>)}</div></td>
+                        <td className="p-4 text-center font-black text-indigo-600 text-lg relative italic"><div className="relative group inline-block">{r.nilaiPimpinan || '-'}{user.role === 'admin' && activeTab === 'penilaian' && r.nilaiPimpinan > 0 && (<button onClick={() => clearGrade(r.id, 'nilaiPimpinan')} className="absolute -top-1 -right-3 p-1 text-red-400 opacity-0 group-hover:opacity-100 transition-all italic"><Trash2 size={10}/></button>)}</div></td>
+                        <td className="p-4 text-center"><div className="flex justify-center gap-1">{activeTab === 'laporan' && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl"><Edit3 size={14}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-2 bg-red-50 text-red-400 rounded-xl"><Trash2 size={14}/></button></>}{activeTab === 'penilaian' && (<>{['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase shadow-sm">Ketua</button>}{['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase shadow-sm">Pimp</button>}</>)}</div></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-
-              {/* VIEW MOBILE (CARD MODE) */}
+              
+              {/* MOBILE CARDS - KHUSUS HP */}
               <div className="md:hidden space-y-4">
                 {currentFilteredReports.map((r, idx) => (
                   <div key={r.id} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 italic">
-                    <div className="flex justify-between items-start mb-4">
-                      <span className="bg-indigo-50 text-indigo-600 text-[10px] font-black px-3 py-1 rounded-full uppercase italic">#{idx + 1} - {r.satuan}</span>
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-[10px] font-black text-indigo-600 uppercase">#{idx + 1} - {r.satuan}</span>
                       <div className="flex gap-2">
-                        {activeTab === 'laporan' && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="text-indigo-400"><Edit3 size={18}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="text-red-400"><Trash2 size={18}/></button></>}
+                        {activeTab === 'laporan' && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }}><Edit3 size={16} className="text-indigo-400"/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))}><Trash2 size={16} className="text-red-400"/></button></>}
                       </div>
                     </div>
-                    <h3 className="font-black text-lg text-slate-800 uppercase leading-tight mb-4 italic">{r.title}</h3>
-                    <div className="grid grid-cols-2 gap-4 mb-4 border-t border-b py-4 border-slate-50 italic">
-                      <div><p className="text-[9px] text-slate-400 font-black uppercase italic mb-1">Volume</p><p className="font-black text-sm">{r.realisasi} / {r.target}</p></div>
-                      <div><p className="text-[9px] text-slate-400 font-black uppercase italic mb-1">Capaian</p><p className="font-black text-sm text-indigo-600">{((r.realisasi/r.target)*100).toFixed(0)}%</p></div>
-                      <div><p className="text-[9px] text-slate-400 font-black uppercase italic mb-1">Nilai Ketua</p><p className="font-black text-sm text-amber-500">{r.nilaiKetua || '-'}</p></div>
-                      <div><p className="text-[9px] text-slate-400 font-black uppercase italic mb-1">Nilai Pimp</p><p className="font-black text-sm text-indigo-600">{r.nilaiPimpinan || '-'}</p></div>
+                    <h3 className="font-black text-slate-800 uppercase text-sm mb-4 leading-tight">{r.title}</h3>
+                    <div className="grid grid-cols-2 gap-4 border-t pt-4">
+                      <div><p className="text-[8px] text-slate-400 uppercase font-black">Volume</p><p className="font-black text-xs">{r.realisasi} / {r.target}</p></div>
+                      <div><p className="text-[8px] text-slate-400 uppercase font-black">Capaian</p><p className="font-black text-xs text-indigo-600">{((r.realisasi/r.target)*100).toFixed(0)}%</p></div>
+                      <div><p className="text-[8px] text-slate-400 uppercase font-black">Ketua</p><p className="font-black text-xs text-amber-500">{r.nilaiKetua || '-'}</p></div>
+                      <div><p className="text-[8px] text-slate-400 uppercase font-black">Pimp</p><p className="font-black text-xs text-indigo-600">{r.nilaiPimpinan || '-'}</p></div>
                     </div>
-                    {activeTab === 'penilaian' && (
-                      <div className="flex gap-2 mt-4">
-                        {['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="flex-1 bg-amber-400 text-white py-3 rounded-2xl font-black uppercase text-[10px] italic">Beri Nilai Ketua</button>}
-                        {['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="flex-1 bg-indigo-600 text-white py-3 rounded-2xl font-black uppercase text-[10px] italic">Beri Nilai Pimp</button>}
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -484,47 +471,44 @@ const PIRUApp = () => {
           )}
         </div>
 
-        {/* MOBILE FLOATING ACTION BUTTON */}
+        {/* MOBILE FLOATING ACTION BUTTONS */}
         <div className="md:hidden fixed bottom-24 right-6 flex flex-col gap-3 z-30 italic">
-           {activeTab === 'penilaian' && filterStaffName !== 'Semua' && (
-             <button onClick={handleNilaiSemua} className="bg-amber-500 text-white p-4 rounded-full shadow-2xl animate-bounce"><CheckCircle2 size={24}/></button>
-           )}
            <button onClick={() => exportToExcel()} className="bg-green-600 text-white p-4 rounded-full shadow-2xl"><Download size={24}/></button>
            <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white p-5 rounded-full shadow-2xl"><Plus size={30}/></button>
         </div>
 
-        {/* MOBILE BOTTOM NAVIGATION */}
+        {/* BOTTOM NAV MOBILE */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-4 flex justify-around items-center z-40 italic">
-          <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-300'}`}><LayoutDashboard size={24}/><span className="text-[8px] font-black uppercase">Home</span></button>
-          {user.role !== 'admin' && (<button onClick={() => setActiveTab('laporan')} className={`flex flex-col items-center gap-1 ${activeTab === 'laporan' ? 'text-indigo-600' : 'text-slate-300'}`}><FileText size={24}/><span className="text-[8px] font-black uppercase">Entri</span></button>)}
-          {['admin', 'pimpinan', 'ketua'].includes(user.role) && (<button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button>)}
-          {user.role === 'admin' && (<button onClick={() => setActiveTab('users')} className={`flex flex-col items-center gap-1 ${activeTab === 'users' ? 'text-indigo-600' : 'text-slate-300'}`}><Users size={24}/><span className="text-[8px] font-black uppercase">Users</span></button>)}
+          <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-300'}`}><LayoutDashboard size={20}/><span className="text-[7px] font-black uppercase">Home</span></button>
+          {user.role !== 'admin' && (<button onClick={() => setActiveTab('laporan')} className={`flex flex-col items-center gap-1 ${activeTab === 'laporan' ? 'text-indigo-600' : 'text-slate-300'}`}><FileText size={20}/><span className="text-[7px] font-black uppercase">Entri</span></button>)}
+          {['admin', 'pimpinan', 'ketua'].includes(user.role) && (<button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={20}/><span className="text-[7px] font-black uppercase">Nilai</span></button>)}
+          {user.role === 'admin' && (<button onClick={() => setActiveTab('users')} className={`flex flex-col items-center gap-1 ${activeTab === 'users' ? 'text-indigo-600' : 'text-slate-300'}`}><Users size={20}/><span className="text-[7px] font-black uppercase">User</span></button>)}
         </div>
       </main>
 
       {/* MODAL LAPORAN */}
       {showReportModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-50 font-sans italic">
-          <form onSubmit={handleSubmitReport} className="bg-white w-full max-w-2xl rounded-[2.5rem] md:rounded-[3.5rem] p-8 md:p-12 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+          <form onSubmit={handleSubmitReport} className="bg-white w-full max-w-2xl rounded-[3rem] p-8 md:p-12 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button type="button" onClick={() => { resetReportForm(); setShowReportModal(false); }} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
-            <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tighter mb-8 text-slate-800 italic">{isEditing ? "Update Data" : "Entri Pekerjaan"}</h3>
-            <div className="space-y-4 md:space-y-5 italic">
+            <h3 className="text-2xl font-black uppercase tracking-tighter mb-8 text-slate-800 italic">Pekerjaan</h3>
+            <div className="space-y-4 italic">
                {activeTab === 'penilaian' && !isEditing && (
-                  <select required className="w-full p-4 md:p-5 bg-slate-50 rounded-2xl outline-none font-black text-indigo-600 border border-slate-100 italic" value={newReport.targetUser} onChange={e => setNewReport({...newReport, targetUser: e.target.value})}>
+                  <select required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-indigo-600 border border-slate-100 italic" value={newReport.targetUser} onChange={e => setNewReport({...newReport, targetUser: e.target.value})}>
                         <option value="">-- Pilih Pegawai --</option>
                         {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                   </select>
                )}
-               <input required type="text" placeholder="Uraian Pekerjaan" className="w-full p-4 md:p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic" value={newReport.title} onChange={e => setNewReport({...newReport, title: e.target.value})} />
-               <div className="grid grid-cols-2 gap-4 md:gap-5 italic">
-                  <input required type="number" placeholder="Target" className="w-full p-4 md:p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic" value={newReport.target} onChange={e => setNewReport({...newReport, target: e.target.value})} />
-                  <input required type="number" placeholder="Realisasi" className="w-full p-4 md:p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic" value={newReport.realisasi} onChange={e => setNewReport({...newReport, realisasi: e.target.value})} />
+               <input required type="text" placeholder="Uraian" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic" value={newReport.title} onChange={e => setNewReport({...newReport, title: e.target.value})} />
+               <div className="grid grid-cols-2 gap-4 italic">
+                  <input required type="number" placeholder="Target" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic" value={newReport.target} onChange={e => setNewReport({...newReport, target: e.target.value})} />
+                  <input required type="number" placeholder="Realisasi" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic" value={newReport.realisasi} onChange={e => setNewReport({...newReport, realisasi: e.target.value})} />
                </div>
-               <input list="satuan-list" className="w-full p-4 md:p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic" placeholder="Satuan" value={newReport.satuan} onChange={e => setNewReport({...newReport, satuan: e.target.value})} />
+               <input list="satuan-list" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic" placeholder="Satuan" value={newReport.satuan} onChange={e => setNewReport({...newReport, satuan: e.target.value})} />
                <datalist id="satuan-list"><option value="Dokumen"/><option value="Kegiatan"/><option value="Laporan"/><option value="Paket"/></datalist>
-               <textarea className="w-full p-4 md:p-5 bg-slate-50 rounded-2xl outline-none font-bold h-24 resize-none text-slate-600 border border-slate-100 italic" placeholder="Keterangan..." value={newReport.keterangan} onChange={e => setNewReport({...newReport, keterangan: e.target.value})} />
+               <textarea className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold h-24 resize-none text-slate-600 border border-slate-100 italic" placeholder="Keterangan..." value={newReport.keterangan} onChange={e => setNewReport({...newReport, keterangan: e.target.value})} />
             </div>
-            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-5 md:py-6 rounded-2xl shadow-xl uppercase tracking-widest text-[10px] md:text-xs mt-6 md:mt-8 italic">Simpan Data</button>
+            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-5 rounded-2xl shadow-xl uppercase tracking-widest text-[10px] mt-6 italic">Simpan</button>
           </form>
         </div>
       )}
@@ -532,20 +516,20 @@ const PIRUApp = () => {
       {/* MODAL USER */}
       {showUserModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-50 font-sans italic">
-          <form onSubmit={handleAddOrEditUser} className="bg-white w-full max-w-xl rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-12 shadow-2xl relative italic">
+          <form onSubmit={handleAddOrEditUser} className="bg-white w-full max-w-xl rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative italic">
             <button type="button" onClick={() => { setShowUserModal(false); resetUserForm(); }} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
-            <h3 className="text-xl md:text-2xl font-black uppercase tracking-tighter mb-8 text-slate-800 italic">Data Pegawai</h3>
+            <h3 className="text-xl font-black uppercase tracking-tighter mb-8 text-slate-800 italic">Data Pegawai</h3>
             <div className="space-y-4 italic">
-                <input required type="text" placeholder="Nama Lengkap" className="w-full p-4 md:p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} />
+                <input required type="text" placeholder="Nama Lengkap" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} />
                 <div className="grid grid-cols-2 gap-4 italic">
-                    <input required type="text" placeholder="User" className="w-full p-4 md:p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} />
-                    <input required type="password" placeholder="Pass" className="w-full p-4 md:p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
+                    <input required type="text" placeholder="User" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} />
+                    <input required type="password" placeholder="Pass" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
                 </div>
-                <input type="text" placeholder="Jabatan" className="w-full p-4 md:p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.jabatan} onChange={e => setNewUser({...newUser, jabatan: e.target.value})} />
-                <select className="w-full p-4 md:p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-600 border border-slate-100 italic" value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
+                <input type="text" placeholder="Jabatan" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.jabatan} onChange={e => setNewUser({...newUser, jabatan: e.target.value})} />
+                <select className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-600 border border-slate-100 italic" value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
                     <option value="pegawai">Pegawai</option><option value="ketua">Ketua Tim</option><option value="pimpinan">Pimpinan</option><option value="admin">Admin</option>
                 </select>
-                <button type="submit" className="w-full bg-indigo-600 text-white font-black py-5 md:py-6 rounded-2xl shadow-xl uppercase tracking-widest text-[10px] mt-6 italic">Simpan Pegawai</button>
+                <button type="submit" className="w-full bg-indigo-600 text-white font-black py-5 rounded-2xl shadow-xl uppercase tracking-widest text-[10px] mt-6 italic">Simpan</button>
             </div>
           </form>
         </div>
