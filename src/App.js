@@ -212,14 +212,12 @@ const PIRUApp = () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('CKP');
 
-    // 1. Baris Judul A2
     sheet.mergeCells('A2:H2');
     const titleCell = sheet.getCell('A2');
     titleCell.value = `Capaian Kinerja Pegawai Tahun ${selectedYear}`;
     titleCell.font = { bold: true, size: 12 };
     titleCell.alignment = { horizontal: 'center' };
 
-    // 2. Baris Identitas A4-A7
     const setInfo = (row, label, value) => {
         sheet.getCell(`A${row}`).value = label;
         sheet.getCell(`B${row}`).value = `: ${value}`;
@@ -230,7 +228,6 @@ const PIRUApp = () => {
     setInfo(6, 'Jabatan', targetStaff?.jabatan || '');
     setInfo(7, 'Periode', `1 - ${lastDay} ${monthNames[selectedMonth-1]} ${selectedYear}`);
 
-    // 3. Header Tabel (Baris 9 & 10)
     sheet.mergeCells('A9:A10'); sheet.getCell('A9').value = 'No';
     sheet.mergeCells('B9:B10'); sheet.getCell('B9').value = 'Uraian Kegiatan';
     sheet.mergeCells('C9:C10'); sheet.getCell('C9').value = 'Satuan';
@@ -239,27 +236,24 @@ const PIRUApp = () => {
     sheet.mergeCells('G9:G10'); sheet.getCell('G9').value = 'Tingkat Kualitas (%)';
     sheet.mergeCells('H9:H10'); sheet.getCell('H9').value = 'Keterangan';
 
-    // Styling Header Tabel
     const headerCells = ['A9','B9','C9','D9','G9','H9','D10','E10','F10'];
     headerCells.forEach(c => {
         const cell = sheet.getCell(c);
         cell.fill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFE0E0E0'} };
         cell.font = { bold: true };
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
     });
 
-    // 4. Pengaturan Lebar Kolom (Width)
-    sheet.getColumn(1).width = 8.2;  // No
-    sheet.getColumn(2).width = 60;   // Uraian
-    sheet.getColumn(3).width = 15;   // Satuan
-    sheet.getColumn(4).width = 7.07; // Target
-    sheet.getColumn(5).width = 7.07; // Realisasi
-    sheet.getColumn(6).width = 7.07; // %
-    sheet.getColumn(7).width = 13;   // Kualitas
-    sheet.getColumn(8).width = 45;   // Keterangan
+    sheet.getColumn(1).width = 8.2;
+    sheet.getColumn(2).width = 60;
+    sheet.getColumn(3).width = 15;
+    sheet.getColumn(4).width = 7.07;
+    sheet.getColumn(5).width = 7.07;
+    sheet.getColumn(6).width = 7.07;
+    sheet.getColumn(7).width = 10;
+    sheet.getColumn(8).width = 45;
 
-    // 5. Isi Data Laporan
     let curRow = 11;
     let sumKuan = 0;
     let sumKual = 0;
@@ -271,11 +265,11 @@ const PIRUApp = () => {
         const qP = r.nilaiPimpinan || 0;
         
         row.values = [i+1, r.title, r.satuan, r.target, r.realisasi, kP, qP, r.keterangan || ''];
-        row.height = 30; // Row height 30
+        row.height = 35;
 
         row.eachCell({ includeEmpty: true }, (cell, colNum) => {
             cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-            cell.alignment = { vertical: 'middle', wrapText: true, horizontal: colNum === 2 ? 'left' : 'center' };
+            cell.alignment = { vertical: 'middle', wrapText: true, horizontal: (colNum === 2 || colNum === 8) ? 'left' : 'center' };
         });
 
         sumKuan += Math.min(kP, 100);
@@ -283,7 +277,6 @@ const PIRUApp = () => {
         curRow++;
     });
 
-    // 6. Baris Rata-Rata
     const avgKuan = dataCount > 0 ? sumKuan / dataCount : 0;
     const avgKual = dataCount > 0 ? sumKual / dataCount : 0;
 
@@ -294,20 +287,15 @@ const PIRUApp = () => {
     avgLabel.alignment = { horizontal: 'center', vertical: 'middle' };
     avgLabel.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
 
-    const cellKuan = sheet.getCell(`F${curRow}`);
-    cellKuan.value = avgKuan;
-    cellKuan.alignment = { horizontal: 'center' };
-    cellKuan.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-
-    const cellKual = sheet.getCell(`G${curRow}`);
-    cellKual.value = avgKual;
-    cellKual.alignment = { horizontal: 'center' };
-    cellKual.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-    
-    sheet.getCell(`H${curRow}`).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+    ['F', 'G', 'H'].forEach(col => {
+      const c = sheet.getCell(`${col}${curRow}`);
+      if(col === 'F') c.value = avgKuan;
+      if(col === 'G') c.value = avgKual;
+      c.alignment = { horizontal: 'center' };
+      c.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+    });
     curRow++;
 
-    // 7. Baris CKP Akhir
     sheet.mergeCells(`A${curRow}:E${curRow}`);
     const ckpLabel = sheet.getCell(`A${curRow}`);
     ckpLabel.value = 'Capaian Kinerja Pegawai (CKP)';
@@ -315,17 +303,16 @@ const PIRUApp = () => {
     ckpLabel.alignment = { horizontal: 'center', vertical: 'middle' };
     ckpLabel.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
 
+    sheet.mergeCells(`F${curRow}:G${curRow}`);
     const cellFinal = sheet.getCell(`F${curRow}`);
-    cellFinal.value = (avgKuan + avgKual) / 2;
+    cellFinal.value = Math.round((avgKuan + avgKual) / 2);
     cellFinal.font = { bold: true };
-    cellFinal.alignment = { horizontal: 'center' };
+    cellFinal.alignment = { horizontal: 'center', vertical: 'middle' };
     cellFinal.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
     
-    sheet.getCell(`G${curRow}`).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
     sheet.getCell(`H${curRow}`).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
     curRow += 2;
 
-    // 8. Legalitas (Tanda Tangan)
     sheet.mergeCells(`F${curRow}:H${curRow}`);
     const tglCell = sheet.getCell(`F${curRow}`);
     tglCell.value = `Penilaian Kinerja : ${lastDay} ${monthNames[selectedMonth-1]} ${selectedYear}`;
@@ -333,9 +320,8 @@ const PIRUApp = () => {
     curRow += 2;
 
     sheet.mergeCells(`F${curRow}:H${curRow}`);
-    const penilaiCell = sheet.getCell(`F${curRow}`);
-    penilaiCell.value = 'Pejabat Penilai,';
-    penilaiCell.alignment = { horizontal: 'center' };
+    sheet.getCell(`F${curRow}`).value = 'Pejabat Penilai,';
+    sheet.getCell(`F${curRow}`).alignment = { horizontal: 'center' };
     curRow += 4;
 
     sheet.mergeCells(`F${curRow}:H${curRow}`);
@@ -382,7 +368,8 @@ const PIRUApp = () => {
       <div className="bg-white w-full max-w-md rounded-[2.5rem] p-12 shadow-2xl text-center font-sans">
         <ShieldCheck size={45} className="text-indigo-600 mx-auto mb-6" />
         <h1 className="text-4xl font-black mb-1 tracking-tighter text-slate-800 uppercase italic leading-none">PIRU</h1>
-        <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-10 leading-none italic">BPS KABUPATEN SERAM BAGIAN BARAT</p>
+        <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1 leading-none italic">Penilaian Kinerja Bulanan</p>
+        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-10 text-center leading-none italic">BPS Kabupaten Seram Bagian Barat</p>
         <form onSubmit={handleLogin} className="space-y-4 text-left font-sans not-italic">
           <input type="text" placeholder="Username" className="w-full p-5 bg-slate-50 border rounded-2xl outline-none font-bold" value={authForm.username} onChange={e => setAuthForm({...authForm, username: e.target.value})} />
           <input type="password" placeholder="Password" className="w-full p-5 bg-slate-50 border rounded-2xl outline-none font-bold" value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})} />
@@ -397,7 +384,10 @@ const PIRUApp = () => {
       <div className="w-72 bg-white border-r p-8 flex flex-col font-sans h-full sticky top-0 not-italic">
         <div className="flex items-center gap-4 mb-14 px-2 italic">
           <div className="bg-indigo-600 p-3 rounded-2xl text-white shadow-lg"><ShieldCheck size={28}/></div>
-          <div><h2 className="font-black text-2xl uppercase tracking-tighter leading-none italic">PIRU</h2></div>
+          <div>
+            <h2 className="font-black text-2xl uppercase tracking-tighter leading-none italic">PIRU</h2>
+            <p className="text-[8px] font-black text-indigo-600 uppercase tracking-widest mt-1 italic">Penilaian Kinerja Bulanan</p>
+          </div>
         </div>
         <nav className="flex-1 space-y-3 font-sans not-italic">
           <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><BarChart3 size={20}/> Dashboard</button>
@@ -415,8 +405,8 @@ const PIRUApp = () => {
       <main className="flex-1 flex flex-col h-screen overflow-hidden font-sans italic">
         <header className="p-10 pb-4 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8 italic sticky top-0 bg-slate-50 z-20">
           <div className="flex-1 max-w-md italic">
-            <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase leading-none italic break-words">{user.name}</h1>
-            <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-3 inline-block bg-white px-4 py-1 rounded-full border border-slate-100 italic">{user.jabatan || user.role}</p>
+            <h1 className="text-xl font-black text-slate-900 tracking-tighter uppercase leading-none italic break-words">{user.name}</h1>
+            <p className="text-slate-400 font-bold uppercase tracking-widest text-[8px] mt-2 inline-block bg-white px-3 py-1 rounded-full border border-slate-100 italic">{user.jabatan || user.role}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3 not-italic xl:justify-end">
              {activeTab === 'penilaian' && (
