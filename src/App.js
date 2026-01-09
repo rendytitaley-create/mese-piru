@@ -304,16 +304,7 @@ const PIRUApp = () => {
       const targets = currentFilteredReports.filter(r => r.status !== 'selesai');
       for (const r of targets) { await updateDoc(doc(db, "reports", r.id), { nilaiPimpinan: grade, status: 'selesai' }); }
       alert(`Berhasil menilai ${targets.length} kegiatan.`);
-    };  
-  const clearGrade = async (reportId, field) => {
-    if (!window.confirm(`Hapus nilai ${field === 'nilaiKetua' ? 'Ketua' : 'Pimpinan'} ini?`)) return;
-    try {
-      await updateDoc(doc(db, "reports", reportId), {
-        [field]: 0,
-        status: field === 'nilaiPimpinan' ? 'dinilai_ketua' : 'pending'
-      });
-      alert("Nilai berhasil dibersihkan.");
-    } catch (err) { alert("Gagal membersihkan nilai."); }
+    }
   };
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50 font-sans"><Loader2 className="animate-spin text-indigo-600" size={50} /></div>;
@@ -479,4 +470,3 @@ const PIRUApp = () => {
 };
 
 export default PIRUApp;
-
