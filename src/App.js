@@ -158,7 +158,6 @@ const PIRUApp = () => {
         let finalUserName = user.name;
         let finalUserRole = user.role;
         
-        // Konteks Tambah Pekerjaan di Tab Penilaian (Koreksi Poin 1)
         if (activeTab === 'penilaian' && newReport.targetUser) {
            const targetStaff = users.find(u => u.name === newReport.targetUser);
            if (targetStaff) {
@@ -197,6 +196,156 @@ const PIRUApp = () => {
         if (roleName === 'ketua') await updateDoc(ref, { nilaiKetua: grade, status: 'dinilai_ketua' });
         else if (roleName === 'pimpinan') await updateDoc(ref, { nilaiPimpinan: grade, status: 'selesai' });
     }
+  };
+
+  const exportToExcel = async () => {
+    if (filterStaffName === 'Semua' && user.role !== 'pegawai') {
+        alert("Pilih satu nama pegawai terlebih dahulu untuk mencetak CKP.");
+        return;
+    }
+
+    const targetStaff = user.role === 'pegawai' ? user : users.find(u => u.name === filterStaffName);
+    const pimpinan = users.find(u => u.role === 'pimpinan') || { name: '..........................' };
+    const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('CKP');
+
+    // 1. Baris Judul A2
+    sheet.mergeCells('A2:H2');
+    const titleCell = sheet.getCell('A2');
+    titleCell.value = `Capaian Kinerja Pegawai Tahun ${selectedYear}`;
+    titleCell.font = { bold: true, size: 12 };
+    titleCell.alignment = { horizontal: 'center' };
+
+    // 2. Baris Identitas A4-A7
+    const setInfo = (row, label, value) => {
+        sheet.getCell(`A${row}`).value = label;
+        sheet.getCell(`B${row}`).value = `: ${value}`;
+        sheet.getCell(`A${row}`).font = { bold: true };
+    };
+    setInfo(4, 'Unit Kerja', 'BPS Kab. Seram Bagian Barat');
+    setInfo(5, 'Nama', targetStaff?.name || '');
+    setInfo(6, 'Jabatan', targetStaff?.jabatan || '');
+    setInfo(7, 'Periode', `1 - ${lastDay} ${monthNames[selectedMonth-1]} ${selectedYear}`);
+
+    // 3. Header Tabel (Baris 9 & 10)
+    sheet.mergeCells('A9:A10'); sheet.getCell('A9').value = 'No';
+    sheet.mergeCells('B9:B10'); sheet.getCell('B9').value = 'Uraian Kegiatan';
+    sheet.mergeCells('C9:C10'); sheet.getCell('C9').value = 'Satuan';
+    sheet.mergeCells('D9:F9');  sheet.getCell('D9').value = 'Kuantitas';
+    sheet.getCell('D10').value = 'Target'; sheet.getCell('E10').value = 'Realisasi'; sheet.getCell('F10').value = '%';
+    sheet.mergeCells('G9:G10'); sheet.getCell('G9').value = 'Tingkat Kualitas (%)';
+    sheet.mergeCells('H9:H10'); sheet.getCell('H9').value = 'Keterangan';
+
+    // Styling Header Tabel
+    const headerCells = ['A9','B9','C9','D9','G9','H9','D10','E10','F10'];
+    headerCells.forEach(c => {
+        const cell = sheet.getCell(c);
+        cell.fill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFE0E0E0'} };
+        cell.font = { bold: true };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+    });
+
+    // 4. Pengaturan Lebar Kolom (Width)
+    sheet.getColumn(1).width = 8.2;  // No
+    sheet.getColumn(2).width = 60;   // Uraian
+    sheet.getColumn(3).width = 15;   // Satuan
+    sheet.getColumn(4).width = 7.07; // Target
+    sheet.getColumn(5).width = 7.07; // Realisasi
+    sheet.getColumn(6).width = 7.07; // %
+    sheet.getColumn(7).width = 13;   // Kualitas
+    sheet.getColumn(8).width = 45;   // Keterangan
+
+    // 5. Isi Data Laporan
+    let curRow = 11;
+    let sumKuan = 0;
+    let sumKual = 0;
+    const dataCount = currentFilteredReports.length;
+
+    currentFilteredReports.forEach((r, i) => {
+        const row = sheet.getRow(curRow);
+        const kP = (r.realisasi / r.target) * 100;
+        const qP = r.nilaiPimpinan || 0;
+        
+        row.values = [i+1, r.title, r.satuan, r.target, r.realisasi, kP, qP, r.keterangan || ''];
+        row.height = 30; // Row height 30
+
+        row.eachCell({ includeEmpty: true }, (cell, colNum) => {
+            cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+            cell.alignment = { vertical: 'middle', wrapText: true, horizontal: colNum === 2 ? 'left' : 'center' };
+        });
+
+        sumKuan += Math.min(kP, 100);
+        sumKual += qP;
+        curRow++;
+    });
+
+    // 6. Baris Rata-Rata
+    const avgKuan = dataCount > 0 ? sumKuan / dataCount : 0;
+    const avgKual = dataCount > 0 ? sumKual / dataCount : 0;
+
+    sheet.mergeCells(`A${curRow}:E${curRow}`);
+    const avgLabel = sheet.getCell(`A${curRow}`);
+    avgLabel.value = 'Rata-Rata';
+    avgLabel.font = { bold: true };
+    avgLabel.alignment = { horizontal: 'center', vertical: 'middle' };
+    avgLabel.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+
+    const cellKuan = sheet.getCell(`F${curRow}`);
+    cellKuan.value = avgKuan;
+    cellKuan.alignment = { horizontal: 'center' };
+    cellKuan.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+
+    const cellKual = sheet.getCell(`G${curRow}`);
+    cellKual.value = avgKual;
+    cellKual.alignment = { horizontal: 'center' };
+    cellKual.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+    
+    sheet.getCell(`H${curRow}`).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+    curRow++;
+
+    // 7. Baris CKP Akhir
+    sheet.mergeCells(`A${curRow}:E${curRow}`);
+    const ckpLabel = sheet.getCell(`A${curRow}`);
+    ckpLabel.value = 'Capaian Kinerja Pegawai (CKP)';
+    ckpLabel.font = { bold: true };
+    ckpLabel.alignment = { horizontal: 'center', vertical: 'middle' };
+    ckpLabel.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+
+    const cellFinal = sheet.getCell(`F${curRow}`);
+    cellFinal.value = (avgKuan + avgKual) / 2;
+    cellFinal.font = { bold: true };
+    cellFinal.alignment = { horizontal: 'center' };
+    cellFinal.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+    
+    sheet.getCell(`G${curRow}`).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+    sheet.getCell(`H${curRow}`).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+    curRow += 2;
+
+    // 8. Legalitas (Tanda Tangan)
+    sheet.mergeCells(`F${curRow}:H${curRow}`);
+    const tglCell = sheet.getCell(`F${curRow}`);
+    tglCell.value = `Penilaian Kinerja : ${lastDay} ${monthNames[selectedMonth-1]} ${selectedYear}`;
+    tglCell.alignment = { horizontal: 'center' };
+    curRow += 2;
+
+    sheet.mergeCells(`F${curRow}:H${curRow}`);
+    const penilaiCell = sheet.getCell(`F${curRow}`);
+    penilaiCell.value = 'Pejabat Penilai,';
+    penilaiCell.alignment = { horizontal: 'center' };
+    curRow += 4;
+
+    sheet.mergeCells(`F${curRow}:H${curRow}`);
+    const pimpNameCell = sheet.getCell(`F${curRow}`);
+    pimpNameCell.value = pimpinan.name;
+    pimpNameCell.font = { bold: true, underline: true };
+    pimpNameCell.alignment = { horizontal: 'center' };
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `CKP_${targetStaff?.name}_${monthNames[selectedMonth-1]}.xlsx`);
   };
 
   const currentFilteredReports = useMemo(() => {
@@ -245,7 +394,6 @@ const PIRUApp = () => {
 
   return (
     <div className="h-screen bg-slate-50 flex font-sans overflow-hidden text-slate-800 italic">
-      {/* SIDEBAR FIXED */}
       <div className="w-72 bg-white border-r p-8 flex flex-col font-sans h-full sticky top-0 not-italic">
         <div className="flex items-center gap-4 mb-14 px-2 italic">
           <div className="bg-indigo-600 p-3 rounded-2xl text-white shadow-lg"><ShieldCheck size={28}/></div>
@@ -253,11 +401,9 @@ const PIRUApp = () => {
         </div>
         <nav className="flex-1 space-y-3 font-sans not-italic">
           <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><BarChart3 size={20}/> Dashboard</button>
-          
           {user.role !== 'admin' && (
             <button onClick={() => setActiveTab('laporan')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'laporan' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><FileText size={20}/> Entri Pekerjaan</button>
           )}
-
           {['admin', 'pimpinan', 'ketua'].includes(user.role) && (
             <button onClick={() => setActiveTab('penilaian')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'penilaian' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><ClipboardCheck size={20}/> Penilaian Anggota</button>
           )}
@@ -267,7 +413,6 @@ const PIRUApp = () => {
       </div>
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden font-sans italic">
-        {/* HEADER STICKY */}
         <header className="p-10 pb-4 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8 italic sticky top-0 bg-slate-50 z-20">
           <div className="flex-1 max-w-md italic">
             <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase leading-none italic break-words">{user.name}</h1>
@@ -288,12 +433,11 @@ const PIRUApp = () => {
             <select className="bg-white border border-slate-200 rounded-xl px-3 py-2 font-black text-[10px] text-slate-600 outline-none shadow-sm cursor-pointer italic" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
               {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
             </select>
-            <button className="bg-green-600 text-white px-4 py-2.5 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-md italic"><Download size={14}/> Cetak</button>
+            <button onClick={exportToExcel} className="bg-green-600 text-white px-4 py-2.5 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-md italic"><Download size={14}/> Cetak</button>
             <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-black uppercase text-[10px] shadow-lg flex items-center gap-2 italic"><Plus size={14}/> Entri</button>
           </div>
         </header>
 
-        {/* SCROLLABLE CONTENT */}
         <div className="flex-1 overflow-y-auto p-10 pt-0 custom-scrollbar">
           {activeTab === 'dashboard' && (
             <div className="animate-in fade-in duration-500 italic">
@@ -387,7 +531,6 @@ const PIRUApp = () => {
         </div>
       </main>
 
-      {/* MODAL LAPORAN */}
       {showReportModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-50 font-sans italic">
           <form onSubmit={handleSubmitReport} className="bg-white w-full max-w-2xl rounded-[3.5rem] p-12 shadow-2xl relative italic">
@@ -414,7 +557,6 @@ const PIRUApp = () => {
         </div>
       )}
 
-      {/* MODAL USER */}
       {showUserModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-50 font-sans italic">
           <form onSubmit={handleAddOrEditUser} className="bg-white w-full max-w-xl rounded-[3rem] p-12 shadow-2xl relative italic">
