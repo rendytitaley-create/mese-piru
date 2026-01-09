@@ -117,7 +117,6 @@ const PIRUApp = () => {
         let initialNilaiPimpinan = 0;
         let initialNilaiKetua = 0;
 
-        // PERBAIKAN: Izinkan Ketua Tim, Pimpinan, dan Admin menggunakan mode entri sekaligus
         if (['pimpinan', 'admin', 'ketua'].includes(user.role) && newReport.targetUser) {
            const targetStaff = users.find(u => u.name === newReport.targetUser);
            if (targetStaff) {
@@ -279,8 +278,8 @@ const PIRUApp = () => {
     <div className="h-screen bg-slate-900 flex items-center justify-center p-4 italic">
       <div className="bg-white w-full max-w-md rounded-[2.5rem] p-12 shadow-2xl text-center font-sans">
         <ShieldCheck size={45} className="text-indigo-600 mx-auto mb-6" />
-        <h1 className="text-4xl font-black mb-1 tracking-tighter text-slate-800 uppercase italic leading-none">PIRU</h1>
-        <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-10 leading-none italic">BPS Kabupaten Seram Bagian Barat</p>
+        <h1 className="text-4xl font-black mb-1 tracking-tighter text-slate-800 uppercase italic">PIRU</h1>
+        <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-10 italic">BPS KABUPATEN SERAM BAGIAN BARAT</p>
         <form onSubmit={handleLogin} className="space-y-4 text-left font-sans not-italic">
           <input type="text" placeholder="Username" className="w-full p-5 bg-slate-50 border rounded-2xl outline-none font-bold" onChange={e => setAuthForm({...authForm, username: e.target.value})} />
           <input type="password" placeholder="Password" className="w-full p-5 bg-slate-50 border rounded-2xl outline-none font-bold" onChange={e => setAuthForm({...authForm, password: e.target.value})} />
@@ -386,11 +385,29 @@ const PIRUApp = () => {
         )}
 
         {activeTab === 'users' && (
-          <div className="bg-white rounded-[3.5rem] shadow-sm border p-10 space-y-8 italic">
-            <table className="w-full text-left italic">
-              <thead><tr className="bg-slate-50 border-b text-[10px] font-black text-slate-400 uppercase tracking-widest italic"><th className="p-8 italic">Nama</th><th className="p-8 italic">Role</th><th className="p-8 text-center italic">Aksi</th></tr></thead>
-              <tbody>{users.map(u => (<tr key={u.firestoreId} className="border-b hover:bg-slate-50 italic"><td className="p-8 italic font-black text-slate-800 uppercase">{u.name}</td><td className="p-8 italic font-bold text-slate-500 text-xs uppercase">{u.role}</td><td className="p-8 text-center italic"><button onClick={() => deleteDoc(doc(db, "users", u.firestoreId))} className="p-4 bg-red-50 text-red-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-sm italic"><Trash2 size={20}/></button></td></tr>))}</tbody>
-            </table>
+          <div className="bg-white rounded-[3.5rem] shadow-sm border p-10 space-y-8 italic font-sans not-italic">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-black uppercase tracking-tighter italic">Daftar Pegawai</h2>
+              <button onClick={() => setShowUserModal(true)} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black uppercase text-[10px] transition-all active:scale-95 shadow-lg flex items-center gap-2 italic"><UserPlus size={14}/> Tambah Pegawai</button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-slate-50 border-b text-[10px] font-black text-slate-400 uppercase tracking-widest italic">
+                  <tr><th className="p-8">Nama</th><th className="p-8">Role</th><th className="p-8 text-center">Aksi</th></tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50 font-bold italic">
+                  {users.map(u => (
+                    <tr key={u.firestoreId} className="hover:bg-slate-50/50 transition-all italic">
+                      <td className="p-8 uppercase font-black italic">{u.name}</td>
+                      <td className="p-8 uppercase text-[10px] italic"><span className="bg-slate-100 px-3 py-1 rounded-full italic">{u.role}</span></td>
+                      <td className="p-8 text-center italic">
+                        <button onClick={() => deleteDoc(doc(db, "users", u.firestoreId))} className="p-3 bg-red-50 text-red-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-sm italic"><Trash2 size={18}/></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </main>
