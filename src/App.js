@@ -13,6 +13,7 @@ import {
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
+// === CONFIG FIREBASE ANDA ===
 const firebaseConfig = {
   apiKey: "AIzaSyDVRt3zgojeVh8ek61yXFQ9r9ihpOt7BqQ",
   authDomain: "piru8106-b4f0a.firebaseapp.com",
@@ -177,13 +178,16 @@ const PIRUApp = () => {
     const pimpinan = users.find(u => u.role === 'pimpinan') || { name: '..........................' };
     const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
     const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+    
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('CKP');
+    
     sheet.mergeCells('A2:H2');
     const titleCell = sheet.getCell('A2');
     titleCell.value = `Capaian Kinerja Pegawai Tahun ${selectedYear}`;
     titleCell.font = { bold: true, size: 12 };
     titleCell.alignment = { horizontal: 'center' };
+    
     const setInfo = (row, label, value) => {
         sheet.getCell(`A${row}`).value = label;
         sheet.getCell(`B${row}`).value = `: ${value}`;
@@ -193,6 +197,7 @@ const PIRUApp = () => {
     setInfo(5, 'Nama', targetStaff?.name || '');
     setInfo(6, 'Jabatan', targetStaff?.jabatan || '');
     setInfo(7, 'Periode', `1 - ${lastDay} ${monthNames[selectedMonth-1]} ${selectedYear}`);
+    
     sheet.mergeCells('A9:A10'); sheet.getCell('A9').value = 'No';
     sheet.mergeCells('B9:B10'); sheet.getCell('B9').value = 'Uraian Kegiatan';
     sheet.mergeCells('C9:C10'); sheet.getCell('C9').value = 'Satuan';
@@ -200,6 +205,7 @@ const PIRUApp = () => {
     sheet.getCell('D10').value = 'Target'; sheet.getCell('E10').value = 'Realisasi'; sheet.getCell('F10').value = '%';
     sheet.mergeCells('G9:G10'); sheet.getCell('G9').value = 'Tingkat Kualitas (%)';
     sheet.mergeCells('H9:H10'); sheet.getCell('H9').value = 'Keterangan';
+    
     const headerCells = ['A9','B9','C9','D9','G9','H9','D10','E10','F10'];
     headerCells.forEach(c => {
         const cell = sheet.getCell(c);
@@ -208,9 +214,11 @@ const PIRUApp = () => {
         cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
     });
+    
     sheet.getColumn(1).width = 8.2; sheet.getColumn(2).width = 60; sheet.getColumn(3).width = 15;
     sheet.getColumn(4).width = 7.07; sheet.getColumn(5).width = 7.07; sheet.getColumn(6).width = 7.07;
     sheet.getColumn(7).width = 10; sheet.getColumn(8).width = 45;
+    
     let curRow = 11;
     let sumKuan = 0; let sumKual = 0;
     const dataCount = currentFilteredReports.length;
@@ -226,42 +234,66 @@ const PIRUApp = () => {
         });
         sumKuan += Math.min(kP, 100); sumKual += qP; curRow++;
     });
+    
     const avgKuan = dataCount > 0 ? sumKuan / dataCount : 0;
     const avgKual = dataCount > 0 ? sumKual / dataCount : 0;
+    
+    // Rata-Rata Footer
     sheet.mergeCells(`A${curRow}:E${curRow}`);
     const avgLabel = sheet.getCell(`A${curRow}`);
     avgLabel.value = 'Rata-Rata'; avgLabel.font = { bold: true };
     avgLabel.alignment = { horizontal: 'center', vertical: 'middle' };
-    avgLabel.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-    ['F', 'G', 'H'].forEach(col => {
-      const c = sheet.getCell(`${col}${curRow}`);
-      if(col === 'F') c.value = avgKuan;
-      if(col === 'G') c.value = avgKual;
-      c.alignment = { horizontal: 'center' };
-      c.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-    });
+    
+    // Perbaikan Borders Rata-rata
+    for (let i = 1; i <= 8; i++) {
+      const cell = sheet.getRow(curRow).getCell(i);
+      cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+    }
+    sheet.getCell(`F${curRow}`).value = avgKuan;
+    sheet.getCell(`G${curRow}`).value = avgKual;
+    sheet.getCell(`F${curRow}`).alignment = { horizontal: 'center' };
+    sheet.getCell(`G${curRow}`).alignment = { horizontal: 'center' };
     curRow++;
+    
+    // Baris Capaian Kinerja Pegawai (CKP)
     sheet.mergeCells(`A${curRow}:E${curRow}`);
-    sheet.getCell(`A${curRow}`).value = 'Capaian Kinerja Pegawai (CKP)';
-    sheet.getCell(`A${curRow}`).font = { bold: true };
+    const ckpLabel = sheet.getCell(`A${curRow}`);
+    ckpLabel.value = 'Capaian Kinerja Pegawai (CKP)';
+    ckpLabel.font = { bold: true };
+    ckpLabel.alignment = { horizontal: 'center', vertical: 'middle' }; // Sesuai koreksi Bapak
+    
     sheet.mergeCells(`F${curRow}:G${curRow}`);
     const cellFinal = sheet.getCell(`F${curRow}`);
     cellFinal.value = Math.round((avgKuan + avgKual) / 2);
     cellFinal.font = { bold: true };
     cellFinal.alignment = { horizontal: 'center', vertical: 'middle' };
-    cellFinal.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-    sheet.getCell(`H${curRow}`).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+    
+    // Perbaikan Borders Baris CKP
+    for (let i = 1; i <= 8; i++) {
+      const cell = sheet.getRow(curRow).getCell(i);
+      cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+    }
     curRow += 2;
+    
+    // Area Pengesahan (Posisi Centre Horizontal)
     sheet.mergeCells(`F${curRow}:H${curRow}`);
-    sheet.getCell(`F${curRow}`).value = `Penilaian Kinerja : ${lastDay} ${monthNames[selectedMonth-1]} ${selectedYear}`;
+    const tglCell = sheet.getCell(`F${curRow}`);
+    tglCell.value = `Penilaian Kinerja : ${lastDay} ${monthNames[selectedMonth-1]} ${selectedYear}`;
+    tglCell.alignment = { horizontal: 'center' };
     curRow += 2;
+    
     sheet.mergeCells(`F${curRow}:H${curRow}`);
-    sheet.getCell(`F${curRow}`).value = 'Pejabat Penilai,';
+    const pimpLabel = sheet.getCell(`F${curRow}`);
+    pimpLabel.value = 'Pejabat Penilai,';
+    pimpLabel.alignment = { horizontal: 'center' };
     curRow += 4;
+    
     sheet.mergeCells(`F${curRow}:H${curRow}`);
     const pimpNameCell = sheet.getCell(`F${curRow}`);
-    pimpNameCell.value = pimpinan.name; pimpNameCell.font = { bold: true, underline: true };
+    pimpNameCell.value = pimpinan.name;
+    pimpNameCell.font = { bold: true, underline: true };
     pimpNameCell.alignment = { horizontal: 'center' };
+    
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), `CKP_${targetStaff?.name}_${monthNames[selectedMonth-1]}.xlsx`);
   };
@@ -317,7 +349,6 @@ const PIRUApp = () => {
 
   return (
     <div className="h-screen bg-slate-50 flex flex-col md:flex-row font-sans overflow-hidden text-slate-800 italic">
-      {/* SIDEBAR DESKTOP */}
       <div className="hidden md:flex w-72 bg-white border-r p-8 flex-col h-full sticky top-0 not-italic">
         <div className="flex items-center gap-4 mb-14 px-2 italic">
           <div className="bg-indigo-600 p-3 rounded-2xl text-white shadow-lg"><ShieldCheck size={28}/></div>
@@ -339,11 +370,8 @@ const PIRUApp = () => {
             <p className="text-slate-400 font-bold uppercase tracking-widest text-[8px] mt-2 inline-block bg-white px-3 py-1 rounded-full border border-slate-100 italic">{user.jabatan || user.role}</p>
           </div>
           <div className="flex items-center gap-4 md:gap-3 not-italic">
-             {/* Header Action HP: Jarak Aman */}
              <button onClick={exportToExcel} className="md:hidden p-2 text-green-600 bg-white rounded-xl shadow-sm border border-slate-100"><Download size={22}/></button>
              <button onClick={() => {localStorage.clear(); window.location.reload();}} className="md:hidden p-2 text-red-500 bg-white rounded-xl shadow-sm border border-slate-100"><LogOut size={22}/></button>
-             
-             {/* Desktop Action */}
              <div className="hidden md:flex items-center gap-3">
                {activeTab === 'penilaian' && (
                   <>
@@ -366,7 +394,6 @@ const PIRUApp = () => {
         </header>
 
         <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-0 custom-scrollbar mb-20 md:mb-0">
-          {/* Dashboard (PC: p-10, HP: p-0) */}
           {activeTab === 'dashboard' && (
             <div className="animate-in fade-in duration-500 italic">
               {['admin', 'pimpinan'].includes(user.role) ? (
@@ -418,7 +445,6 @@ const PIRUApp = () => {
 
           {(activeTab === 'laporan' || activeTab === 'penilaian') && (
             <div className="italic">
-              {/* Filter HP khusus Penilaian */}
               <div className="md:hidden flex flex-col gap-3 mb-4 not-italic">
                 {activeTab === 'penilaian' && (
                   <select className="w-full p-3 bg-white border border-slate-200 rounded-xl font-black text-[10px] text-slate-600 shadow-sm italic outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
@@ -431,7 +457,6 @@ const PIRUApp = () => {
                 )}
               </div>
 
-              {/* PC View Table (Utuh) */}
               <div className="hidden md:block bg-white rounded-[2.5rem] shadow-sm border p-6 space-y-8 italic mb-10">
                 <table className="w-full text-left italic text-xs border-collapse">
                   <thead className="bg-slate-50 border-b text-[9px] font-black text-slate-400 uppercase tracking-widest italic sticky top-0 z-10">
@@ -447,14 +472,13 @@ const PIRUApp = () => {
                         <td className="p-4 text-center font-black text-indigo-600 italic">{((r.realisasi/r.target)*100).toFixed(0)}%</td>
                         <td className="p-4 text-center font-black text-slate-300 text-lg italic"><div className="relative group inline-block">{r.nilaiKetua || '-'}{user.role === 'admin' && activeTab === 'penilaian' && r.nilaiKetua > 0 && (<button onClick={() => clearGrade(r.id, 'nilaiKetua')} className="absolute -top-1 -right-3 text-red-400 opacity-0 group-hover:opacity-100 italic"><Trash2 size={10}/></button>)}</div></td>
                         <td className="p-4 text-center font-black text-indigo-600 text-lg italic"><div className="relative group inline-block">{r.nilaiPimpinan || '-'}{user.role === 'admin' && activeTab === 'penilaian' && r.nilaiPimpinan > 0 && (<button onClick={() => clearGrade(r.id, 'nilaiPimpinan')} className="absolute -top-1 -right-3 text-red-400 opacity-0 group-hover:opacity-100 italic"><Trash2 size={10}/></button>)}</div></td>
-                        <td className="p-4 text-center italic"><div className="flex justify-center gap-1 italic">{activeTab === 'laporan' && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button></>}{activeTab === 'penilaian' && (<>{['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Ketua</button>}{['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Pimp</button>}</>)}</div></td>
+                        <td className="p-4 text-center italic"><div className="flex justify-center gap-1 italic">{activeTab === 'laporan' && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button></>}{activeTab === 'penilaian' && (<>{['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase shadow-sm italic">Ketua</button>}{['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase shadow-sm italic">Pimp</button>}</>)}</div></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
 
-              {/* Mobile View Card */}
               <div className="md:hidden space-y-4 mb-24">
                 {currentFilteredReports.map((r, idx) => (
                   <div key={r.id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 italic">
@@ -472,7 +496,6 @@ const PIRUApp = () => {
           )}
         </div>
 
-        {/* FAB MOBILE - KHUSUS ENTRI PEKERJAAN */}
         {user.role !== 'admin' && (
           <button 
             onClick={() => { resetReportForm(); setShowReportModal(true); }}
@@ -482,7 +505,6 @@ const PIRUApp = () => {
           </button>
         )}
 
-        {/* BOTTOM NAV HP */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-4 pb-6 flex justify-around items-center z-40 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] not-italic">
           <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-300'}`}><LayoutDashboard size={24}/><span className="text-[8px] font-black uppercase">Home</span></button>
           {user.role !== 'admin' && (<button onClick={() => setActiveTab('laporan')} className={`flex flex-col items-center gap-1 ${activeTab === 'laporan' ? 'text-indigo-600' : 'text-slate-300'}`}><FileText size={24}/><span className="text-[8px] font-black uppercase">Entri</span></button>)}
@@ -491,10 +513,9 @@ const PIRUApp = () => {
         </div>
       </main>
 
-      {/* MODAL LAPORAN */}
       {showReportModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-50 font-sans italic">
-          <form onSubmit={handleSubmitReport} className="bg-white w-full max-w-2xl rounded-[3rem] p-8 md:p-12 shadow-2xl relative italic">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[100] font-sans italic">
+          <form onSubmit={handleSubmitReport} className="bg-white w-full max-w-2xl rounded-[3rem] p-8 md:p-12 shadow-2xl relative italic max-h-[90vh] overflow-y-auto">
             <button type="button" onClick={() => { resetReportForm(); setShowReportModal(false); }} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
             <h3 className="text-2xl font-black uppercase tracking-tighter mb-8 text-slate-800 italic">{isEditing ? "Update Pekerjaan" : (activeTab === 'penilaian' ? "Entri Anggota" : "Entri Pekerjaan Saya")}</h3>
             <div className="space-y-4 italic">
@@ -513,28 +534,27 @@ const PIRUApp = () => {
                <datalist id="satuan-list"><option value="Dokumen"/><option value="Kegiatan"/><option value="Laporan"/><option value="Paket"/></datalist>
                <textarea className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold h-24 resize-none text-slate-600 border border-slate-100 italic" placeholder="Keterangan..." value={newReport.keterangan} onChange={e => setNewReport({...newReport, keterangan: e.target.value})} />
             </div>
-            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-5 rounded-2xl shadow-xl uppercase tracking-widest text-[10px] mt-6 italic">Simpan Data</button>
+            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-6 rounded-2xl shadow-xl uppercase tracking-widest text-xs mt-8 italic">Simpan Data</button>
           </form>
         </div>
       )}
 
-      {/* MODAL USER */}
       {showUserModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-50 font-sans italic">
-          <form onSubmit={handleAddOrEditUser} className="bg-white w-full max-w-xl rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative italic">
-            <button type="button" onClick={() => { setShowUserModal(false); resetUserForm(); }} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
-            <h3 className="text-xl font-black uppercase tracking-tighter mb-8 text-slate-800 italic">{isEditingUser ? "Edit Akun" : "Tambah Pegawai"}</h3>
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[100] font-sans italic">
+          <form onSubmit={handleAddOrEditUser} className="bg-white w-full max-w-xl rounded-[3rem] p-12 shadow-2xl relative italic">
+            <button type="button" onClick={() => { setShowUserModal(false); resetUserForm(); }} className="absolute top-8 right-8 p-4 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
+            <h3 className="text-2xl font-black uppercase tracking-tighter mb-8 text-slate-800 italic">{isEditingUser ? "Edit Akun Pegawai" : "Tambah Pegawai"}</h3>
             <div className="space-y-4 italic">
-                <input required type="text" placeholder="Nama Lengkap" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} />
+                <input required type="text" placeholder="Nama Lengkap" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} />
                 <div className="grid grid-cols-2 gap-4 italic">
-                    <input required type="text" placeholder="Username" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} />
-                    <input required type="password" placeholder="Password" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
+                    <input required type="text" placeholder="Username" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} />
+                    <input required type="password" placeholder="Password" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
                 </div>
-                <input type="text" placeholder="Jabatan" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.jabatan} onChange={e => setNewUser({...newUser, jabatan: e.target.value})} />
-                <select className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-600 border border-slate-100 italic" value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
+                <input type="text" placeholder="Jabatan" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.jabatan} onChange={e => setNewUser({...newUser, jabatan: e.target.value})} />
+                <select className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-600 border border-slate-100 italic" value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
                     <option value="pegawai">Pegawai</option><option value="ketua">Ketua Tim</option><option value="pimpinan">Pimpinan</option><option value="admin">Admin</option>
                 </select>
-                <button type="submit" className="w-full bg-indigo-600 text-white font-black py-5 rounded-2xl shadow-xl uppercase tracking-widest text-[10px] mt-6 italic transition-all active:scale-95">Simpan</button>
+                <button type="submit" className="w-full bg-indigo-600 text-white font-black py-6 rounded-2xl shadow-xl uppercase tracking-widest text-[10px] mt-6 italic transition-all active:scale-95">Simpan</button>
             </div>
           </form>
         </div>
