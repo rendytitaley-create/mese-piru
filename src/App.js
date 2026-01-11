@@ -3,12 +3,12 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { 
   getFirestore, collection, addDoc, updateDoc, doc, onSnapshot, 
-  serverTimestamp, query, orderBy, deleteDoc, enableIndexedDbPersistence, writeBatch, where, getDocs
+  serverTimestamp, query, orderBy, deleteDoc, enableIndexedDbPersistence, writeBatch, setDoc
 } from 'firebase/firestore';
 import { 
   ShieldCheck, Loader2, Plus, X, BarChart3, FileText, 
   LogOut, Trash2, Edit3, TrendingUp, Clock, Zap, UserPlus, Users, Download, ClipboardCheck, CheckCircle2,
-  LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff
+  LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, Image as ImageIcon
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -36,6 +36,7 @@ const PIRUApp = () => {
   const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState([]);
   const [users, setUsers] = useState([]);
+  const [appSettings, setAppSettings] = useState({ logoURL: null });
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -71,7 +72,11 @@ const PIRUApp = () => {
     const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
       setUsers(snap.docs.map(d => ({ firestoreId: d.id, ...d.data() })));
     });
-    return () => { unsubAuth(); unsubUsers(); };
+    // Ambil Pengaturan Logo Global
+    const unsubSettings = onSnapshot(doc(db, "settings", "app"), (docSnap) => {
+      if (docSnap.exists()) setAppSettings(docSnap.data());
+    });
+    return () => { unsubAuth(); unsubUsers(); unsubSettings(); };
   }, []);
 
   useEffect(() => {
@@ -82,6 +87,31 @@ const PIRUApp = () => {
     });
     return () => unsubReports();
   }, [user]);
+
+  const handleLogoUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = async () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 500;
+        let width = img.width; let height = img.height;
+        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const base64 = canvas.toDataURL('image/png', 0.8);
+        try {
+          await setDoc(doc(db, "settings", "app"), { logoURL: base64 }, { merge: true });
+          alert("Logo aplikasi berhasil diperbarui secara global.");
+        } catch (err) { alert("Gagal mengunggah logo."); }
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
@@ -269,7 +299,12 @@ const PIRUApp = () => {
   if (!user) return (
     <div className="h-screen bg-slate-900 flex items-center justify-center p-4 italic">
       <div className="bg-white w-full max-w-md rounded-[2.5rem] p-12 shadow-2xl text-center font-sans">
-        <ShieldCheck size={45} className="text-indigo-600 mx-auto mb-6" />
+        {/* LOGO DINAMIS DI LOGIN */}
+        {appSettings.logoURL ? (
+            <img src={appSettings.logoURL} alt="Logo" className="h-16 mx-auto mb-6 object-contain" />
+        ) : (
+            <ShieldCheck size={45} className="text-indigo-600 mx-auto mb-6" />
+        )}
         <h1 className="text-4xl font-black mb-1 tracking-tighter text-slate-800 uppercase italic leading-none">PIRU</h1>
         <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1 leading-none italic">Penilaian Kinerja Bulanan</p>
         <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-10 text-center leading-none italic">BPS Kabupaten Seram Bagian Barat</p>
@@ -290,7 +325,14 @@ const PIRUApp = () => {
     <div className="h-screen bg-slate-50 flex flex-col md:flex-row font-sans overflow-hidden text-slate-800 italic">
       <div className="hidden md:flex w-72 bg-white border-r p-8 flex-col h-full sticky top-0 not-italic">
         <div className="flex items-center gap-4 mb-14 px-2 italic">
-          <div className="bg-indigo-600 p-3 rounded-2xl text-white shadow-lg"><ShieldCheck size={28}/></div>
+          {/* LOGO DINAMIS DI SIDEBAR */}
+          <div className="p-2 rounded-2xl text-white">
+            {appSettings.logoURL ? (
+                <img src={appSettings.logoURL} alt="Logo" className="w-12 h-12 object-contain" />
+            ) : (
+                <div className="bg-indigo-600 p-3 rounded-2xl"><ShieldCheck size={28}/></div>
+            )}
+          </div>
           <div><h2 className="font-black text-2xl uppercase tracking-tighter leading-none italic">PIRU</h2><p className="text-[8px] font-black text-indigo-600 uppercase tracking-widest mt-1 italic">Penilaian Kinerja Bulanan</p></div>
         </div>
         <nav className="flex-1 space-y-3 font-sans not-italic">
@@ -382,23 +424,39 @@ const PIRUApp = () => {
           )}
 
           {activeTab === 'users' && (
-            <div className="bg-white rounded-[2.5rem] shadow-sm border overflow-hidden p-6 italic mb-10">
-              <table className="w-full text-left text-xs italic">
-                <thead><tr className="bg-slate-50 border-b text-[9px] font-black text-slate-400 uppercase italic"><th className="p-4">Pegawai</th><th className="p-4 text-center">Aksi</th></tr></thead>
-                <tbody>{users.map(u => (<tr key={u.firestoreId} className="border-b hover:bg-slate-50 italic"><td className="p-4 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0">
-                    {u.photoURL ? <img src={u.photoURL} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-400">{u.name.charAt(0)}</div>}
-                  </div>
-                  <div><p className="font-black text-slate-800 uppercase tracking-tighter leading-none">{u.name}</p><p className="text-indigo-500 text-[8px] font-bold mt-1">@{u.username} | {u.role}</p></div>
-                </td><td className="p-4 text-center"><div className="flex justify-center gap-2"><button onClick={() => { setIsEditingUser(true); setCurrentUserId(u.firestoreId); setNewUser({ name: u.name, username: u.username, password: u.password, role: u.role, jabatan: u.jabatan, photoURL: u.photoURL || '' }); setShowUserModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button><button onClick={() => deleteDoc(doc(db, "users", u.firestoreId))} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button></div></td></tr>))}</tbody>
-              </table>
-              <button onClick={() => { resetUserForm(); setShowUserModal(true); }} className="mt-4 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 italic"><UserPlus size={14}/> Tambah Pegawai</button>
+            <div className="italic mb-10">
+              <div className="bg-white rounded-[2.5rem] shadow-sm border overflow-hidden p-6 italic mb-6">
+                <table className="w-full text-left text-xs italic">
+                  <thead><tr className="bg-slate-50 border-b text-[9px] font-black text-slate-400 uppercase italic"><th className="p-4">Pegawai</th><th className="p-4 text-center">Aksi</th></tr></thead>
+                  <tbody>{users.map(u => (<tr key={u.firestoreId} className="border-b hover:bg-slate-50 italic"><td className="p-4 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0">
+                      {u.photoURL ? <img src={u.photoURL} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-400">{u.name.charAt(0)}</div>}
+                    </div>
+                    <div><p className="font-black text-slate-800 uppercase tracking-tighter leading-none">{u.name}</p><p className="text-indigo-500 text-[8px] font-bold mt-1">@{u.username} | {u.role}</p></div>
+                  </td><td className="p-4 text-center"><div className="flex justify-center gap-2"><button onClick={() => { setIsEditingUser(true); setCurrentUserId(u.firestoreId); setNewUser({ name: u.name, username: u.username, password: u.password, role: u.role, jabatan: u.jabatan, photoURL: u.photoURL || '' }); setShowUserModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button><button onClick={() => deleteDoc(doc(db, "users", u.firestoreId))} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button></div></td></tr>))}</tbody>
+                </table>
+                <button onClick={() => { resetUserForm(); setShowUserModal(true); }} className="mt-4 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 italic"><UserPlus size={14}/> Tambah Pegawai</button>
+              </div>
+
+              {/* FITUR UNTUK ADMIN MENGGANTI LOGO APLIKASI */}
+              {user.role === 'admin' && (
+                <div className="bg-white rounded-[2.5rem] shadow-sm border p-8 flex flex-col md:flex-row items-center gap-8 italic">
+                   <div className="w-32 h-32 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group">
+                      {appSettings.logoURL ? ( <img src={appSettings.logoURL} className="w-full h-full object-contain p-2" /> ) : ( <ImageIcon size={32} className="text-slate-300" /> )}
+                      <input type="file" accept="image/png, image/jpeg" onChange={handleLogoUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+                   </div>
+                   <div className="flex-1 text-center md:text-left italic">
+                      <h4 className="font-black text-slate-800 uppercase tracking-tighter mb-1 italic">Logo Aplikasi Global</h4>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase italic mb-4">Ganti logo pada halaman Login dan Sidebar untuk semua user</p>
+                      <label className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] cursor-pointer inline-block transition-all active:scale-95 italic">Pilih Logo Baru</label>
+                   </div>
+                </div>
+              )}
             </div>
           )}
 
           {(activeTab === 'laporan' || activeTab === 'penilaian') && (
             <div className="italic">
-              {/* DESKTOP TABLE VIEW */}
               <div className="hidden md:block bg-white rounded-[2.5rem] shadow-sm border p-0 overflow-hidden italic mb-10">
                 <table className="w-full text-left italic text-xs border-collapse">
                   <thead className="bg-slate-100 border-b text-[9px] font-black text-slate-500 uppercase tracking-widest italic sticky top-0 z-20">
@@ -421,7 +479,7 @@ const PIRUApp = () => {
                 </table>
               </div>
 
-              {/* MOBILE CARD VIEW (SANGAT TELITI: DIKUNCI AGAR TIDAK HILANG) */}
+              {/* MOBILE CARD VIEW - TETAP UTUH */}
               <div className="md:hidden space-y-4 pb-12">
                 {activeTab === 'penilaian' && (
                   <div className="flex flex-col gap-3 mb-4 not-italic">
@@ -481,7 +539,6 @@ const PIRUApp = () => {
         </div>
       </main>
 
-      {/* Modals with Eye Icon - Verified Integrity */}
       {showPasswordModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[100] font-sans italic">
           <form onSubmit={handleUpdatePassword} className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl relative italic">
