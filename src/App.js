@@ -48,7 +48,6 @@ const PIRUApp = () => {
   const [authError, setAuthError] = useState('');
   const [newPasswordData, setNewPasswordData] = useState({ current: '', new: '' });
 
-  // State untuk Ikon Mata (Show/Hide Password)
   const [showLoginPass, setShowLoginPass] = useState(false);
   const [showAdminPass, setShowAdminPass] = useState(false);
   const [showCurrentPass, setShowCurrentPass] = useState(false);
@@ -214,109 +213,32 @@ const PIRUApp = () => {
     const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('CKP');
-    
-    sheet.mergeCells('A2:H2'); 
-    const titleCell = sheet.getCell('A2'); 
-    titleCell.value = `Capaian Kinerja Pegawai Tahun ${selectedYear}`; 
-    titleCell.font = { bold: true, size: 12 }; 
-    titleCell.alignment = { horizontal: 'center' };
-    
-    const setInfo = (row, label, value) => { 
-      sheet.getCell(`A${row}`).value = label; 
-      sheet.getCell(`B${row}`).value = `: ${value}`; 
-      sheet.getCell(`A${row}`).font = { bold: true }; 
-    };
-    setInfo(4, 'Unit Kerja', 'BPS Kab. Seram Bagian Barat'); 
-    setInfo(5, 'Nama', targetStaff?.name || ''); 
-    setInfo(6, 'Jabatan', targetStaff?.jabatan || ''); 
-    setInfo(7, 'Periode', `1 - ${lastDay} ${monthNames[selectedMonth-1]} ${selectedYear}`);
-    
-    sheet.mergeCells('A9:A10'); sheet.getCell('A9').value = 'No'; 
-    sheet.mergeCells('B9:B10'); sheet.getCell('B9').value = 'Uraian Kegiatan'; 
-    sheet.mergeCells('C9:C10'); sheet.getCell('C9').value = 'Satuan'; 
-    sheet.mergeCells('D9:F9');  sheet.getCell('D9').value = 'Kuantitas'; 
-    sheet.getCell('D10').value = 'Target'; sheet.getCell('E10').value = 'Realisasi'; sheet.getCell('F10').value = '%'; 
-    sheet.mergeCells('G9:G10'); sheet.getCell('G9').value = 'Tingkat Kualitas (%)'; 
-    sheet.mergeCells('H9:H10'); sheet.getCell('H9').value = 'Keterangan';
-    
-    const headerCells = ['A9','B9','C9','D9','G9','H9','D10','E10','F10']; 
-    headerCells.forEach(c => { 
-      const cell = sheet.getCell(c); 
-      cell.fill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFE0E0E0'} }; 
-      cell.font = { bold: true }; 
-      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; 
-      cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; 
-    });
-    
-    sheet.getColumn(1).width = 8.2; sheet.getColumn(2).width = 60; sheet.getColumn(3).width = 15; 
-    sheet.getColumn(4).width = 7.07; sheet.getColumn(5).width = 7.07; sheet.getColumn(6).width = 7.07; 
-    sheet.getColumn(7).width = 10; sheet.getColumn(8).width = 45;
-    
+    sheet.mergeCells('A2:H2'); const titleCell = sheet.getCell('A2'); titleCell.value = `Capaian Kinerja Pegawai Tahun ${selectedYear}`; titleCell.font = { bold: true, size: 12 }; titleCell.alignment = { horizontal: 'center' };
+    const setInfo = (row, label, value) => { sheet.getCell(`A${row}`).value = label; sheet.getCell(`B${row}`).value = `: ${value}`; sheet.getCell(`A${row}`).font = { bold: true }; };
+    setInfo(4, 'Unit Kerja', 'BPS Kab. Seram Bagian Barat'); setInfo(5, 'Nama', targetStaff?.name || ''); setInfo(6, 'Jabatan', targetStaff?.jabatan || ''); setInfo(7, 'Periode', `1 - ${lastDay} ${monthNames[selectedMonth-1]} ${selectedYear}`);
+    sheet.mergeCells('A9:A10'); sheet.getCell('A9').value = 'No'; sheet.mergeCells('B9:B10'); sheet.getCell('B9').value = 'Uraian Kegiatan'; sheet.mergeCells('C9:C10'); sheet.getCell('C9').value = 'Satuan'; sheet.mergeCells('D9:F9'); sheet.getCell('D9').value = 'Kuantitas'; sheet.getCell('D10').value = 'Target'; sheet.getCell('E10').value = 'Realisasi'; sheet.getCell('F10').value = '%'; sheet.mergeCells('G9:G10'); sheet.getCell('G9').value = 'Tingkat Kualitas (%)'; sheet.mergeCells('H9:H10'); sheet.getCell('H9').value = 'Keterangan';
+    const headerCells = ['A9','B9','C9','D9','G9','H9','D10','E10','F10']; headerCells.forEach(c => { const cell = sheet.getCell(c); cell.fill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFE0E0E0'} }; cell.font = { bold: true }; cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; });
+    sheet.getColumn(1).width = 8.2; sheet.getColumn(2).width = 60; sheet.getColumn(3).width = 15; sheet.getColumn(4).width = 7.07; sheet.getColumn(5).width = 7.07; sheet.getColumn(6).width = 7.07; sheet.getColumn(7).width = 10; sheet.getColumn(8).width = 45;
     let curRow = 11; let sumKuan = 0; let sumKual = 0; const dataCount = currentFilteredReports.length;
-    
     currentFilteredReports.forEach((r, i) => {
-        const row = sheet.getRow(curRow); 
-        const kP = (r.realisasi / r.target) * 100; 
-        const qP = r.nilaiPimpinan || 0;
-        row.values = [i+1, r.title, r.satuan, r.target, r.realisasi, kP, qP, r.keterangan || '']; 
-        row.height = 35;
-        row.eachCell({ includeEmpty: true }, (cell, colNum) => { 
-          cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; 
-          cell.alignment = { vertical: 'middle', wrapText: true, horizontal: (colNum === 2 || colNum === 8) ? 'left' : 'center' }; 
-        });
+        const row = sheet.getRow(curRow); const kP = (r.realisasi / r.target) * 100; const qP = r.nilaiPimpinan || 0;
+        row.values = [i+1, r.title, r.satuan, r.target, r.realisasi, kP, qP, r.keterangan || '']; row.height = 35;
+        row.eachCell({ includeEmpty: true }, (cell, colNum) => { cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; cell.alignment = { vertical: 'middle', wrapText: true, horizontal: (colNum === 2 || colNum === 8) ? 'left' : 'center' }; });
         sumKuan += Math.min(kP, 100); sumKual += qP; curRow++;
     });
-    
-    const avgKuan = dataCount > 0 ? sumKuan / dataCount : 0; 
-    const avgKual = dataCount > 0 ? sumKual / dataCount : 0;
-    
-    // Rata-Rata (Center Horizontal)
-    sheet.mergeCells(`A${curRow}:E${curRow}`); 
-    const avgLabel = sheet.getCell(`A${curRow}`); 
-    avgLabel.value = 'Rata-Rata'; avgLabel.font = { bold: true }; 
-    avgLabel.alignment = { horizontal: 'center', vertical: 'middle' };
-    
-    const cellF = sheet.getCell(`F${curRow}`); cellF.value = avgKuan; 
-    cellF.alignment = { horizontal: 'center', vertical: 'middle' };
-    const cellG = sheet.getCell(`G${curRow}`); cellG.value = avgKual; 
-    cellG.alignment = { horizontal: 'center', vertical: 'middle' };
-    
+    const avgKuan = dataCount > 0 ? sumKuan / dataCount : 0; const avgKual = dataCount > 0 ? sumKual / dataCount : 0;
+    sheet.mergeCells(`A${curRow}:E${curRow}`); const avgLabel = sheet.getCell(`A${curRow}`); avgLabel.value = 'Rata-Rata'; avgLabel.font = { bold: true }; avgLabel.alignment = { horizontal: 'center', vertical: 'middle' };
+    const cellF = sheet.getCell(`F${curRow}`); cellF.value = avgKuan; cellF.alignment = { horizontal: 'center', vertical: 'middle' };
+    const cellG = sheet.getCell(`G${curRow}`); cellG.value = avgKual; cellG.alignment = { horizontal: 'center', vertical: 'middle' };
     for (let i = 1; i <= 8; i++) { sheet.getRow(curRow).getCell(i).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; }
     curRow++;
-    
-    // CKP (Center Horizontal)
-    sheet.mergeCells(`A${curRow}:E${curRow}`); 
-    const ckpLabel = sheet.getCell(`A${curRow}`); 
-    ckpLabel.value = 'Capaian Kinerja Pegawai (CKP)'; ckpLabel.font = { bold: true }; 
-    ckpLabel.alignment = { horizontal: 'center', vertical: 'middle' };
-    
-    sheet.mergeCells(`F${curRow}:G${curRow}`); 
-    const cellFinal = sheet.getCell(`F${curRow}`); 
-    cellFinal.value = Math.round((avgKuan + avgKual) / 2); cellFinal.font = { bold: true }; 
-    cellFinal.alignment = { horizontal: 'center', vertical: 'middle' };
-    
+    sheet.mergeCells(`A${curRow}:E${curRow}`); const ckpLabel = sheet.getCell(`A${curRow}`); ckpLabel.value = 'Capaian Kinerja Pegawai (CKP)'; ckpLabel.font = { bold: true }; ckpLabel.alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.mergeCells(`F${curRow}:G${curRow}`); const cellFinal = sheet.getCell(`F${curRow}`); cellFinal.value = Math.round((avgKuan + avgKual) / 2); cellFinal.font = { bold: true }; cellFinal.alignment = { horizontal: 'center', vertical: 'middle' };
     for (let i = 1; i <= 8; i++) { sheet.getRow(curRow).getCell(i).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; }
-    
-    // Jarak 1 baris kosong sebelum Tanggal
-    curRow += 2; 
-    sheet.mergeCells(`F${curRow}:H${curRow}`); 
-    const tglCell = sheet.getCell(`F${curRow}`); 
-    tglCell.value = `Penilaian Kinerja : ${lastDay} ${monthNames[selectedMonth-1]} ${selectedYear}`; 
-    tglCell.alignment = { horizontal: 'center' };
-    
-    curRow += 2; // Tepat di bawah Tanggal
-    sheet.mergeCells(`F${curRow}:H${curRow}`); 
-    const pimpLabel = sheet.getCell(`F${curRow}`); 
-    pimpLabel.value = 'Pejabat Penilai,'; pimpLabel.alignment = { horizontal: 'center' };
-    
-    curRow += 4; 
-    sheet.mergeCells(`F${curRow}:H${curRow}`); 
-    const pimpNameCell = sheet.getCell(`F${curRow}`); 
-    pimpNameCell.value = pimpinan.name; 
-    pimpNameCell.font = { bold: true, underline: true }; pimpNameCell.alignment = { horizontal: 'center' };
-    
-    const buffer = await workbook.xlsx.writeBuffer(); 
-    saveAs(new Blob([buffer]), `CKP_${targetStaff?.name}_${monthNames[selectedMonth-1]}.xlsx`);
+    curRow += 2; sheet.mergeCells(`F${curRow}:H${curRow}`); const tglCell = sheet.getCell(`F${curRow}`); tglCell.value = `Penilaian Kinerja : ${lastDay} ${monthNames[selectedMonth-1]} ${selectedYear}`; tglCell.alignment = { horizontal: 'center' };
+    curRow += 2; sheet.mergeCells(`F${curRow}:H${curRow}`); const pimpLabel = sheet.getCell(`F${curRow}`); pimpLabel.value = 'Pejabat Penilai,'; pimpLabel.alignment = { horizontal: 'center' };
+    curRow += 4; sheet.mergeCells(`F${curRow}:H${curRow}`); const pimpNameCell = sheet.getCell(`F${curRow}`); pimpNameCell.value = pimpinan.name; pimpNameCell.font = { bold: true, underline: true }; pimpNameCell.alignment = { horizontal: 'center' };
+    const buffer = await workbook.xlsx.writeBuffer(); saveAs(new Blob([buffer]), `CKP_${targetStaff?.name}_${monthNames[selectedMonth-1]}.xlsx`);
   };
 
   const currentFilteredReports = useMemo(() => {
@@ -476,6 +398,7 @@ const PIRUApp = () => {
 
           {(activeTab === 'laporan' || activeTab === 'penilaian') && (
             <div className="italic">
+              {/* DESKTOP TABLE VIEW */}
               <div className="hidden md:block bg-white rounded-[2.5rem] shadow-sm border p-0 overflow-hidden italic mb-10">
                 <table className="w-full text-left italic text-xs border-collapse">
                   <thead className="bg-slate-100 border-b text-[9px] font-black text-slate-500 uppercase tracking-widest italic sticky top-0 z-20">
@@ -497,11 +420,57 @@ const PIRUApp = () => {
                   </tbody>
                 </table>
               </div>
+
+              {/* MOBILE CARD VIEW (SANGAT TELITI: DIKUNCI AGAR TIDAK HILANG) */}
+              <div className="md:hidden space-y-4 pb-12">
+                {activeTab === 'penilaian' && (
+                  <div className="flex flex-col gap-3 mb-4 not-italic">
+                    <select className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-black text-[10px] text-slate-600 shadow-sm italic outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
+                      <option value="Semua">Semua Pegawai</option>
+                      {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
+                    </select>
+                    {filterStaffName !== 'Semua' && ( <button onClick={handleNilaiSemua} className="w-full bg-amber-500 text-white p-4 rounded-2xl font-black uppercase text-[10px] shadow-md italic">Nilai Semua {filterStaffName}</button> )}
+                  </div>
+                )}
+                {currentFilteredReports.length === 0 ? (
+                  <div className="bg-white p-10 rounded-[2.5rem] border border-dashed border-slate-200 text-center italic">
+                    <AlertCircle className="mx-auto text-slate-300 mb-2" size={32} />
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Belum ada data laporan</p>
+                  </div>
+                ) : (
+                  currentFilteredReports.map((r, idx) => (
+                    <div key={r.id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 italic">
+                      <div className="flex justify-between items-start mb-2 italic">
+                        <span className="text-[10px] font-black text-indigo-600 uppercase italic">#{idx + 1} - {r.satuan}</span>
+                        <div className="flex gap-2">
+                          {activeTab === 'laporan' && r.status === 'pending' && (
+                            <>
+                              <button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="text-indigo-400"><Edit3 size={18}/></button>
+                              <button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="text-red-400"><Trash2 size={18}/></button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <h3 className="font-black text-slate-800 uppercase text-xs leading-tight mb-2 italic">{r.title}</h3>
+                      <p className="text-[9px] text-indigo-600 font-bold mb-4 italic uppercase">Oleh: {r.userName}</p>
+                      <div className="grid grid-cols-2 gap-4 border-t pt-4 italic">
+                        <div className="text-center"><p className="text-[8px] text-slate-400 uppercase font-black italic">Target/Real</p><p className="font-black text-[10px] italic">{r.realisasi} / {r.target}</p></div>
+                        <div className="text-center"><p className="text-[8px] text-slate-400 uppercase font-black italic">Ketua/Pimp</p><p className="font-black text-[10px] italic text-indigo-600">{r.nilaiKetua} / {r.nilaiPimpinan}</p></div>
+                      </div>
+                      {activeTab === 'penilaian' && (
+                        <div className="flex gap-2 mt-4 italic">
+                          {['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="flex-1 py-3 bg-amber-400 text-white rounded-xl text-[9px] font-black uppercase shadow-sm italic">Nilai Ketua</button>}
+                          {['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase shadow-sm italic">Nilai Pimp</button>}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
         </div>
 
-        {/* Floating Plus & Bottom Nav (Aman untuk Mobile) */}
         {user.role !== 'admin' && ( <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="md:hidden fixed bottom-28 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center z-50 active:scale-95 transition-all"> <Plus size={32}/> </button> )}
 
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-4 pb-6 flex justify-around items-center z-40 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] not-italic">
@@ -512,7 +481,7 @@ const PIRUApp = () => {
         </div>
       </main>
 
-      {/* Modal Password & Ikon Mata */}
+      {/* Modals with Eye Icon - Verified Integrity */}
       {showPasswordModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[100] font-sans italic">
           <form onSubmit={handleUpdatePassword} className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl relative italic">
@@ -521,15 +490,15 @@ const PIRUApp = () => {
             <h3 className="text-2xl font-black uppercase tracking-tighter mb-2 text-slate-800 italic text-center">Ganti Password</h3>
             <div className="space-y-4 italic mt-8">
                <div className="relative">
-                 <input required type={showCurrentPass ? "text" : "password"} placeholder="Password Saat Ini" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 pr-14 italic" value={newPasswordData.current} onChange={e => setNewPasswordData({...newPasswordData, current: e.target.value})} />
+                 <input required type={showCurrentPass ? "text" : "password"} placeholder="Password Saat Ini" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 pr-14 italic text-center" value={newPasswordData.current} onChange={e => setNewPasswordData({...newPasswordData, current: e.target.value})} />
                  <button type="button" onClick={() => setShowCurrentPass(!showCurrentPass)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400">{showCurrentPass ? <EyeOff size={20}/> : <Eye size={20}/>}</button>
                </div>
                <div className="relative">
-                 <input required type={showNewPass ? "text" : "password"} placeholder="Password Baru" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 pr-14 italic" value={newPasswordData.new} onChange={e => setNewPasswordData({...newPasswordData, new: e.target.value})} />
+                 <input required type={showNewPass ? "text" : "password"} placeholder="Password Baru" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 pr-14 italic text-center" value={newPasswordData.new} onChange={e => setNewPasswordData({...newPasswordData, new: e.target.value})} />
                  <button type="button" onClick={() => setShowNewPass(!showNewPass)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400">{showNewPass ? <EyeOff size={20}/> : <Eye size={20}/>}</button>
                </div>
             </div>
-            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-6 rounded-2xl shadow-xl uppercase tracking-widest text-[10px] mt-8 italic transition-all active:scale-95">Update Password</button>
+            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-6 rounded-2xl shadow-xl uppercase tracking-widest text-[10px] mt-8 italic transition-all active:scale-95 text-center">Update Password</button>
           </form>
         </div>
       )}
@@ -547,15 +516,15 @@ const PIRUApp = () => {
                    </div>
                    <p className="text-[9px] font-black text-indigo-600 uppercase mt-2 italic text-center">Klik untuk Upload Foto</p>
                 </div>
-                <input required type="text" placeholder="Nama Lengkap" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} />
+                <input required type="text" placeholder="Nama Lengkap" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic text-center" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} />
                 <div className="grid grid-cols-2 gap-4 italic text-center">
-                    <input required type="text" placeholder="Username" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} />
+                    <input required type="text" placeholder="Username" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic text-center" value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} />
                     <div className="relative">
-                      <input required type={showAdminPass ? "text" : "password"} placeholder="Password" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 pr-14 italic" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
+                      <input required type={showAdminPass ? "text" : "password"} placeholder="Password" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 pr-14 italic text-center" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
                       <button type="button" onClick={() => setShowAdminPass(!showAdminPass)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400">{showAdminPass ? <EyeOff size={18}/> : <Eye size={18}/>}</button>
                     </div>
                 </div>
-                <input type="text" placeholder="Jabatan" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.jabatan} onChange={e => setNewUser({...newUser, jabatan: e.target.value})} />
+                <input type="text" placeholder="Jabatan" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic text-center" value={newUser.jabatan} onChange={e => setNewUser({...newUser, jabatan: e.target.value})} />
                 <select className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-600 border border-slate-100 italic" value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
                     <option value="pegawai">Pegawai</option><option value="ketua">Ketua Tim</option><option value="pimpinan">Pimpinan</option><option value="admin">Admin</option>
                 </select>
