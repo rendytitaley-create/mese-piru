@@ -155,17 +155,14 @@ const PIRUApp = () => {
     } catch (err) { alert("Data berhasil disimpan."); }
   };
 
-  // --- PERBAIKAN FUNGSI RESET STATUS OLEH ADMIN ---
   const clearGrade = async (reportId, field) => {
     if (!window.confirm(`Hapus nilai ${field === 'nilaiKetua' ? 'Ketua' : 'Pimpinan'} ini?`)) return;
     try {
-      // Saat nilai dihapus oleh Admin, status dikembalikan ke 'pending' 
-      // agar Pegawai bisa mengedit/menghapus data pekerjaan tersebut kembali.
       await updateDoc(doc(db, "reports", reportId), { 
         [field]: 0, 
         status: 'pending' 
       });
-      alert("Nilai berhasil dihapus dan status dikembalikan ke Pending.");
+      alert("Nilai berhasil dihapus dan status dikembalikan ke Belum Dinilai.");
     } catch (err) { alert("Gagal membersihkan nilai."); }
   };
 
@@ -299,7 +296,8 @@ const PIRUApp = () => {
       const total = sReports.length;
       const selesai = sReports.filter(r => r.status === 'selesai').length;
       const progress = sReports.filter(r => r.status === 'dinilai_ketua').length;
-      let statusText = total === 0 ? "Belum Lapor" : (selesai === total ? "Selesai" : (progress > 0 || selesai > 0 ? "Progres" : "Pending"));
+      // PERBAIKAN LABEL: Mengubah Progres/Pending menjadi keterangan yang lebih deskriptif
+      let statusText = total === 0 ? "Belum Lapor" : (selesai === total ? "Selesai" : (progress > 0 || selesai > 0 ? "Menunggu Penilaian" : "Belum Dinilai"));
       const avgCap = total > 0 ? (sReports.reduce((acc, curr) => acc + Math.min((curr.realisasi / curr.target) * 100, 100), 0) / total) : 0;
       const avgPimp = total > 0 ? (sReports.reduce((acc, curr) => acc + (Number(curr.nilaiPimpinan) || 0), 0) / total) : 0;
       return { name: s.name, total, nilaiAkhir: ((avgCap + avgPimp) / 2).toFixed(2), status: statusText, detailCount: `${selesai}/${total}` };
@@ -310,7 +308,9 @@ const PIRUApp = () => {
     const isReady = myTotal > 0 && mySelesai === myTotal;
     const currentScore = (myTotal > 0 ? (( (myReports.reduce((a,c)=>a+Math.min((c.realisasi/c.target)*100, 100),0)/myTotal) + (myReports.reduce((a,c)=>a+(Number(c.nilaiPimpinan)||0),0)/myTotal) )/2).toFixed(2) : "0.00");
     const yearlyAvg = yearlyReports.length > 0 ? ( (yearlyReports.reduce((a,c)=>a+Math.min((c.realisasi/c.target)*100, 100),0)/yearlyReports.length) + (yearlyReports.reduce((a,c)=>a+(Number(c.nilaiPimpinan)||0),0)/yearlyReports.length) ) / 2 : 0;
-    return { myTotal, myNilaiAkhir: currentScore, isFinal: isReady, myYearly: yearlyAvg.toFixed(2), staffSummary, myStatus: myTotal === 0 ? "N/A" : (mySelesai === myTotal ? "Selesai" : "Progres"), myDetailCount: `${mySelesai}/${myTotal} Selesai` };
+    // PERBAIKAN LABEL MY STATUS
+    let myStatusText = myTotal === 0 ? "Belum Ada Laporan" : (mySelesai === myTotal ? "Selesai" : "Menunggu Penilaian");
+    return { myTotal, myNilaiAkhir: currentScore, isFinal: isReady, myYearly: yearlyAvg.toFixed(2), staffSummary, myStatus: myStatusText, myDetailCount: `${mySelesai}/${myTotal} Selesai` };
   }, [reports, users, user, selectedMonth, selectedYear]);
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50 font-sans"><Loader2 className="animate-spin text-indigo-600" size={50} /></div>;
