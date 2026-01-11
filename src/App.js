@@ -8,7 +8,7 @@ import {
 import { 
   ShieldCheck, Loader2, Plus, X, BarChart3, FileText, 
   LogOut, Trash2, Edit3, TrendingUp, Clock, Zap, UserPlus, Users, Download, ClipboardCheck, CheckCircle2,
-  LayoutDashboard
+  LayoutDashboard, User, Camera
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -52,7 +52,7 @@ const PIRUApp = () => {
   
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
-  const [newUser, setNewUser] = useState({ name: '', username: '', password: '', role: 'pegawai', jabatan: '' });
+  const [newUser, setNewUser] = useState({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '' });
 
   useEffect(() => {
     signInAnonymously(auth);
@@ -76,6 +76,45 @@ const PIRUApp = () => {
     return () => unsubReports();
   }, [user]);
 
+  // --- LOGIKA KOMPRESI FOTO (BASE64) ---
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 400;
+        const MAX_HEIGHT = 400;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        // Kompresi ke kualitas 0.7 agar di bawah 500KB
+        const base64 = canvas.toDataURL('image/jpeg', 0.7);
+        setNewUser({ ...newUser, photoURL: base64 });
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const resetReportForm = () => {
     setIsEditing(false);
     setCurrentReportId(null);
@@ -85,7 +124,7 @@ const PIRUApp = () => {
   const resetUserForm = () => {
     setIsEditingUser(false);
     setCurrentUserId(null);
-    setNewUser({ name: '', username: '', password: '', role: 'pegawai', jabatan: '' });
+    setNewUser({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '' });
   };
 
   const handleLogin = (e) => {
@@ -296,11 +335,17 @@ const PIRUApp = () => {
       const total = sReports.length;
       const selesai = sReports.filter(r => r.status === 'selesai').length;
       const progress = sReports.filter(r => r.status === 'dinilai_ketua').length;
-      // PERBAIKAN LABEL: Mengubah Progres/Pending menjadi keterangan yang lebih deskriptif
       let statusText = total === 0 ? "Belum Lapor" : (selesai === total ? "Selesai" : (progress > 0 || selesai > 0 ? "Menunggu Penilaian" : "Belum Dinilai"));
       const avgCap = total > 0 ? (sReports.reduce((acc, curr) => acc + Math.min((curr.realisasi / curr.target) * 100, 100), 0) / total) : 0;
       const avgPimp = total > 0 ? (sReports.reduce((acc, curr) => acc + (Number(curr.nilaiPimpinan) || 0), 0) / total) : 0;
-      return { name: s.name, total, nilaiAkhir: ((avgCap + avgPimp) / 2).toFixed(2), status: statusText, detailCount: `${selesai}/${total}` };
+      return { 
+        name: s.name, 
+        total, 
+        nilaiAkhir: ((avgCap + avgPimp) / 2).toFixed(2), 
+        status: statusText, 
+        detailCount: `${selesai}/${total}`,
+        photoURL: s.photoURL // Ambil foto untuk dashboard pimpinan
+      };
     });
     const myReports = periodReports.filter(r => r.userId === user?.username);
     const myTotal = myReports.length;
@@ -308,7 +353,6 @@ const PIRUApp = () => {
     const isReady = myTotal > 0 && mySelesai === myTotal;
     const currentScore = (myTotal > 0 ? (( (myReports.reduce((a,c)=>a+Math.min((c.realisasi/c.target)*100, 100),0)/myTotal) + (myReports.reduce((a,c)=>a+(Number(c.nilaiPimpinan)||0),0)/myTotal) )/2).toFixed(2) : "0.00");
     const yearlyAvg = yearlyReports.length > 0 ? ( (yearlyReports.reduce((a,c)=>a+Math.min((c.realisasi/c.target)*100, 100),0)/yearlyReports.length) + (yearlyReports.reduce((a,c)=>a+(Number(c.nilaiPimpinan)||0),0)/yearlyReports.length) ) / 2 : 0;
-    // PERBAIKAN LABEL MY STATUS
     let myStatusText = myTotal === 0 ? "Belum Ada Laporan" : (mySelesai === myTotal ? "Selesai" : "Menunggu Penilaian");
     return { myTotal, myNilaiAkhir: currentScore, isFinal: isReady, myYearly: yearlyAvg.toFixed(2), staffSummary, myStatus: myStatusText, myDetailCount: `${mySelesai}/${myTotal} Selesai` };
   }, [reports, users, user, selectedMonth, selectedYear]);
@@ -349,9 +393,21 @@ const PIRUApp = () => {
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden font-sans italic relative">
         <header className="px-6 md:px-10 py-6 md:py-10 pb-4 flex flex-row justify-between items-center italic sticky top-0 bg-slate-50 z-20">
-          <div className="flex-1 italic">
-            <h1 className="text-lg md:text-xl font-black text-slate-900 tracking-tighter uppercase leading-none italic break-words">{user.name}</h1>
-            <p className="text-slate-400 font-bold uppercase tracking-widest text-[8px] mt-2 inline-block bg-white px-3 py-1 rounded-full border border-slate-100 italic">{user.jabatan || user.role}</p>
+          <div className="flex-1 flex items-center gap-4 italic">
+            {/* FOTO PROFIL HEADER */}
+            <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl overflow-hidden border-2 border-white shadow-md bg-slate-200 flex-shrink-0">
+               {user.photoURL ? (
+                 <img src={user.photoURL} alt="Profil" className="w-full h-full object-cover" />
+               ) : (
+                 <div className="w-full h-full flex items-center justify-center bg-indigo-100 text-indigo-600 font-black text-lg">
+                   {user.name.charAt(0)}
+                 </div>
+               )}
+            </div>
+            <div className="italic">
+              <h1 className="text-lg md:text-xl font-black text-slate-900 tracking-tighter uppercase leading-none italic break-words">{user.name}</h1>
+              <p className="text-slate-400 font-bold uppercase tracking-widest text-[8px] mt-2 inline-block bg-white px-3 py-1 rounded-full border border-slate-100 italic">{user.jabatan || user.role}</p>
+            </div>
           </div>
           <div className="flex items-center gap-4 md:gap-3 not-italic">
              <button onClick={exportToExcel} className="md:hidden p-2 text-green-600 bg-white rounded-xl shadow-sm border border-slate-100"><Download size={22}/></button>
@@ -383,8 +439,17 @@ const PIRUApp = () => {
               {['admin', 'pimpinan'].includes(user.role) ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-10">
                   {dashboardStats.staffSummary.map((s, i) => (
-                    <div key={i} className="bg-slate-900 p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] border border-slate-800 shadow-xl italic flex flex-col items-center text-center">
-                      <div className="bg-slate-800 p-4 rounded-3xl mb-6"><Users size={24} className="text-indigo-400"/></div>
+                    <div key={i} className="bg-slate-900 p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] border border-slate-800 shadow-xl italic flex flex-col items-center text-center group">
+                      {/* FOTO PEGAWAI DI KARTU DASHBOARD */}
+                      <div className="w-20 h-20 md:w-24 md:h-24 rounded-[2rem] overflow-hidden mb-6 border-4 border-slate-800 shadow-lg bg-slate-800 flex-shrink-0">
+                        {s.photoURL ? (
+                          <img src={s.photoURL} alt={s.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-indigo-500/10 text-indigo-400">
+                             <User size={40} />
+                          </div>
+                        )}
+                      </div>
                       <p className="font-black text-xl text-white uppercase italic mb-2 tracking-tighter">{s.name}</p>
                       <span className={`text-[9px] font-black uppercase px-4 py-1.5 rounded-full mb-6 ${s.status === 'Selesai' ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-400'}`}>{s.status}</span>
                       <div className="w-full border-t border-slate-800 pt-6 mt-auto">
@@ -421,7 +486,12 @@ const PIRUApp = () => {
             <div className="bg-white rounded-[2.5rem] shadow-sm border overflow-hidden p-6 italic mb-10">
               <table className="w-full text-left text-xs italic">
                 <thead><tr className="bg-slate-50 border-b text-[9px] font-black text-slate-400 uppercase italic"><th className="p-4">Pegawai</th><th className="p-4 text-center">Aksi</th></tr></thead>
-                <tbody>{users.map(u => (<tr key={u.firestoreId} className="border-b hover:bg-slate-50 italic"><td className="p-4"><p className="font-black text-slate-800 uppercase tracking-tighter">{u.name}</p><p className="text-indigo-500 text-[8px] font-bold">@{u.username} | {u.role}</p></td><td className="p-4 text-center"><div className="flex justify-center gap-2"><button onClick={() => { setIsEditingUser(true); setCurrentUserId(u.firestoreId); setNewUser({ name: u.name, username: u.username, password: u.password, role: u.role, jabatan: u.jabatan }); setShowUserModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button><button onClick={() => deleteDoc(doc(db, "users", u.firestoreId))} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button></div></td></tr>))}</tbody>
+                <tbody>{users.map(u => (<tr key={u.firestoreId} className="border-b hover:bg-slate-50 italic"><td className="p-4 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0">
+                    {u.photoURL ? <img src={u.photoURL} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-400">{u.name.charAt(0)}</div>}
+                  </div>
+                  <div><p className="font-black text-slate-800 uppercase tracking-tighter leading-none">{u.name}</p><p className="text-indigo-500 text-[8px] font-bold mt-1">@{u.username} | {u.role}</p></div>
+                </td><td className="p-4 text-center"><div className="flex justify-center gap-2"><button onClick={() => { setIsEditingUser(true); setCurrentUserId(u.firestoreId); setNewUser({ name: u.name, username: u.username, password: u.password, role: u.role, jabatan: u.jabatan, photoURL: u.photoURL || '' }); setShowUserModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button><button onClick={() => deleteDoc(doc(db, "users", u.firestoreId))} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button></div></td></tr>))}</tbody>
               </table>
               <button onClick={() => { resetUserForm(); setShowUserModal(true); }} className="mt-4 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 italic"><UserPlus size={14}/> Tambah Pegawai</button>
             </div>
@@ -529,6 +599,24 @@ const PIRUApp = () => {
             <button type="button" onClick={() => { setShowUserModal(false); resetUserForm(); }} className="absolute top-8 right-8 p-4 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
             <h3 className="text-2xl font-black uppercase tracking-tighter mb-8 text-slate-800 italic">{isEditingUser ? "Edit Akun Pegawai" : "Tambah Pegawai"}</h3>
             <div className="space-y-4 italic">
+                {/* PREVIEW FOTO DI MODAL ADMIN */}
+                <div className="flex flex-col items-center mb-6">
+                   <div className="w-24 h-24 rounded-3xl bg-slate-100 border-2 border-dashed border-slate-300 overflow-hidden flex items-center justify-center relative group">
+                      {newUser.photoURL ? (
+                        <img src={newUser.photoURL} className="w-full h-full object-cover" />
+                      ) : (
+                        <Camera size={28} className="text-slate-300" />
+                      )}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handlePhotoUpload}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
+                   </div>
+                   <p className="text-[9px] font-black text-indigo-600 uppercase mt-2 italic">Klik untuk Upload Foto</p>
+                </div>
+
                 <input required type="text" placeholder="Nama Lengkap" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} />
                 <div className="grid grid-cols-2 gap-4 italic">
                     <input required type="text" placeholder="Username" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} />
