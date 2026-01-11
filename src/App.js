@@ -155,11 +155,18 @@ const PIRUApp = () => {
     } catch (err) { alert("Data berhasil disimpan."); }
   };
 
+  // --- PERBAIKAN FUNGSI RESET STATUS OLEH ADMIN ---
   const clearGrade = async (reportId, field) => {
     if (!window.confirm(`Hapus nilai ${field === 'nilaiKetua' ? 'Ketua' : 'Pimpinan'} ini?`)) return;
     try {
-      await updateDoc(doc(db, "reports", reportId), { [field]: 0, status: field === 'nilaiPimpinan' ? 'dinilai_ketua' : 'pending' });
-    } catch (err) { alert("Gagal."); }
+      // Saat nilai dihapus oleh Admin, status dikembalikan ke 'pending' 
+      // agar Pegawai bisa mengedit/menghapus data pekerjaan tersebut kembali.
+      await updateDoc(doc(db, "reports", reportId), { 
+        [field]: 0, 
+        status: 'pending' 
+      });
+      alert("Nilai berhasil dihapus dan status dikembalikan ke Pending.");
+    } catch (err) { alert("Gagal membersihkan nilai."); }
   };
 
   const submitGrade = async (reportId, roleName) => {
@@ -178,16 +185,13 @@ const PIRUApp = () => {
     const pimpinan = users.find(u => u.role === 'pimpinan') || { name: '..........................' };
     const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
     const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
-    
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('CKP');
-    
     sheet.mergeCells('A2:H2');
     const titleCell = sheet.getCell('A2');
     titleCell.value = `Capaian Kinerja Pegawai Tahun ${selectedYear}`;
     titleCell.font = { bold: true, size: 12 };
     titleCell.alignment = { horizontal: 'center' };
-    
     const setInfo = (row, label, value) => {
         sheet.getCell(`A${row}`).value = label;
         sheet.getCell(`B${row}`).value = `: ${value}`;
@@ -197,7 +201,6 @@ const PIRUApp = () => {
     setInfo(5, 'Nama', targetStaff?.name || '');
     setInfo(6, 'Jabatan', targetStaff?.jabatan || '');
     setInfo(7, 'Periode', `1 - ${lastDay} ${monthNames[selectedMonth-1]} ${selectedYear}`);
-    
     sheet.mergeCells('A9:A10'); sheet.getCell('A9').value = 'No';
     sheet.mergeCells('B9:B10'); sheet.getCell('B9').value = 'Uraian Kegiatan';
     sheet.mergeCells('C9:C10'); sheet.getCell('C9').value = 'Satuan';
@@ -205,7 +208,6 @@ const PIRUApp = () => {
     sheet.getCell('D10').value = 'Target'; sheet.getCell('E10').value = 'Realisasi'; sheet.getCell('F10').value = '%';
     sheet.mergeCells('G9:G10'); sheet.getCell('G9').value = 'Tingkat Kualitas (%)';
     sheet.mergeCells('H9:H10'); sheet.getCell('H9').value = 'Keterangan';
-    
     const headerCells = ['A9','B9','C9','D9','G9','H9','D10','E10','F10'];
     headerCells.forEach(c => {
         const cell = sheet.getCell(c);
@@ -214,11 +216,9 @@ const PIRUApp = () => {
         cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
     });
-    
     sheet.getColumn(1).width = 8.2; sheet.getColumn(2).width = 60; sheet.getColumn(3).width = 15;
     sheet.getColumn(4).width = 7.07; sheet.getColumn(5).width = 7.07; sheet.getColumn(6).width = 7.07;
     sheet.getColumn(7).width = 10; sheet.getColumn(8).width = 45;
-    
     let curRow = 11;
     let sumKuan = 0; let sumKual = 0;
     const dataCount = currentFilteredReports.length;
@@ -234,17 +234,12 @@ const PIRUApp = () => {
         });
         sumKuan += Math.min(kP, 100); sumKual += qP; curRow++;
     });
-    
     const avgKuan = dataCount > 0 ? sumKuan / dataCount : 0;
     const avgKual = dataCount > 0 ? sumKual / dataCount : 0;
-    
-    // Rata-Rata Footer
     sheet.mergeCells(`A${curRow}:E${curRow}`);
     const avgLabel = sheet.getCell(`A${curRow}`);
     avgLabel.value = 'Rata-Rata'; avgLabel.font = { bold: true };
     avgLabel.alignment = { horizontal: 'center', vertical: 'middle' };
-    
-    // Perbaikan Borders Rata-rata
     for (let i = 1; i <= 8; i++) {
       const cell = sheet.getRow(curRow).getCell(i);
       cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
@@ -254,46 +249,35 @@ const PIRUApp = () => {
     sheet.getCell(`F${curRow}`).alignment = { horizontal: 'center' };
     sheet.getCell(`G${curRow}`).alignment = { horizontal: 'center' };
     curRow++;
-    
-    // Baris Capaian Kinerja Pegawai (CKP)
     sheet.mergeCells(`A${curRow}:E${curRow}`);
     const ckpLabel = sheet.getCell(`A${curRow}`);
     ckpLabel.value = 'Capaian Kinerja Pegawai (CKP)';
     ckpLabel.font = { bold: true };
-    ckpLabel.alignment = { horizontal: 'center', vertical: 'middle' }; // Sesuai koreksi Bapak
-    
+    ckpLabel.alignment = { horizontal: 'center', vertical: 'middle' };
     sheet.mergeCells(`F${curRow}:G${curRow}`);
     const cellFinal = sheet.getCell(`F${curRow}`);
     cellFinal.value = Math.round((avgKuan + avgKual) / 2);
     cellFinal.font = { bold: true };
     cellFinal.alignment = { horizontal: 'center', vertical: 'middle' };
-    
-    // Perbaikan Borders Baris CKP
     for (let i = 1; i <= 8; i++) {
       const cell = sheet.getRow(curRow).getCell(i);
       cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
     }
     curRow += 2;
-    
-    // Area Pengesahan (Posisi Centre Horizontal)
     sheet.mergeCells(`F${curRow}:H${curRow}`);
     const tglCell = sheet.getCell(`F${curRow}`);
     tglCell.value = `Penilaian Kinerja : ${lastDay} ${monthNames[selectedMonth-1]} ${selectedYear}`;
     tglCell.alignment = { horizontal: 'center' };
     curRow += 2;
-    
     sheet.mergeCells(`F${curRow}:H${curRow}`);
     const pimpLabel = sheet.getCell(`F${curRow}`);
     pimpLabel.value = 'Pejabat Penilai,';
     pimpLabel.alignment = { horizontal: 'center' };
     curRow += 4;
-    
     sheet.mergeCells(`F${curRow}:H${curRow}`);
     const pimpNameCell = sheet.getCell(`F${curRow}`);
-    pimpNameCell.value = pimpinan.name;
-    pimpNameCell.font = { bold: true, underline: true };
+    pimpNameCell.value = pimpinan.name; pimpNameCell.font = { bold: true, underline: true };
     pimpNameCell.alignment = { horizontal: 'center' };
-    
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), `CKP_${targetStaff?.name}_${monthNames[selectedMonth-1]}.xlsx`);
   };
@@ -472,7 +456,7 @@ const PIRUApp = () => {
                         <td className="p-4 text-center font-black text-indigo-600 italic">{((r.realisasi/r.target)*100).toFixed(0)}%</td>
                         <td className="p-4 text-center font-black text-slate-300 text-lg italic"><div className="relative group inline-block">{r.nilaiKetua || '-'}{user.role === 'admin' && activeTab === 'penilaian' && r.nilaiKetua > 0 && (<button onClick={() => clearGrade(r.id, 'nilaiKetua')} className="absolute -top-1 -right-3 text-red-400 opacity-0 group-hover:opacity-100 italic"><Trash2 size={10}/></button>)}</div></td>
                         <td className="p-4 text-center font-black text-indigo-600 text-lg italic"><div className="relative group inline-block">{r.nilaiPimpinan || '-'}{user.role === 'admin' && activeTab === 'penilaian' && r.nilaiPimpinan > 0 && (<button onClick={() => clearGrade(r.id, 'nilaiPimpinan')} className="absolute -top-1 -right-3 text-red-400 opacity-0 group-hover:opacity-100 italic"><Trash2 size={10}/></button>)}</div></td>
-                        <td className="p-4 text-center italic"><div className="flex justify-center gap-1 italic">{activeTab === 'laporan' && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button></>}{activeTab === 'penilaian' && (<>{['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase shadow-sm italic">Ketua</button>}{['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase shadow-sm italic">Pimp</button>}</>)}</div></td>
+                        <td className="p-4 text-center italic"><div className="flex justify-center gap-1 italic">{activeTab === 'laporan' && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button></>}{activeTab === 'penilaian' && (<>{['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Ketua</button>}{['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Pimp</button>}</>)}</div></td>
                       </tr>
                     ))}
                   </tbody>
