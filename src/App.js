@@ -8,7 +8,7 @@ import {
 import { 
   ShieldCheck, Loader2, Plus, X, BarChart3, FileText, 
   LogOut, Trash2, Edit3, TrendingUp, Clock, Zap, UserPlus, Users, Download, ClipboardCheck, CheckCircle2,
-  LayoutDashboard, User, Camera
+  LayoutDashboard, User, Camera, KeyRound, AlertCircle
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -43,8 +43,10 @@ const PIRUApp = () => {
   
   const [showReportModal, setShowReportModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false); // Modal baru
   const [authForm, setAuthForm] = useState({ username: '', password: '' });
   const [authError, setAuthError] = useState('');
+  const [newPasswordData, setNewPasswordData] = useState({ current: '', new: '' });
 
   const [isEditing, setIsEditing] = useState(false);
   const [currentReportId, setCurrentReportId] = useState(null);
@@ -76,11 +78,9 @@ const PIRUApp = () => {
     return () => unsubReports();
   }, [user]);
 
-  // --- LOGIKA KOMPRESI FOTO (BASE64) ---
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
@@ -90,23 +90,11 @@ const PIRUApp = () => {
         const MAX_HEIGHT = 400;
         let width = img.width;
         let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-        canvas.width = width;
-        canvas.height = height;
+        if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+        } else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
+        canvas.width = width; canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
-        // Kompresi ke kualitas 0.7 agar di bawah 500KB
         const base64 = canvas.toDataURL('image/jpeg', 0.7);
         setNewUser({ ...newUser, photoURL: base64 });
       };
@@ -129,12 +117,33 @@ const PIRUApp = () => {
 
   const handleLogin = (e) => {
     e.preventDefault();
+    setAuthError(''); // Reset error
     const inputUsername = authForm.username.trim().toLowerCase();
     const found = users.find(u => u.username.toLowerCase() === inputUsername && u.password === authForm.password);
     if (found) {
       setUser(found);
       localStorage.setItem('piru_session_final', JSON.stringify(found));
-    } else { setAuthError('Username atau password salah.'); }
+    } else { 
+      setAuthError('Username atau password salah.'); 
+    }
+  };
+
+  // --- FUNGSI GANTI PASSWORD MANDIRI ---
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    if (newPasswordData.current !== user.password) {
+      alert("Password lama tidak sesuai."); return;
+    }
+    try {
+      const userRef = doc(db, "users", user.firestoreId);
+      await updateDoc(userRef, { password: newPasswordData.new });
+      const updatedUser = { ...user, password: newPasswordData.new };
+      setUser(updatedUser);
+      localStorage.setItem('piru_session_final', JSON.stringify(updatedUser));
+      alert("Password berhasil diperbarui.");
+      setShowPasswordModal(false);
+      setNewPasswordData({ current: '', new: '' });
+    } catch (err) { alert("Gagal memperbarui password."); }
   };
 
   const handleAddOrEditUser = async (e) => {
@@ -321,9 +330,7 @@ const PIRUApp = () => {
   const currentFilteredReports = useMemo(() => {
     let res = reports.filter(r => r.month === selectedMonth && r.year === selectedYear);
     if (activeTab === 'laporan') res = res.filter(r => r.userId === user.username);
-    if (activeTab === 'penilaian' && filterStaffName !== 'Semua') {
-      res = res.filter(r => r.userName === filterStaffName);
-    }
+    if (activeTab === 'penilaian' && filterStaffName !== 'Semua') { res = res.filter(r => r.userName === filterStaffName); }
     return res;
   }, [reports, user, selectedMonth, selectedYear, filterStaffName, activeTab]);
 
@@ -338,14 +345,7 @@ const PIRUApp = () => {
       let statusText = total === 0 ? "Belum Lapor" : (selesai === total ? "Selesai" : (progress > 0 || selesai > 0 ? "Menunggu Penilaian" : "Belum Dinilai"));
       const avgCap = total > 0 ? (sReports.reduce((acc, curr) => acc + Math.min((curr.realisasi / curr.target) * 100, 100), 0) / total) : 0;
       const avgPimp = total > 0 ? (sReports.reduce((acc, curr) => acc + (Number(curr.nilaiPimpinan) || 0), 0) / total) : 0;
-      return { 
-        name: s.name, 
-        total, 
-        nilaiAkhir: ((avgCap + avgPimp) / 2).toFixed(2), 
-        status: statusText, 
-        detailCount: `${selesai}/${total}`,
-        photoURL: s.photoURL // Ambil foto untuk dashboard pimpinan
-      };
+      return { name: s.name, total, nilaiAkhir: ((avgCap + avgPimp) / 2).toFixed(2), status: statusText, detailCount: `${selesai}/${total}`, photoURL: s.photoURL };
     });
     const myReports = periodReports.filter(r => r.userId === user?.username);
     const myTotal = myReports.length;
@@ -369,6 +369,8 @@ const PIRUApp = () => {
         <form onSubmit={handleLogin} className="space-y-4 text-left font-sans not-italic">
           <input type="text" placeholder="Username" className="w-full p-5 bg-slate-50 border rounded-2xl outline-none font-bold" value={authForm.username} onChange={e => setAuthForm({...authForm, username: e.target.value})} />
           <input type="password" placeholder="Password" className="w-full p-5 bg-slate-50 border rounded-2xl outline-none font-bold" value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})} />
+          {/* WARNING LOGIN TAMPIL DISINI */}
+          {authError && <div className="flex items-center gap-2 text-red-500 text-[10px] font-black uppercase italic animate-pulse"><AlertCircle size={14}/> {authError}</div>}
           <button className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black uppercase text-xs mt-4 transition-all active:scale-95 shadow-lg">Login</button>
         </form>
       </div>
@@ -388,29 +390,28 @@ const PIRUApp = () => {
           {['admin', 'pimpinan', 'ketua'].includes(user.role) && (<button onClick={() => setActiveTab('penilaian')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'penilaian' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><ClipboardCheck size={20}/> Penilaian Anggota</button>)}
           {user.role === 'admin' && (<button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'users' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Users size={20}/> Data Pegawai</button>)}
         </nav>
-        <button onClick={() => {localStorage.clear(); window.location.reload();}} className="w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase text-red-500 mt-auto transition-all italic"><LogOut size={20}/> Logout</button>
+        
+        {/* BUTTON GANTI PASSWORD DI SIDEBAR */}
+        <button onClick={() => setShowPasswordModal(true)} className="w-full flex items-center gap-4 px-5 py-3 rounded-2xl font-black text-[10px] uppercase text-slate-400 hover:text-indigo-600 transition-all italic mb-2"><KeyRound size={16}/> Ganti Password</button>
+        <button onClick={() => {localStorage.clear(); window.location.reload();}} className="w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase text-red-500 transition-all italic"><LogOut size={20}/> Logout</button>
       </div>
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden font-sans italic relative">
-        <header className="px-6 md:px-10 py-6 md:py-10 pb-4 flex flex-row justify-between items-center italic sticky top-0 bg-slate-50 z-20">
+        {/* TOP BAR BIRU SOFT ELEGAN */}
+        <header className="px-6 md:px-10 py-6 md:py-10 pb-4 flex flex-row justify-between items-center italic sticky top-0 bg-blue-50/80 backdrop-blur-md border-b border-blue-100 z-20 shadow-sm">
           <div className="flex-1 flex items-center gap-4 italic">
-            {/* FOTO PROFIL HEADER */}
-            <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl overflow-hidden border-2 border-white shadow-md bg-slate-200 flex-shrink-0">
-               {user.photoURL ? (
-                 <img src={user.photoURL} alt="Profil" className="w-full h-full object-cover" />
-               ) : (
-                 <div className="w-full h-full flex items-center justify-center bg-indigo-100 text-indigo-600 font-black text-lg">
-                   {user.name.charAt(0)}
-                 </div>
-               )}
+            <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl overflow-hidden border-2 border-white shadow-md bg-white flex-shrink-0">
+               {user.photoURL ? ( <img src={user.photoURL} alt="Profil" className="w-full h-full object-cover" />
+               ) : ( <div className="w-full h-full flex items-center justify-center bg-indigo-100 text-indigo-600 font-black text-lg">{user.name.charAt(0)}</div> )}
             </div>
             <div className="italic">
               <h1 className="text-lg md:text-xl font-black text-slate-900 tracking-tighter uppercase leading-none italic break-words">{user.name}</h1>
-              <p className="text-slate-400 font-bold uppercase tracking-widest text-[8px] mt-2 inline-block bg-white px-3 py-1 rounded-full border border-slate-100 italic">{user.jabatan || user.role}</p>
+              <p className="text-indigo-600 font-bold uppercase tracking-widest text-[8px] mt-2 inline-block bg-white px-3 py-1 rounded-full border border-indigo-100 italic">{user.jabatan || user.role}</p>
             </div>
           </div>
           <div className="flex items-center gap-4 md:gap-3 not-italic">
              <button onClick={exportToExcel} className="md:hidden p-2 text-green-600 bg-white rounded-xl shadow-sm border border-slate-100"><Download size={22}/></button>
+             <button onClick={() => setShowPasswordModal(true)} className="md:hidden p-2 text-indigo-600 bg-white rounded-xl shadow-sm border border-slate-100"><KeyRound size={22}/></button>
              <button onClick={() => {localStorage.clear(); window.location.reload();}} className="md:hidden p-2 text-red-500 bg-white rounded-xl shadow-sm border border-slate-100"><LogOut size={22}/></button>
              <div className="hidden md:flex items-center gap-3">
                {activeTab === 'penilaian' && (
@@ -419,9 +420,7 @@ const PIRUApp = () => {
                       <option value="Semua">Semua Pegawai</option>
                       {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                     </select>
-                    {filterStaffName !== 'Semua' && (
-                      <button onClick={handleNilaiSemua} className="bg-amber-500 text-white px-4 py-2.5 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-md italic"><CheckCircle2 size={14}/> Nilai Semua</button>
-                    )}
+                    {filterStaffName !== 'Semua' && ( <button onClick={handleNilaiSemua} className="bg-amber-500 text-white px-4 py-2.5 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-md italic"><CheckCircle2 size={14}/> Nilai Semua</button> )}
                   </>
                 )}
                <select className="bg-white border border-slate-200 rounded-xl px-3 py-2 font-black text-[10px] text-slate-600 outline-none shadow-sm cursor-pointer italic" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
@@ -433,22 +432,16 @@ const PIRUApp = () => {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-0 custom-scrollbar mb-20 md:mb-0">
+        <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-8 custom-scrollbar mb-20 md:mb-0">
           {activeTab === 'dashboard' && (
             <div className="animate-in fade-in duration-500 italic">
               {['admin', 'pimpinan'].includes(user.role) ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-10">
                   {dashboardStats.staffSummary.map((s, i) => (
                     <div key={i} className="bg-slate-900 p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] border border-slate-800 shadow-xl italic flex flex-col items-center text-center group">
-                      {/* FOTO PEGAWAI DI KARTU DASHBOARD */}
                       <div className="w-20 h-20 md:w-24 md:h-24 rounded-[2rem] overflow-hidden mb-6 border-4 border-slate-800 shadow-lg bg-slate-800 flex-shrink-0">
-                        {s.photoURL ? (
-                          <img src={s.photoURL} alt={s.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-indigo-500/10 text-indigo-400">
-                             <User size={40} />
-                          </div>
-                        )}
+                        {s.photoURL ? ( <img src={s.photoURL} alt={s.name} className="w-full h-full object-cover" />
+                        ) : ( <div className="w-full h-full flex items-center justify-center bg-indigo-500/10 text-indigo-400"><User size={40} /></div> )}
                       </div>
                       <p className="font-black text-xl text-white uppercase italic mb-2 tracking-tighter">{s.name}</p>
                       <span className={`text-[9px] font-black uppercase px-4 py-1.5 rounded-full mb-6 ${s.status === 'Selesai' ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-400'}`}>{s.status}</span>
@@ -500,17 +493,9 @@ const PIRUApp = () => {
           {(activeTab === 'laporan' || activeTab === 'penilaian') && (
             <div className="italic">
               <div className="md:hidden flex flex-col gap-3 mb-4 not-italic">
-                {activeTab === 'penilaian' && (
-                  <select className="w-full p-3 bg-white border border-slate-200 rounded-xl font-black text-[10px] text-slate-600 shadow-sm italic outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
-                    <option value="Semua">Semua Pegawai</option>
-                    {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
-                  </select>
-                )}
-                {filterStaffName !== 'Semua' && activeTab === 'penilaian' && (
-                  <button onClick={handleNilaiSemua} className="w-full bg-amber-500 text-white p-3 rounded-xl font-black uppercase text-[10px] shadow-md italic">Nilai Semua {filterStaffName}</button>
-                )}
+                {activeTab === 'penilaian' && ( <select className="w-full p-3 bg-white border border-slate-200 rounded-xl font-black text-[10px] text-slate-600 shadow-sm italic outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}> <option value="Semua">Semua Pegawai</option> {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)} </select> )}
+                {filterStaffName !== 'Semua' && activeTab === 'penilaian' && ( <button onClick={handleNilaiSemua} className="w-full bg-amber-500 text-white p-3 rounded-xl font-black uppercase text-[10px] shadow-md italic">Nilai Semua {filterStaffName}</button> )}
               </div>
-
               <div className="hidden md:block bg-white rounded-[2.5rem] shadow-sm border p-6 space-y-8 italic mb-10">
                 <table className="w-full text-left italic text-xs border-collapse">
                   <thead className="bg-slate-50 border-b text-[9px] font-black text-slate-400 uppercase tracking-widest italic sticky top-0 z-10">
@@ -532,32 +517,11 @@ const PIRUApp = () => {
                   </tbody>
                 </table>
               </div>
-
-              <div className="md:hidden space-y-4 mb-24">
-                {currentFilteredReports.map((r, idx) => (
-                  <div key={r.id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 italic">
-                    <div className="flex justify-between items-start mb-2 italic"><span className="text-[10px] font-black text-indigo-600 uppercase italic">#{idx + 1} - {r.satuan}</span><div className="flex gap-2">{activeTab === 'laporan' && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="text-indigo-400"><Edit3 size={18}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="text-red-400"><Trash2 size={18}/></button></>}</div></div>
-                    <h3 className="font-black text-slate-800 uppercase text-xs leading-tight mb-4 italic">{r.title}</h3>
-                    <div className="grid grid-cols-2 gap-4 border-t pt-4 italic">
-                      <div><p className="text-[8px] text-slate-400 uppercase font-black italic">Target/Real</p><p className="font-black text-[10px] italic">{r.realisasi} / {r.target}</p></div>
-                      <div><p className="text-[8px] text-slate-400 uppercase font-black italic">Ketua/Pimp</p><p className="font-black text-[10px] italic text-indigo-600">{r.nilaiKetua} / {r.nilaiPimpinan}</p></div>
-                    </div>
-                    {activeTab === 'penilaian' && <div className="flex gap-2 mt-4 italic"><button onClick={() => submitGrade(r.id, 'ketua')} className="flex-1 py-3 bg-amber-400 text-white rounded-xl text-[9px] font-black uppercase shadow-sm italic">Nilai Ketua</button><button onClick={() => submitGrade(r.id, 'pimpinan')} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase shadow-sm italic">Nilai Pimp</button></div>}
-                  </div>
-                ))}
-              </div>
             </div>
           )}
         </div>
 
-        {user.role !== 'admin' && (
-          <button 
-            onClick={() => { resetReportForm(); setShowReportModal(true); }}
-            className="md:hidden fixed bottom-28 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center z-50 active:scale-95 transition-all"
-          >
-            <Plus size={32}/>
-          </button>
-        )}
+        {user.role !== 'admin' && ( <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="md:hidden fixed bottom-28 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center z-50 active:scale-95 transition-all"> <Plus size={32}/> </button> )}
 
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-4 pb-6 flex justify-around items-center z-40 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] not-italic">
           <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-300'}`}><LayoutDashboard size={24}/><span className="text-[8px] font-black uppercase">Home</span></button>
@@ -567,23 +531,32 @@ const PIRUApp = () => {
         </div>
       </main>
 
+      {/* MODAL GANTI PASSWORD MANDIRI */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[100] font-sans italic">
+          <form onSubmit={handleUpdatePassword} className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl relative italic">
+            <button type="button" onClick={() => setShowPasswordModal(false)} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
+            <KeyRound size={40} className="text-indigo-600 mb-6" />
+            <h3 className="text-2xl font-black uppercase tracking-tighter mb-2 text-slate-800 italic">Ganti Password</h3>
+            <p className="text-[10px] font-black text-slate-400 uppercase mb-8 italic">Silakan perbarui password Anda secara berkala</p>
+            <div className="space-y-4 italic">
+               <input required type="password" placeholder="Password Saat Ini" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic" value={newPasswordData.current} onChange={e => setNewPasswordData({...newPasswordData, current: e.target.value})} />
+               <input required type="password" placeholder="Password Baru" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic" value={newPasswordData.new} onChange={e => setNewPasswordData({...newPasswordData, new: e.target.value})} />
+            </div>
+            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-6 rounded-2xl shadow-xl uppercase tracking-widest text-[10px] mt-8 italic transition-all active:scale-95">Update Password</button>
+          </form>
+        </div>
+      )}
+
       {showReportModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[100] font-sans italic">
           <form onSubmit={handleSubmitReport} className="bg-white w-full max-w-2xl rounded-[3rem] p-8 md:p-12 shadow-2xl relative italic max-h-[90vh] overflow-y-auto">
             <button type="button" onClick={() => { resetReportForm(); setShowReportModal(false); }} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
             <h3 className="text-2xl font-black uppercase tracking-tighter mb-8 text-slate-800 italic">{isEditing ? "Update Pekerjaan" : (activeTab === 'penilaian' ? "Entri Anggota" : "Entri Pekerjaan Saya")}</h3>
             <div className="space-y-4 italic">
-               {activeTab === 'penilaian' && !isEditing && (
-                  <select required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-indigo-600 border border-slate-100 italic" value={newReport.targetUser} onChange={e => setNewReport({...newReport, targetUser: e.target.value})}>
-                        <option value="">-- Pilih Nama Pegawai --</option>
-                        {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
-                  </select>
-               )}
+               {activeTab === 'penilaian' && !isEditing && ( <select required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-indigo-600 border border-slate-100 italic" value={newReport.targetUser} onChange={e => setNewReport({...newReport, targetUser: e.target.value})}> <option value="">-- Pilih Nama Pegawai --</option> {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)} </select> )}
                <input required type="text" placeholder="Uraian Pekerjaan" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic" value={newReport.title} onChange={e => setNewReport({...newReport, title: e.target.value})} />
-               <div className="grid grid-cols-2 gap-4 italic">
-                  <input required type="number" placeholder="Target" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic" value={newReport.target} onChange={e => setNewReport({...newReport, target: e.target.value})} />
-                  <input required type="number" placeholder="Realisasi" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic" value={newReport.realisasi} onChange={e => setNewReport({...newReport, realisasi: e.target.value})} />
-               </div>
+               <div className="grid grid-cols-2 gap-4 italic"> <input required type="number" placeholder="Target" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic" value={newReport.target} onChange={e => setNewReport({...newReport, target: e.target.value})} /> <input required type="number" placeholder="Realisasi" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic" value={newReport.realisasi} onChange={e => setNewReport({...newReport, realisasi: e.target.value})} /> </div>
                <input list="satuan-list" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic" placeholder="Satuan" value={newReport.satuan} onChange={e => setNewReport({...newReport, satuan: e.target.value})} />
                <datalist id="satuan-list"><option value="Dokumen"/><option value="Kegiatan"/><option value="Laporan"/><option value="Paket"/></datalist>
                <textarea className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold h-24 resize-none text-slate-600 border border-slate-100 italic" placeholder="Keterangan..." value={newReport.keterangan} onChange={e => setNewReport({...newReport, keterangan: e.target.value})} />
@@ -599,24 +572,13 @@ const PIRUApp = () => {
             <button type="button" onClick={() => { setShowUserModal(false); resetUserForm(); }} className="absolute top-8 right-8 p-4 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
             <h3 className="text-2xl font-black uppercase tracking-tighter mb-8 text-slate-800 italic">{isEditingUser ? "Edit Akun Pegawai" : "Tambah Pegawai"}</h3>
             <div className="space-y-4 italic">
-                {/* PREVIEW FOTO DI MODAL ADMIN */}
                 <div className="flex flex-col items-center mb-6">
                    <div className="w-24 h-24 rounded-3xl bg-slate-100 border-2 border-dashed border-slate-300 overflow-hidden flex items-center justify-center relative group">
-                      {newUser.photoURL ? (
-                        <img src={newUser.photoURL} className="w-full h-full object-cover" />
-                      ) : (
-                        <Camera size={28} className="text-slate-300" />
-                      )}
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={handlePhotoUpload}
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                      />
+                      {newUser.photoURL ? ( <img src={newUser.photoURL} className="w-full h-full object-cover" /> ) : ( <Camera size={28} className="text-slate-300" /> )}
+                      <input type="file" accept="image/*" onChange={handlePhotoUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
                    </div>
                    <p className="text-[9px] font-black text-indigo-600 uppercase mt-2 italic">Klik untuk Upload Foto</p>
                 </div>
-
                 <input required type="text" placeholder="Nama Lengkap" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} />
                 <div className="grid grid-cols-2 gap-4 italic">
                     <input required type="text" placeholder="Username" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic" value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} />
