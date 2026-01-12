@@ -72,7 +72,6 @@ const PIRUApp = () => {
     const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
       setUsers(snap.docs.map(d => ({ firestoreId: d.id, ...d.data() })));
     });
-    // Ambil Pengaturan Logo Global
     const unsubSettings = onSnapshot(doc(db, "settings", "app"), (docSnap) => {
       if (docSnap.exists()) setAppSettings(docSnap.data());
     });
@@ -299,7 +298,6 @@ const PIRUApp = () => {
   if (!user) return (
     <div className="h-screen bg-slate-900 flex items-center justify-center p-4 italic">
       <div className="bg-white w-full max-w-md rounded-[2.5rem] p-12 shadow-2xl text-center font-sans">
-        {/* LOGO DINAMIS DI LOGIN */}
         {appSettings.logoURL ? (
             <img src={appSettings.logoURL} alt="Logo" className="h-16 mx-auto mb-6 object-contain" />
         ) : (
@@ -325,7 +323,6 @@ const PIRUApp = () => {
     <div className="h-screen bg-slate-50 flex flex-col md:flex-row font-sans overflow-hidden text-slate-800 italic">
       <div className="hidden md:flex w-72 bg-white border-r p-8 flex-col h-full sticky top-0 not-italic">
         <div className="flex items-center gap-4 mb-14 px-2 italic">
-          {/* LOGO DINAMIS DI SIDEBAR */}
           <div className="p-2 rounded-2xl text-white">
             {appSettings.logoURL ? (
                 <img src={appSettings.logoURL} alt="Logo" className="w-12 h-12 object-contain" />
@@ -379,6 +376,15 @@ const PIRUApp = () => {
              </div>
           </div>
         </header>
+
+        {/* PERBAIKAN: MONTH PICKER KHUSUS MOBILE (DI BAWAH HEADER) */}
+        <div className="md:hidden px-6 py-4 bg-white border-b flex items-center justify-center gap-4 z-20">
+            <span className="text-[10px] font-black uppercase text-slate-400 italic">Periode:</span>
+            <select className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-black text-[12px] text-indigo-600 outline-none shadow-sm cursor-pointer italic" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
+                {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
+            </select>
+            <span className="font-black text-[12px] italic text-slate-400">{selectedYear}</span>
+        </div>
 
         <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-8 custom-scrollbar mb-24 md:mb-0">
           {activeTab === 'dashboard' && (
@@ -438,7 +444,6 @@ const PIRUApp = () => {
                 <button onClick={() => { resetUserForm(); setShowUserModal(true); }} className="mt-4 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 italic"><UserPlus size={14}/> Tambah Pegawai</button>
               </div>
 
-              {/* FITUR UNTUK ADMIN MENGGANTI LOGO APLIKASI */}
               {user.role === 'admin' && (
                 <div className="bg-white rounded-[2.5rem] shadow-sm border p-8 flex flex-col md:flex-row items-center gap-8 italic">
                    <div className="w-32 h-32 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group">
@@ -479,7 +484,6 @@ const PIRUApp = () => {
                 </table>
               </div>
 
-              {/* MOBILE CARD VIEW - TETAP UTUH */}
               <div className="md:hidden space-y-4 pb-12">
                 {activeTab === 'penilaian' && (
                   <div className="flex flex-col gap-3 mb-4 not-italic">
