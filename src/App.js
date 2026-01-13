@@ -8,7 +8,7 @@ import {
 import { 
   ShieldCheck, Loader2, Plus, X, BarChart3, FileText, 
   LogOut, Trash2, Edit3, TrendingUp, Clock, Zap, UserPlus, Users, Download, ClipboardCheck, CheckCircle2,
-  LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, Image as ImageIcon, Link, Copy, ExternalLink, Search
+  LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, Image as ImageIcon, Link, Copy, ExternalLink, Search, FileSpreadsheet
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -36,6 +36,7 @@ const PIRUApp = () => {
   const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState([]);
   const [users, setUsers] = useState([]);
+  const [kjkData, setKjkData] = useState([]); // State baru untuk data KJK
   const [appSettings, setAppSettings] = useState({ logoURL: null });
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -62,7 +63,6 @@ const PIRUApp = () => {
   const [currentUserId, setCurrentUserId] = useState(null);
   const [newUser, setNewUser] = useState({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '' });
 
-  // State Baru untuk Bukti Dukung
   const [tempLinks, setTempLinks] = useState({});
 
   useEffect(() => {
@@ -78,7 +78,12 @@ const PIRUApp = () => {
     const unsubSettings = onSnapshot(doc(db, "settings", "app"), (docSnap) => {
       if (docSnap.exists()) setAppSettings(docSnap.data());
     });
-    return () => { unsubAuth(); unsubUsers(); unsubSettings(); };
+    // Subscribe KJK
+    const unsubKJK = onSnapshot(collection(db, "kjk"), (snap) => {
+      setKjkData(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
+    return () => { unsubAuth(); unsubUsers(); unsubSettings(); unsubKJK(); };
   }, []);
 
   useEffect(() => {
@@ -90,6 +95,80 @@ const PIRUApp = () => {
     return () => unsubReports();
   }, [user]);
 
+  // Fungsi Konversi hh:mm ke Menit (untuk Sorting) dan Teks (untuk UI)
+  const formatKJKDisplay = (timeStr) => {
+    if (!timeStr || timeStr === '00:00') return "Nol KJK";
+    const [hrs, mins] = timeStr.split(':').map(Number);
+    let result = [];
+    if (hrs > 0) result.push(`${hrs} jam`);
+    if (mins > 0) result.push(`${mins} menit`);
+    return result.join(' ') || "0 menit";
+  };
+
+  const timeToMinutes = (timeStr) => {
+    if (!timeStr) return 0;
+    const [hrs, mins] = timeStr.split(':').map(Number);
+    return (hrs * 60) + mins;
+  };
+
+  const motivationalWords = [
+    "Luar Biasa! Disiplin Sempurna! 🌟",
+    "Pertahankan! Nol Kekurangan Jam Kerja. ✅",
+    "Disiplin adalah kunci kesuksesan! 🚀",
+    "Anda Teladan Kedisiplinan! 🏆"
+  ];
+
+  const getMotivation = (name) => {
+    // Gunakan nama sebagai seed agar pesan tetap sama untuk orang yang sama
+    const seed = name.length % motivationalWords.length;
+    return motivationalWords[seed];
+  };
+
+  // Handler Upload Excel KJK
+  const handleUploadKJK = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const workbook = new ExcelJS.Workbook();
+    const reader = new FileReader();
+
+    reader.onload = async (event) => {
+      try {
+        await workbook.xlsx.load(event.target.result);
+        const sheet = workbook.worksheets[0];
+        const batch = writeBatch(db);
+        
+        sheet.eachRow((row, rowNumber) => {
+          if (rowNumber > 1) { // Skip header
+            const nama = row.getCell(2).value?.toString().trim();
+            let kjkVal = row.getCell(3).value?.toString().trim() || '00:00';
+            
+            // Validasi format hh:mm sederhana
+            if (kjkVal && nama) {
+              const docId = `${selectedYear}_${selectedMonth}_${nama.replace(/\s+/g, '_').toLowerCase()}`;
+              const kjkRef = doc(db, "kjk", docId);
+              batch.set(kjkRef, {
+                nama,
+                kjkValue: kjkVal,
+                month: selectedMonth,
+                year: selectedYear,
+                updatedAt: serverTimestamp()
+              }, { merge: true });
+            }
+          }
+        });
+
+        await batch.commit();
+        alert("Data KJK berhasil diperbarui untuk periode terpilih.");
+      } catch (err) {
+        console.error(err);
+        alert("Gagal membaca file Excel. Pastikan format kolom: No | Nama | Total KJK (hh:mm)");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  // Fungsi Login & Lainnya (Tetap Sama)
   const handleLogoUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -307,18 +386,59 @@ const PIRUApp = () => {
   const dashboardStats = useMemo(() => {
     const periodReports = reports.filter(r => r.month === selectedMonth && r.year === selectedYear);
     const yearlyReports = reports.filter(r => r.year === selectedYear && r.userId === user?.username);
+    
+    // Rata-rata KJK Bulanan
+    const currentKJK = kjkData.filter(k => k.month === selectedMonth && k.year === selectedYear);
+
     const staffSummary = users.filter(u => u.role !== 'admin' && u.role !== 'pimpinan').map(s => {
       const sReports = periodReports.filter(r => r.userId === s.username);
       const total = sReports.length; const selesai = sReports.filter(r => r.status === 'selesai').length; const progress = sReports.filter(r => r.status === 'dinilai_ketua').length;
       let statusText = total === 0 ? "Belum Lapor" : (selesai === total ? "Selesai" : (progress > 0 || selesai > 0 ? "Menunggu Penilaian" : "Belum Dinilai"));
       const avgCap = total > 0 ? (sReports.reduce((acc, curr) => acc + Math.min((curr.realisasi / curr.target) * 100, 100), 0) / total) : 0;
       const avgPimp = total > 0 ? (sReports.reduce((acc, curr) => acc + (Number(curr.nilaiPimpinan) || 0), 0) / total) : 0;
-      return { name: s.name, total, nilaiAkhir: ((avgCap + avgPimp) / 2).toFixed(2), status: statusText, photoURL: s.photoURL };
+      const score = (avgCap + avgPimp) / 2;
+      
+      // Ambil data KJK
+      const kjkObj = currentKJK.find(k => k.nama.toLowerCase() === s.name.toLowerCase());
+      const kjkTime = kjkObj ? kjkObj.kjkValue : '00:00';
+      const kjkMins = timeToMinutes(kjkTime);
+
+      return { 
+        name: s.name, 
+        total, 
+        nilaiAkhir: score.toFixed(2), 
+        status: statusText, 
+        photoURL: s.photoURL,
+        kjkValue: kjkTime,
+        kjkMins: kjkMins
+      };
     });
+
+    // LOGIKA SORTING BARU: CKP Tertinggi, lalu KJK Terendah
+    const sortedSummary = staffSummary.sort((a, b) => {
+      if (Number(b.nilaiAkhir) !== Number(a.nilaiAkhir)) {
+        return Number(b.nilaiAkhir) - Number(a.nilaiAkhir);
+      }
+      return a.kjkMins - b.kjkMins;
+    });
+
     const myReports = periodReports.filter(r => r.userId === user?.username);
     const myTotal = myReports.length; const mySelesai = myReports.filter(r => r.status === 'selesai').length;
-    return { myTotal, myNilaiAkhir: (myTotal > 0 ? (( (myReports.reduce((a,c)=>a+Math.min((c.realisasi/c.target)*100, 100),0)/myTotal) + (myReports.reduce((a,c)=>a+(Number(c.nilaiPimpinan)||0),0)/myTotal) )/2).toFixed(2) : "0.00"), isFinal: (myTotal > 0 && mySelesai === myTotal), myYearly: (yearlyReports.length > 0 ? ( (yearlyReports.reduce((a,c)=>a+Math.min((c.realisasi/c.target)*100, 100),0)/yearlyReports.length) + (yearlyReports.reduce((a,c)=>a+(Number(c.nilaiPimpinan)||0),0)/yearlyReports.length) ) / 2 : 0).toFixed(2), staffSummary, myStatus: myTotal === 0 ? "Belum Ada Laporan" : (mySelesai === myTotal ? "Selesai" : "Menunggu Penilaian") };
-  }, [reports, users, user, selectedMonth, selectedYear]);
+    
+    // Data KJK Pribadi
+    const myKJKObj = currentKJK.find(k => k.nama.toLowerCase() === user?.name.toLowerCase());
+    const myKJK = myKJKObj ? myKJKObj.kjkValue : '00:00';
+
+    return { 
+      myTotal, 
+      myNilaiAkhir: (myTotal > 0 ? (( (myReports.reduce((a,c)=>a+Math.min((c.realisasi/c.target)*100, 100),0)/myTotal) + (myReports.reduce((a,c)=>a+(Number(c.nilaiPimpinan)||0),0)/myTotal) )/2).toFixed(2) : "0.00"), 
+      isFinal: (myTotal > 0 && mySelesai === myTotal), 
+      myYearly: (yearlyReports.length > 0 ? ( (yearlyReports.reduce((a,c)=>a+Math.min((c.realisasi/c.target)*100, 100),0)/yearlyReports.length) + (yearlyReports.reduce((a,c)=>a+(Number(c.nilaiPimpinan)||0),0)/yearlyReports.length) ) / 2 : 0).toFixed(2), 
+      staffSummary: sortedSummary, 
+      myStatus: myTotal === 0 ? "Belum Ada Laporan" : (mySelesai === myTotal ? "Selesai" : "Menunggu Penilaian"),
+      myKJK
+    };
+  }, [reports, users, user, selectedMonth, selectedYear, kjkData]);
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50 font-sans"><Loader2 className="animate-spin text-indigo-600" size={50} /></div>;
 
@@ -360,10 +480,11 @@ const PIRUApp = () => {
           <div><h2 className="font-black text-2xl uppercase tracking-tighter leading-none italic">PIRU</h2><p className="text-[8px] font-black text-indigo-600 uppercase tracking-widest mt-1 italic">Penilaian Kinerja Bulanan</p></div>
         </div>
         <nav className="flex-1 space-y-3 font-sans not-italic">
-          <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><BarChart3 size={20}/> Dashboard</button>
+          <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><LayoutDashboard size={20}/> Dashboard</button>
           {user.role !== 'admin' && (<button onClick={() => setActiveTab('laporan')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'laporan' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><FileText size={20}/> Entri Pekerjaan</button>)}
           <button onClick={() => setActiveTab('bukti_dukung')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'bukti_dukung' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Link size={20}/> Bukti Dukung</button>
           {['admin', 'pimpinan', 'ketua'].includes(user.role) && (<button onClick={() => setActiveTab('penilaian')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'penilaian' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><ClipboardCheck size={20}/> Penilaian Anggota</button>)}
+          {user.role === 'admin' && (<button onClick={() => setActiveTab('kjk_management')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'kjk_management' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><FileSpreadsheet size={20}/> Manajemen KJK</button>)}
           {user.role === 'admin' && (<button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'users' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Users size={20}/> Data Pegawai</button>)}
         </nav>
         <button onClick={() => setShowPasswordModal(true)} className="w-full flex items-center gap-4 px-5 py-3 rounded-2xl font-black text-[10px] uppercase text-slate-400 hover:text-indigo-600 transition-all italic mb-2"><KeyRound size={16}/> Ganti Password</button>
@@ -387,7 +508,7 @@ const PIRUApp = () => {
              <button onClick={() => setShowPasswordModal(true)} className="md:hidden p-2 text-indigo-600 bg-white rounded-xl shadow-sm border border-slate-100"><KeyRound size={22}/></button>
              <button onClick={() => {localStorage.clear(); window.location.reload();}} className="md:hidden p-2 text-red-500 bg-white rounded-xl shadow-sm border border-slate-100"><LogOut size={22}/></button>
              <div className="hidden md:flex items-center gap-3">
-               {(activeTab === 'penilaian' || activeTab === 'bukti_dukung') && ['admin', 'pimpinan', 'ketua'].includes(user.role) && (
+               {(activeTab === 'penilaian' || activeTab === 'bukti_dukung' || activeTab === 'kjk_management') && ['admin', 'pimpinan', 'ketua'].includes(user.role) && (
                   <>
                     <select className="p-2 bg-white border border-slate-200 rounded-xl font-black text-[10px] text-slate-600 shadow-sm outline-none italic" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
                       <option value="Semua">Data Saya</option>
@@ -419,16 +540,25 @@ const PIRUApp = () => {
               {['admin', 'pimpinan'].includes(user.role) ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-10">
                   {dashboardStats.staffSummary.map((s, i) => (
-                    <div key={i} className="bg-slate-900 p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] border border-slate-800 shadow-xl italic flex flex-col items-center text-center group">
+                    <div key={i} className="bg-slate-900 p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] border border-slate-800 shadow-xl italic flex flex-col items-center text-center group transition-all hover:border-indigo-500/50">
                       <div className="w-20 h-20 md:w-24 md:h-24 rounded-[2rem] overflow-hidden mb-6 border-4 border-slate-800 shadow-lg bg-slate-800 flex-shrink-0">
                         {s.photoURL ? ( <img src={s.photoURL} alt={s.name} className="w-full h-full object-cover" />
                         ) : ( <div className="w-full h-full flex items-center justify-center bg-indigo-500/10 text-indigo-400"><User size={40} /></div> )}
                       </div>
-                      <p className="font-black text-xl text-white uppercase italic mb-2 tracking-tighter text-center">{s.name}</p>
+                      <p className="font-black text-xl text-white uppercase italic mb-1 tracking-tighter text-center">{s.name}</p>
                       <span className={`text-[9px] font-black uppercase px-4 py-1.5 rounded-full mb-6 ${s.status === 'Selesai' ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-400'}`}>{s.status}</span>
-                      <div className="w-full border-t border-slate-800 pt-6 mt-auto">
-                        <p className="text-[9px] font-black text-slate-500 uppercase italic mb-1 text-center">Capaian Akhir</p>
-                        <p className="text-4xl font-black text-indigo-400 italic text-center">{s.nilaiAkhir}</p>
+                      
+                      <div className="w-full grid grid-cols-2 gap-4 border-t border-slate-800 pt-6 mt-auto">
+                        <div className="text-center">
+                            <p className="text-[9px] font-black text-slate-500 uppercase italic mb-1">CKP Akhir</p>
+                            <p className="text-3xl font-black text-white italic">{s.nilaiAkhir}</p>
+                        </div>
+                        <div className="text-center border-l border-slate-800">
+                            <p className="text-[9px] font-black text-slate-500 uppercase italic mb-1">Disiplin KJK</p>
+                            <p className={`text-[11px] font-black italic mt-2 uppercase ${s.kjkMins === 0 ? 'text-amber-400' : 'text-red-400'}`}>
+                                {s.kjkMins === 0 ? "Sempurna 🌟" : formatKJKDisplay(s.kjkValue)}
+                            </p>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -439,20 +569,96 @@ const PIRUApp = () => {
                     <div className="bg-amber-500/10 p-5 rounded-3xl mb-8"><TrendingUp size={32} className="text-amber-500"/></div>
                     <p className="text-slate-400 text-[10px] font-black uppercase mb-2 tracking-[0.2em] italic text-center">{dashboardStats.isFinal ? "Nilai Akhir" : "Estimasi Nilai"}</p>
                     <p className="text-6xl md:text-7xl font-black text-amber-500 tracking-tighter italic mb-8 text-center">{dashboardStats.myNilaiAkhir}</p>
-                    <div className="w-full border-t border-slate-800 pt-8 mt-auto flex flex-col items-center italic text-center">
-                       <p className="text-[9px] font-black text-slate-500 uppercase italic tracking-widest text-center">{dashboardStats.myStatus}</p>
+                    <div className="w-full border-t border-slate-800 pt-8 mt-auto flex flex-col items-center italic text-center text-slate-500">
+                       <p className="text-[9px] font-black uppercase italic tracking-widest">{dashboardStats.myStatus}</p>
                     </div>
                   </div>
                   <div className="bg-slate-900 p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl border border-slate-800 flex flex-col items-center text-center">
-                    <div className="bg-indigo-500/10 p-5 rounded-3xl mb-8"><BarChart3 size={32} className="text-indigo-400"/></div>
-                    <p className="text-slate-400 text-[10px] font-black uppercase mb-2 tracking-[0.2em] italic text-center">Akumulasi {selectedYear}</p>
-                    <p className="text-6xl md:text-7xl font-black text-indigo-400 tracking-tighter italic mb-8 text-center">{dashboardStats.myYearly}</p>
+                    <div className="bg-indigo-500/10 p-5 rounded-3xl mb-8"><Clock size={32} className="text-indigo-400"/></div>
+                    <p className="text-slate-400 text-[10px] font-black uppercase mb-2 tracking-[0.2em] italic text-center">Kedisiplinan (KJK)</p>
+                    <p className={`text-4xl font-black tracking-tighter italic mb-4 text-center uppercase ${timeToMinutes(dashboardStats.myKJK) === 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {formatKJKDisplay(dashboardStats.myKJK)}
+                    </p>
                     <div className="w-full border-t border-slate-800 pt-8 mt-auto italic text-center">
-                       <p className="text-[9px] font-black text-slate-500 uppercase italic tracking-widest leading-none text-center">Kumulatif</p>
+                       <p className="text-[10px] font-black text-amber-400 uppercase italic tracking-tighter leading-tight">
+                         {timeToMinutes(dashboardStats.myKJK) === 0 ? getMotivation(user.name) : "Ayo tingkatkan kedisiplinan anda!"}
+                       </p>
                     </div>
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'kjk_management' && user.role === 'admin' && (
+            <div className="animate-in slide-in-from-bottom-4 duration-500 italic mb-10">
+                <div className="bg-white rounded-[2.5rem] shadow-sm border p-8 md:p-12 mb-8 text-center md:text-left">
+                    <div className="flex flex-col md:flex-row items-center gap-8 italic">
+                        <div className="w-24 h-24 rounded-3xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-inner">
+                            <FileSpreadsheet size={40} />
+                        </div>
+                        <div className="flex-1 italic">
+                            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter mb-2 italic">Upload Data KJK Bulanan</h2>
+                            <p className="text-[11px] text-slate-400 font-bold uppercase italic mb-6">Import data Kekurangan Jam Kerja pegawai dari Excel (Format: No | Nama | KJK hh:mm)</p>
+                            <label className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] cursor-pointer inline-flex items-center gap-3 transition-all active:scale-95 shadow-lg italic">
+                                <Plus size={16}/> Pilih File Excel
+                                <input type="file" accept=".xlsx, .xls" onChange={handleUploadKJK} className="hidden" />
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                {/* TAMPILAN REKAP KJK (TABLE DESKTOP) */}
+                <div className="hidden md:block bg-white rounded-[2.5rem] shadow-sm border overflow-hidden p-0 italic">
+                    <table className="w-full text-left italic text-xs border-collapse">
+                        <thead className="bg-slate-100 border-b text-[9px] font-black text-slate-500 uppercase tracking-widest italic sticky top-0 z-20">
+                            <tr>
+                                <th className="p-4 w-12 text-center">No</th>
+                                <th className="p-4">Nama Pegawai</th>
+                                <th className="p-4 text-center">Bulan/Tahun</th>
+                                <th className="p-4 text-center">Total KJK</th>
+                                <th className="p-4 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 italic">
+                            {kjkData.filter(k => k.month === selectedMonth && k.year === selectedYear).length === 0 ? (
+                                <tr><td colSpan="5" className="p-10 text-center text-slate-400 font-bold uppercase text-[10px] italic">Belum ada data KJK terupload periode ini</td></tr>
+                            ) : (
+                                kjkData.filter(k => k.month === selectedMonth && k.year === selectedYear).map((k, idx) => (
+                                    <tr key={k.id} className="hover:bg-slate-50 italic">
+                                        <td className="p-4 font-bold text-slate-400 text-center">{idx + 1}</td>
+                                        <td className="p-4 font-black text-slate-800 uppercase italic">{k.nama}</td>
+                                        <td className="p-4 text-center font-bold text-slate-500 uppercase italic">{selectedMonth} / {selectedYear}</td>
+                                        <td className="p-4 text-center">
+                                            <span className={`font-black uppercase text-[10px] px-3 py-1 rounded-full ${timeToMinutes(k.kjkValue) === 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                                                {formatKJKDisplay(k.kjkValue)}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 text-center italic">
+                                            <button onClick={() => deleteDoc(doc(db, "kjk", k.id))} className="text-red-400 hover:text-red-600 transition-all"><Trash2 size={16}/></button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* TAMPILAN REKAP KJK (MOBILE CARDS) */}
+                <div className="md:hidden space-y-4">
+                    {kjkData.filter(k => k.month === selectedMonth && k.year === selectedYear).map((k, idx) => (
+                        <div key={k.id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 flex justify-between items-center italic">
+                            <div className="italic">
+                                <p className="text-[10px] font-black text-indigo-600 uppercase italic mb-1">#{idx+1} - {selectedMonth}/{selectedYear}</p>
+                                <h3 className="font-black text-slate-800 uppercase text-xs italic">{k.nama}</h3>
+                                <p className={`text-[10px] font-black uppercase mt-2 italic ${timeToMinutes(k.kjkValue) === 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    KJK: {formatKJKDisplay(k.kjkValue)}
+                                </p>
+                            </div>
+                            <button onClick={() => deleteDoc(doc(db, "kjk", k.id))} className="p-4 bg-red-50 text-red-400 rounded-2xl"><Trash2 size={18}/></button>
+                        </div>
+                    ))}
+                </div>
             </div>
           )}
 
