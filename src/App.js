@@ -8,7 +8,7 @@ import {
 import { 
   ShieldCheck, Loader2, Plus, X, BarChart3, FileText, 
   LogOut, Trash2, Edit3, TrendingUp, Clock, Zap, UserPlus, Users, Download, ClipboardCheck, CheckCircle2,
-  LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, Image as ImageIcon
+  LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, Image as ImageIcon, Link, Copy, ExternalLink, Search
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -61,6 +61,9 @@ const PIRUApp = () => {
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [newUser, setNewUser] = useState({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '' });
+
+  // State Baru untuk Bukti Dukung
+  const [tempLinks, setTempLinks] = useState({});
 
   useEffect(() => {
     signInAnonymously(auth);
@@ -234,6 +237,15 @@ const PIRUApp = () => {
     }
   };
 
+  const handleUpdateLinkDrive = async (reportId) => {
+    const link = tempLinks[reportId];
+    if (!link) { alert("Masukkan link terlebih dahulu."); return; }
+    try {
+      await updateDoc(doc(db, "reports", reportId), { linkDrive: link });
+      alert("Link bukti dukung berhasil disimpan.");
+    } catch (err) { alert("Gagal menyimpan link."); }
+  };
+
   const exportToExcel = async () => {
     if (filterStaffName === 'Semua' && user.role !== 'pegawai') { alert("Pilih satu nama pegawai terlebih dahulu untuk mencetak CKP."); return; }
     const targetStaff = user.role === 'pegawai' ? user : users.find(u => u.name === filterStaffName);
@@ -272,8 +284,12 @@ const PIRUApp = () => {
 
   const currentFilteredReports = useMemo(() => {
     let res = reports.filter(r => r.month === selectedMonth && r.year === selectedYear);
-    if (activeTab === 'laporan') res = res.filter(r => r.userId === user.username);
-    if (activeTab === 'penilaian' && filterStaffName !== 'Semua') { res = res.filter(r => r.userName === filterStaffName); }
+    if (activeTab === 'laporan' || (activeTab === 'bukti_dukung' && user.role === 'pegawai')) {
+      res = res.filter(r => r.userId === user.username);
+    }
+    if ((activeTab === 'penilaian' || activeTab === 'bukti_dukung') && filterStaffName !== 'Semua') { 
+      res = res.filter(r => r.userName === filterStaffName); 
+    }
     return res;
   }, [reports, user, selectedMonth, selectedYear, filterStaffName, activeTab]);
 
@@ -335,6 +351,7 @@ const PIRUApp = () => {
         <nav className="flex-1 space-y-3 font-sans not-italic">
           <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><BarChart3 size={20}/> Dashboard</button>
           {user.role !== 'admin' && (<button onClick={() => setActiveTab('laporan')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'laporan' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><FileText size={20}/> Entri Pekerjaan</button>)}
+          <button onClick={() => setActiveTab('bukti_dukung')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'bukti_dukung' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Link size={20}/> Bukti Dukung</button>
           {['admin', 'pimpinan', 'ketua'].includes(user.role) && (<button onClick={() => setActiveTab('penilaian')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'penilaian' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><ClipboardCheck size={20}/> Penilaian Anggota</button>)}
           {user.role === 'admin' && (<button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'users' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Users size={20}/> Data Pegawai</button>)}
         </nav>
@@ -346,8 +363,8 @@ const PIRUApp = () => {
         <header className="px-6 md:px-10 py-6 md:py-10 pb-4 flex flex-row justify-between items-center italic sticky top-0 bg-blue-50/80 backdrop-blur-md border-b border-blue-100 z-30 shadow-sm">
           <div className="flex-1 flex items-center gap-4 italic">
             <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl overflow-hidden border-2 border-white shadow-md bg-white flex-shrink-0">
-               {user.photoURL ? ( <img src={user.photoURL} alt="Profil" className="w-full h-full object-cover" />
-               ) : ( <div className="w-full h-full flex items-center justify-center bg-indigo-100 text-indigo-600 font-black text-lg">{user.name.charAt(0)}</div> )}
+                {user.photoURL ? ( <img src={user.photoURL} alt="Profil" className="w-full h-full object-cover" />
+                ) : ( <div className="w-full h-full flex items-center justify-center bg-indigo-100 text-indigo-600 font-black text-lg">{user.name.charAt(0)}</div> )}
             </div>
             <div className="italic">
               <h1 className="text-lg md:text-xl font-black text-slate-900 tracking-tighter uppercase leading-none italic break-words">{user.name}</h1>
@@ -359,25 +376,24 @@ const PIRUApp = () => {
              <button onClick={() => setShowPasswordModal(true)} className="md:hidden p-2 text-indigo-600 bg-white rounded-xl shadow-sm border border-slate-100"><KeyRound size={22}/></button>
              <button onClick={() => {localStorage.clear(); window.location.reload();}} className="md:hidden p-2 text-red-500 bg-white rounded-xl shadow-sm border border-slate-100"><LogOut size={22}/></button>
              <div className="hidden md:flex items-center gap-3">
-               {activeTab === 'penilaian' && (
+               {(activeTab === 'penilaian' || activeTab === 'bukti_dukung') && ['admin', 'pimpinan', 'ketua'].includes(user.role) && (
                   <>
                     <select className="p-2 bg-white border border-slate-200 rounded-xl font-black text-[10px] text-slate-600 shadow-sm outline-none italic" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
                       <option value="Semua">Semua Pegawai</option>
                       {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                     </select>
-                    {filterStaffName !== 'Semua' && ( <button onClick={handleNilaiSemua} className="bg-amber-500 text-white px-4 py-2.5 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-md italic"><CheckCircle2 size={14}/> Nilai Semua</button> )}
+                    {activeTab === 'penilaian' && filterStaffName !== 'Semua' && ( <button onClick={handleNilaiSemua} className="bg-amber-500 text-white px-4 py-2.5 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-md italic"><CheckCircle2 size={14}/> Nilai Semua</button> )}
                   </>
                 )}
                <select className="bg-white border border-slate-200 rounded-xl px-3 py-2 font-black text-[10px] text-slate-600 outline-none shadow-sm cursor-pointer italic" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
                  {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
                </select>
                <button onClick={exportToExcel} className="bg-green-600 text-white px-4 py-2.5 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-md italic"><Download size={14}/> Cetak</button>
-               <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-black uppercase text-[10px] shadow-lg flex items-center gap-2 italic"><Plus size={14}/> Entri</button>
+               {user.role !== 'admin' && <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-black uppercase text-[10px] shadow-lg flex items-center gap-2 italic"><Plus size={14}/> Entri</button>}
              </div>
           </div>
         </header>
 
-        {/* PERBAIKAN: MONTH PICKER KHUSUS MOBILE (DI BAWAH HEADER) */}
         <div className="md:hidden px-6 py-4 bg-white border-b flex items-center justify-center gap-4 z-20">
             <span className="text-[10px] font-black uppercase text-slate-400 italic">Periode:</span>
             <select className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-black text-[12px] text-indigo-600 outline-none shadow-sm cursor-pointer italic" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
@@ -426,6 +442,68 @@ const PIRUApp = () => {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'bukti_dukung' && (
+            <div className="animate-in slide-in-from-bottom-4 duration-500 italic mb-10">
+               {['admin', 'pimpinan', 'ketua'].includes(user.role) && (
+                  <div className="md:hidden flex flex-col gap-3 mb-6 not-italic">
+                    <select className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-black text-[12px] text-slate-600 shadow-sm italic outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
+                      <option value="Semua">Pilih Pegawai</option>
+                      {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
+                    </select>
+                  </div>
+               )}
+               <div className="bg-white rounded-[2.5rem] shadow-sm border overflow-hidden p-0 italic">
+                  <table className="w-full text-left italic text-xs border-collapse">
+                    <thead className="bg-slate-100 border-b text-[9px] font-black text-slate-500 uppercase tracking-widest italic sticky top-0 z-20">
+                      <tr>
+                        <th className="p-4 w-12 text-center">No</th>
+                        <th className="p-4">Uraian Pekerjaan</th>
+                        <th className="p-4 text-center">Status</th>
+                        <th className="p-4 text-center">Link Bukti Dukung (Google Drive)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 italic">
+                      {currentFilteredReports.length === 0 ? (
+                        <tr><td colSpan="4" className="p-10 text-center text-slate-400 font-bold uppercase text-[10px] italic">Tidak ada data untuk periode ini</td></tr>
+                      ) : (
+                        currentFilteredReports.map((r, idx) => (
+                          <tr key={r.id} className="hover:bg-slate-50 transition-all italic group">
+                            <td className="p-4 font-bold text-slate-400 text-center">{idx + 1}</td>
+                            <td className="p-4"><p className="font-black text-[12px] text-slate-800 uppercase tracking-tight leading-none mb-1 italic">{r.title}</p><span className="text-indigo-600 text-[8px] font-black uppercase bg-indigo-50 px-2 py-0.5 rounded-lg italic">{r.userName}</span></td>
+                            <td className="p-4 text-center">
+                               <span className={`text-[8px] font-black uppercase px-2 py-1 rounded-md ${r.status === 'selesai' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>{r.status.replace('_', ' ')}</span>
+                            </td>
+                            <td className="p-4">
+                               <div className="flex flex-col md:flex-row items-center gap-2 italic">
+                                  {user.role === 'pegawai' || user.role === 'admin' ? (
+                                    <div className="flex items-center gap-2 w-full max-w-md">
+                                       <input 
+                                         type="url" 
+                                         placeholder="Paste Link Drive..." 
+                                         className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-[10px] italic"
+                                         value={tempLinks[r.id] || r.linkDrive || ''}
+                                         onChange={(e) => setTempLinks({...tempLinks, [r.id]: e.target.value})}
+                                       />
+                                       <button onClick={() => handleUpdateLinkDrive(r.id)} className="p-3 bg-indigo-600 text-white rounded-xl shadow-md active:scale-95 transition-all"><CheckCircle2 size={16}/></button>
+                                    </div>
+                                  ) : null}
+                                  {r.linkDrive && (
+                                     <div className="flex items-center gap-2">
+                                        <a href={r.linkDrive} target="_blank" rel="noopener noreferrer" className="p-3 bg-green-50 text-green-600 rounded-xl flex items-center gap-2 font-black text-[10px] uppercase shadow-sm"><ExternalLink size={14}/> Buka</a>
+                                        <button onClick={() => {navigator.clipboard.writeText(r.linkDrive); alert("Link berhasil disalin!");}} className="p-3 bg-slate-100 text-slate-600 rounded-xl flex items-center gap-2 font-black text-[10px] uppercase shadow-sm"><Copy size={14}/> Salin</button>
+                                     </div>
+                                  )}
+                               </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+               </div>
             </div>
           )}
 
@@ -533,11 +611,12 @@ const PIRUApp = () => {
           )}
         </div>
 
-        {user.role !== 'admin' && ( <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="md:hidden fixed bottom-28 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center z-50 active:scale-95 transition-all"> <Plus size={32}/> </button> )}
+        {user.role !== 'admin' && activeTab === 'laporan' && ( <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="md:hidden fixed bottom-28 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center z-50 active:scale-95 transition-all"> <Plus size={32}/> </button> )}
 
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-4 pb-6 flex justify-around items-center z-40 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] not-italic">
           <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-300'}`}><LayoutDashboard size={24}/><span className="text-[8px] font-black uppercase">Home</span></button>
           {user.role !== 'admin' && (<button onClick={() => setActiveTab('laporan')} className={`flex flex-col items-center gap-1 ${activeTab === 'laporan' ? 'text-indigo-600' : 'text-slate-300'}`}><FileText size={24}/><span className="text-[8px] font-black uppercase">Entri</span></button>)}
+          <button onClick={() => setActiveTab('bukti_dukung')} className={`flex flex-col items-center gap-1 ${activeTab === 'bukti_dukung' ? 'text-indigo-600' : 'text-slate-300'}`}><Link size={24}/><span className="text-[8px] font-black uppercase">Bukti</span></button>
           {['admin', 'pimpinan', 'ketua'].includes(user.role) && (<button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button>)}
           {user.role === 'admin' && (<button onClick={() => setActiveTab('users')} className={`flex flex-col items-center gap-1 ${activeTab === 'users' ? 'text-indigo-600' : 'text-slate-300'}`}><Users size={24}/><span className="text-[8px] font-black uppercase">Pegawai</span></button>)}
         </div>
