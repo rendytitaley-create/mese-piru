@@ -97,8 +97,11 @@ const PIRUApp = () => {
 
   // Fungsi Konversi hh:mm ke Menit (untuk Sorting) dan Teks (untuk UI)
   const formatKJKDisplay = (timeStr) => {
-    if (!timeStr || timeStr === '00:00') return "Nol KJK";
-    const [hrs, mins] = timeStr.split(':').map(Number);
+    if (!timeStr || timeStr === '00:00' || timeStr === '00:00:00') return "Nol KJK";
+    const parts = timeStr.split(':').map(Number);
+    const hrs = parts[0] || 0;
+    const mins = parts[1] || 0;
+    
     let result = [];
     if (hrs > 0) result.push(`${hrs} jam`);
     if (mins > 0) result.push(`${mins} menit`);
@@ -107,7 +110,9 @@ const PIRUApp = () => {
 
   const timeToMinutes = (timeStr) => {
     if (!timeStr) return 0;
-    const [hrs, mins] = timeStr.split(':').map(Number);
+    const parts = timeStr.split(':').map(Number);
+    const hrs = parts[0] || 0;
+    const mins = parts[1] || 0;
     return (hrs * 60) + mins;
   };
 
@@ -119,12 +124,11 @@ const PIRUApp = () => {
   ];
 
   const getMotivation = (name) => {
-    // Gunakan nama sebagai seed agar pesan tetap sama untuk orang yang sama
     const seed = name.length % motivationalWords.length;
     return motivationalWords[seed];
   };
 
-  // Handler Upload Excel KJK
+  // PERBAIKAN HANDLER UPLOAD EXCEL KJK
   const handleUploadKJK = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -141,10 +145,32 @@ const PIRUApp = () => {
         sheet.eachRow((row, rowNumber) => {
           if (rowNumber > 1) { // Skip header
             const nama = row.getCell(2).value?.toString().trim();
-            let kjkVal = row.getCell(3).value?.toString().trim() || '00:00';
-            
-            // Validasi format hh:mm sederhana
-            if (kjkVal && nama) {
+            const cellKJK = row.getCell(3);
+            let kjkVal = "00:00";
+
+            if (nama) {
+              // LOGIKA KHUSUS UNTUK MEMBACA JAM (04:24:00) SECARA AKURAT
+              if (cellKJK.type === ExcelJS.ValueType.Date) {
+                const dateVal = new Date(cellKJK.value);
+                // Menggunakan getUTCHours agar jam tidak bergeser karena timezone
+                const hrs = dateVal.getUTCHours().toString().padStart(2, '0');
+                const mins = dateVal.getUTCMinutes().toString().padStart(2, '0');
+                kjkVal = `${hrs}:${mins}`;
+              } else if (typeof cellKJK.value === 'number') {
+                // Jika berupa angka serial Excel
+                const totalMinutes = Math.round(cellKJK.value * 24 * 60);
+                const hrs = Math.floor(totalMinutes / 60).toString().padStart(2, '0');
+                const mins = (totalMinutes % 60).toString().padStart(2, '0');
+                kjkVal = `${hrs}:${mins}`;
+              } else {
+                // Jika berupa string teks biasa
+                const strVal = cellKJK.value?.toString().trim() || "00:00";
+                const parts = strVal.split(':');
+                if (parts.length >= 2) {
+                  kjkVal = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+                }
+              }
+
               const docId = `${selectedYear}_${selectedMonth}_${nama.replace(/\s+/g, '_').toLowerCase()}`;
               const kjkRef = doc(db, "kjk", docId);
               batch.set(kjkRef, {
@@ -159,16 +185,15 @@ const PIRUApp = () => {
         });
 
         await batch.commit();
-        alert("Data KJK berhasil diperbarui untuk periode terpilih.");
+        alert(`Data KJK Berhasil Diperbarui untuk ${selectedMonth}/${selectedYear}`);
       } catch (err) {
         console.error(err);
-        alert("Gagal membaca file Excel. Pastikan format kolom: No | Nama | Total KJK (hh:mm)");
+        alert("Gagal membaca file Excel. Pastikan kolom KJK berisi format jam.");
       }
     };
     reader.readAsArrayBuffer(file);
   };
 
-  // Fungsi Login & Lainnya (Tetap Sama)
   const handleLogoUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -386,8 +411,6 @@ const PIRUApp = () => {
   const dashboardStats = useMemo(() => {
     const periodReports = reports.filter(r => r.month === selectedMonth && r.year === selectedYear);
     const yearlyReports = reports.filter(r => r.year === selectedYear && r.userId === user?.username);
-    
-    // Rata-rata KJK Bulanan
     const currentKJK = kjkData.filter(k => k.month === selectedMonth && k.year === selectedYear);
 
     const staffSummary = users.filter(u => u.role !== 'admin' && u.role !== 'pimpinan').map(s => {
@@ -398,7 +421,6 @@ const PIRUApp = () => {
       const avgPimp = total > 0 ? (sReports.reduce((acc, curr) => acc + (Number(curr.nilaiPimpinan) || 0), 0) / total) : 0;
       const score = (avgCap + avgPimp) / 2;
       
-      // Ambil data KJK
       const kjkObj = currentKJK.find(k => k.nama.toLowerCase() === s.name.toLowerCase());
       const kjkTime = kjkObj ? kjkObj.kjkValue : '00:00';
       const kjkMins = timeToMinutes(kjkTime);
@@ -414,7 +436,6 @@ const PIRUApp = () => {
       };
     });
 
-    // LOGIKA SORTING BARU: CKP Tertinggi, lalu KJK Terendah
     const sortedSummary = staffSummary.sort((a, b) => {
       if (Number(b.nilaiAkhir) !== Number(a.nilaiAkhir)) {
         return Number(b.nilaiAkhir) - Number(a.nilaiAkhir);
@@ -425,7 +446,6 @@ const PIRUApp = () => {
     const myReports = periodReports.filter(r => r.userId === user?.username);
     const myTotal = myReports.length; const mySelesai = myReports.filter(r => r.status === 'selesai').length;
     
-    // Data KJK Pribadi
     const myKJKObj = currentKJK.find(k => k.nama.toLowerCase() === user?.name.toLowerCase());
     const myKJK = myKJKObj ? myKJKObj.kjkValue : '00:00';
 
@@ -607,8 +627,6 @@ const PIRUApp = () => {
                         </div>
                     </div>
                 </div>
-
-                {/* TAMPILAN REKAP KJK (TABLE DESKTOP) */}
                 <div className="hidden md:block bg-white rounded-[2.5rem] shadow-sm border overflow-hidden p-0 italic">
                     <table className="w-full text-left italic text-xs border-collapse">
                         <thead className="bg-slate-100 border-b text-[9px] font-black text-slate-500 uppercase tracking-widest italic sticky top-0 z-20">
@@ -643,8 +661,6 @@ const PIRUApp = () => {
                         </tbody>
                     </table>
                 </div>
-
-                {/* TAMPILAN REKAP KJK (MOBILE CARDS) */}
                 <div className="md:hidden space-y-4">
                     {kjkData.filter(k => k.month === selectedMonth && k.year === selectedYear).map((k, idx) => (
                         <div key={k.id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 flex justify-between items-center italic">
@@ -672,8 +688,6 @@ const PIRUApp = () => {
                     </select>
                   </div>
                )}
-               
-               {/* MODE DESKTOP: TABLE */}
                <div className="hidden md:block bg-white rounded-[2.5rem] shadow-sm border overflow-hidden p-0 italic">
                   <table className="w-full text-left italic text-xs border-collapse">
                     <thead className="bg-slate-100 border-b text-[9px] font-black text-slate-500 uppercase tracking-widest italic sticky top-0 z-20">
@@ -723,8 +737,6 @@ const PIRUApp = () => {
                     </tbody>
                   </table>
                </div>
-
-               {/* MODE MOBILE: CARDS */}
                <div className="md:hidden space-y-4">
                   {currentFilteredReports.length === 0 ? (
                     <div className="bg-white p-10 rounded-[2.5rem] border border-dashed border-slate-200 text-center italic">
@@ -739,7 +751,6 @@ const PIRUApp = () => {
                          </div>
                          <h3 className="font-black text-slate-800 uppercase text-xs leading-tight mb-2 italic">{r.title}</h3>
                          <p className="text-[9px] text-indigo-600 font-bold mb-6 italic uppercase">Oleh: {r.userName}</p>
-                         
                          <div className="space-y-4 pt-4 border-t italic">
                             {r.userId === user.username && (
                                <div className="flex items-center gap-2 italic">
@@ -781,7 +792,6 @@ const PIRUApp = () => {
                 </table>
                 <button onClick={() => { resetUserForm(); setShowUserModal(true); }} className="mt-4 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 italic"><UserPlus size={14}/> Tambah Pegawai</button>
               </div>
-
               {user.role === 'admin' && (
                 <div className="bg-white rounded-[2.5rem] shadow-sm border p-8 flex flex-col md:flex-row items-center gap-8 italic">
                    <div className="w-32 h-32 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group">
@@ -821,7 +831,6 @@ const PIRUApp = () => {
                   </tbody>
                 </table>
               </div>
-
               <div className="md:hidden space-y-4 pb-12">
                 {activeTab === 'penilaian' && (
                   <div className="flex flex-col gap-3 mb-4 not-italic">
@@ -870,9 +879,7 @@ const PIRUApp = () => {
             </div>
           )}
         </div>
-
         {user.role !== 'admin' && activeTab === 'laporan' && ( <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="md:hidden fixed bottom-28 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center z-50 active:scale-95 transition-all"> <Plus size={32}/> </button> )}
-
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-4 pb-6 flex justify-around items-center z-40 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] not-italic">
           <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-300'}`}><LayoutDashboard size={24}/><span className="text-[8px] font-black uppercase">Home</span></button>
           {user.role !== 'admin' && (<button onClick={() => setActiveTab('laporan')} className={`flex flex-col items-center gap-1 ${activeTab === 'laporan' ? 'text-indigo-600' : 'text-slate-300'}`}><FileText size={24}/><span className="text-[8px] font-black uppercase">Entri</span></button>)}
