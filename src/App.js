@@ -284,10 +284,24 @@ const PIRUApp = () => {
 
   const currentFilteredReports = useMemo(() => {
     let res = reports.filter(r => r.month === selectedMonth && r.year === selectedYear);
-    if (activeTab === 'laporan' || (activeTab === 'bukti_dukung' && user.role === 'pegawai')) {
+    if (activeTab === 'laporan') {
       res = res.filter(r => r.userId === user.username);
     }
-    if ((activeTab === 'penilaian' || activeTab === 'bukti_dukung') && filterStaffName !== 'Semua') { 
+    // Logika Khusus Bukti Dukung: 
+    // - Jika Pegawai: hanya data sendiri.
+    // - Jika Ketua/Pimp/Admin: Jika filter "Semua", tampilkan data sendiri. Jika filter nama, tampilkan data orang tersebut.
+    if (activeTab === 'bukti_dukung') {
+       if (user.role === 'pegawai') {
+          res = res.filter(r => r.userId === user.username);
+       } else {
+          if (filterStaffName === 'Semua') {
+             res = res.filter(r => r.userId === user.username);
+          } else {
+             res = res.filter(r => r.userName === filterStaffName);
+          }
+       }
+    }
+    if (activeTab === 'penilaian' && filterStaffName !== 'Semua') { 
       res = res.filter(r => r.userName === filterStaffName); 
     }
     return res;
@@ -450,7 +464,7 @@ const PIRUApp = () => {
                {['admin', 'pimpinan', 'ketua'].includes(user.role) && (
                   <div className="md:hidden flex flex-col gap-3 mb-6 not-italic">
                     <select className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-black text-[12px] text-slate-600 shadow-sm italic outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
-                      <option value="Semua">Pilih Pegawai</option>
+                      <option value="Semua">Data Saya</option>
                       {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                     </select>
                   </div>
@@ -478,7 +492,7 @@ const PIRUApp = () => {
                             </td>
                             <td className="p-4">
                                <div className="flex flex-col md:flex-row items-center gap-2 italic">
-                                  {user.role === 'pegawai' || user.role === 'admin' ? (
+                                  {r.userId === user.username ? (
                                     <div className="flex items-center gap-2 w-full max-w-md">
                                        <input 
                                          type="url" 
