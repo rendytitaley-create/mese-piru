@@ -242,8 +242,8 @@ const PIRUApp = () => {
     if (!link) { alert("Masukkan link terlebih dahulu."); return; }
     try {
       await updateDoc(doc(db, "reports", reportId), { linkDrive: link });
-      alert("Link bukti dukung berhasil disimpan.");
-    } catch (err) { alert("Gagal menyimpan link."); }
+      alert("Link bukti dukung berhasil diperbarui.");
+    } catch (err) { alert("Gagal memperbarui link."); }
   };
 
   const exportToExcel = async () => {
@@ -287,9 +287,6 @@ const PIRUApp = () => {
     if (activeTab === 'laporan') {
       res = res.filter(r => r.userId === user.username);
     }
-    // Logika Khusus Bukti Dukung: 
-    // - Jika Pegawai: hanya data sendiri.
-    // - Jika Ketua/Pimp/Admin: Jika filter "Semua", tampilkan data sendiri. Jika filter nama, tampilkan data orang tersebut.
     if (activeTab === 'bukti_dukung') {
        if (user.role === 'pegawai') {
           res = res.filter(r => r.userId === user.username);
@@ -393,7 +390,7 @@ const PIRUApp = () => {
                {(activeTab === 'penilaian' || activeTab === 'bukti_dukung') && ['admin', 'pimpinan', 'ketua'].includes(user.role) && (
                   <>
                     <select className="p-2 bg-white border border-slate-200 rounded-xl font-black text-[10px] text-slate-600 shadow-sm outline-none italic" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
-                      <option value="Semua">Semua Pegawai</option>
+                      <option value="Semua">Data Saya</option>
                       {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                     </select>
                     {activeTab === 'penilaian' && filterStaffName !== 'Semua' && ( <button onClick={handleNilaiSemua} className="bg-amber-500 text-white px-4 py-2.5 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-md italic"><CheckCircle2 size={14}/> Nilai Semua</button> )}
@@ -469,7 +466,9 @@ const PIRUApp = () => {
                     </select>
                   </div>
                )}
-               <div className="bg-white rounded-[2.5rem] shadow-sm border overflow-hidden p-0 italic">
+               
+               {/* MODE DESKTOP: TABLE */}
+               <div className="hidden md:block bg-white rounded-[2.5rem] shadow-sm border overflow-hidden p-0 italic">
                   <table className="w-full text-left italic text-xs border-collapse">
                     <thead className="bg-slate-100 border-b text-[9px] font-black text-slate-500 uppercase tracking-widest italic sticky top-0 z-20">
                       <tr>
@@ -517,6 +516,47 @@ const PIRUApp = () => {
                       )}
                     </tbody>
                   </table>
+               </div>
+
+               {/* MODE MOBILE: CARDS */}
+               <div className="md:hidden space-y-4">
+                  {currentFilteredReports.length === 0 ? (
+                    <div className="bg-white p-10 rounded-[2.5rem] border border-dashed border-slate-200 text-center italic">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Tidak ada data lapor</p>
+                    </div>
+                  ) : (
+                    currentFilteredReports.map((r, idx) => (
+                      <div key={r.id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 italic">
+                         <div className="flex justify-between items-center mb-4 italic">
+                            <span className="text-[10px] font-black text-indigo-600 uppercase italic">No. {idx + 1}</span>
+                            <span className={`text-[8px] font-black uppercase px-2 py-1 rounded-md ${r.status === 'selesai' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>{r.status.replace('_', ' ')}</span>
+                         </div>
+                         <h3 className="font-black text-slate-800 uppercase text-xs leading-tight mb-2 italic">{r.title}</h3>
+                         <p className="text-[9px] text-indigo-600 font-bold mb-6 italic uppercase">Oleh: {r.userName}</p>
+                         
+                         <div className="space-y-4 pt-4 border-t italic">
+                            {r.userId === user.username && (
+                               <div className="flex items-center gap-2 italic">
+                                  <input 
+                                    type="url" 
+                                    placeholder="Paste Link Drive..." 
+                                    className="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-[10px] italic"
+                                    value={tempLinks[r.id] || r.linkDrive || ''}
+                                    onChange={(e) => setTempLinks({...tempLinks, [r.id]: e.target.value})}
+                                  />
+                                  <button onClick={() => handleUpdateLinkDrive(r.id)} className="p-4 bg-indigo-600 text-white rounded-2xl shadow-lg active:scale-95 transition-all"><CheckCircle2 size={18}/></button>
+                               </div>
+                            )}
+                            {r.linkDrive && (
+                               <div className="grid grid-cols-2 gap-3 italic">
+                                  <a href={r.linkDrive} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 p-4 bg-green-50 text-green-600 rounded-2xl font-black text-[10px] uppercase shadow-sm italic"><ExternalLink size={16}/> Buka</a>
+                                  <button onClick={() => {navigator.clipboard.writeText(r.linkDrive); alert("Link berhasil disalin!");}} className="flex items-center justify-center gap-2 p-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-[10px] uppercase shadow-sm italic"><Copy size={16}/> Salin</button>
+                               </div>
+                            )}
+                         </div>
+                      </div>
+                    ))
+                  )}
                </div>
             </div>
           )}
