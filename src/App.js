@@ -36,7 +36,7 @@ const PIRUApp = () => {
   const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState([]);
   const [users, setUsers] = useState([]);
-  const [kjkData, setKjkData] = useState([]); // State baru untuk data KJK
+  const [kjkData, setKjkData] = useState([]); 
   const [appSettings, setAppSettings] = useState({ logoURL: null });
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -78,7 +78,6 @@ const PIRUApp = () => {
     const unsubSettings = onSnapshot(doc(db, "settings", "app"), (docSnap) => {
       if (docSnap.exists()) setAppSettings(docSnap.data());
     });
-    // Subscribe KJK
     const unsubKJK = onSnapshot(collection(db, "kjk"), (snap) => {
       setKjkData(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
@@ -95,7 +94,12 @@ const PIRUApp = () => {
     return () => unsubReports();
   }, [user]);
 
-  // Fungsi Konversi hh:mm ke Menit (untuk Sorting) dan Teks (untuk UI)
+  // UTILITY: Ambil kata pertama untuk pencocokan nama yang fleksibel
+  const getFirstWord = (name) => {
+    if (!name) return "";
+    return name.trim().split(" ")[0].toLowerCase();
+  };
+
   const formatKJKDisplay = (timeStr) => {
     if (!timeStr || timeStr === '00:00' || timeStr === '00:00:00') return "Nol KJK";
     const parts = timeStr.split(':').map(Number);
@@ -128,7 +132,6 @@ const PIRUApp = () => {
     return motivationalWords[seed];
   };
 
-  // PERBAIKAN HANDLER UPLOAD EXCEL KJK
   const handleUploadKJK = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -143,27 +146,23 @@ const PIRUApp = () => {
         const batch = writeBatch(db);
         
         sheet.eachRow((row, rowNumber) => {
-          if (rowNumber > 1) { // Skip header
+          if (rowNumber > 1) { 
             const nama = row.getCell(2).value?.toString().trim();
             const cellKJK = row.getCell(3);
             let kjkVal = "00:00";
 
             if (nama) {
-              // LOGIKA KHUSUS UNTUK MEMBACA JAM (04:24:00) SECARA AKURAT
               if (cellKJK.type === ExcelJS.ValueType.Date) {
                 const dateVal = new Date(cellKJK.value);
-                // Menggunakan getUTCHours agar jam tidak bergeser karena timezone
                 const hrs = dateVal.getUTCHours().toString().padStart(2, '0');
                 const mins = dateVal.getUTCMinutes().toString().padStart(2, '0');
                 kjkVal = `${hrs}:${mins}`;
               } else if (typeof cellKJK.value === 'number') {
-                // Jika berupa angka serial Excel
                 const totalMinutes = Math.round(cellKJK.value * 24 * 60);
                 const hrs = Math.floor(totalMinutes / 60).toString().padStart(2, '0');
                 const mins = (totalMinutes % 60).toString().padStart(2, '0');
                 kjkVal = `${hrs}:${mins}`;
               } else {
-                // Jika berupa string teks biasa
                 const strVal = cellKJK.value?.toString().trim() || "00:00";
                 const parts = strVal.split(':');
                 if (parts.length >= 2) {
@@ -188,7 +187,7 @@ const PIRUApp = () => {
         alert(`Data KJK Berhasil Diperbarui untuk ${selectedMonth}/${selectedYear}`);
       } catch (err) {
         console.error(err);
-        alert("Gagal membaca file Excel. Pastikan kolom KJK berisi format jam.");
+        alert("Gagal membaca file Excel.");
       }
     };
     reader.readAsArrayBuffer(file);
@@ -421,7 +420,10 @@ const PIRUApp = () => {
       const avgPimp = total > 0 ? (sReports.reduce((acc, curr) => acc + (Number(curr.nilaiPimpinan) || 0), 0) / total) : 0;
       const score = (avgCap + avgPimp) / 2;
       
-      const kjkObj = currentKJK.find(k => k.nama.toLowerCase() === s.name.toLowerCase());
+      // LOGIKA PENCARIAN NAMA DEPAN (FIRST WORD MATCH)
+      const sFirstWord = getFirstWord(s.name);
+      const kjkObj = currentKJK.find(k => getFirstWord(k.nama) === sFirstWord);
+      
       const kjkTime = kjkObj ? kjkObj.kjkValue : '00:00';
       const kjkMins = timeToMinutes(kjkTime);
 
@@ -446,7 +448,9 @@ const PIRUApp = () => {
     const myReports = periodReports.filter(r => r.userId === user?.username);
     const myTotal = myReports.length; const mySelesai = myReports.filter(r => r.status === 'selesai').length;
     
-    const myKJKObj = currentKJK.find(k => k.nama.toLowerCase() === user?.name.toLowerCase());
+    // LOGIKA PENCARIAN NAMA DEPAN UNTUK USER PRIBADI
+    const myFirstWord = getFirstWord(user?.name);
+    const myKJKObj = currentKJK.find(k => getFirstWord(k.nama) === myFirstWord);
     const myKJK = myKJKObj ? myKJKObj.kjkValue : '00:00';
 
     return { 
