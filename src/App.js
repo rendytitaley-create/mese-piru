@@ -571,7 +571,6 @@ const PIRUApp = () => {
                       </div>
                       <p className="font-black text-xl text-white uppercase italic mb-1 tracking-tighter text-center">{s.name}</p>
                       <span className={`text-[9px] font-black uppercase px-4 py-1.5 rounded-full mb-6 ${s.status === 'Selesai' ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-400'}`}>{s.status}</span>
-                      
                       <div className="w-full grid grid-cols-2 gap-4 border-t border-slate-800 pt-6 mt-auto">
                         <div className="text-center">
                             <p className="text-[9px] font-black text-slate-500 uppercase italic mb-1">CKP Akhir</p>
@@ -883,7 +882,12 @@ const PIRUApp = () => {
             </div>
           )}
         </div>
-        {user.role !== 'admin' && activeTab === 'laporan' && ( <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="md:hidden fixed bottom-28 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center z-50 active:scale-95 transition-all"> <Plus size={32}/> </button> )}
+        
+        {/* MODIFIKASI DISINI: Memunculkan kembali tombol entri mobile untuk role pimpinan, ketua, dan admin di navigasi penilaian */}
+        {((activeTab === 'laporan' && user.role !== 'admin') || (activeTab === 'penilaian' && ['admin', 'pimpinan', 'ketua'].includes(user.role))) && ( 
+          <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="md:hidden fixed bottom-28 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center z-50 active:scale-95 transition-all"> <Plus size={32}/> </button> 
+        )}
+
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-4 pb-6 flex justify-around items-center z-40 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] not-italic">
           <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-300'}`}><LayoutDashboard size={24}/><span className="text-[8px] font-black uppercase">Home</span></button>
           {user.role !== 'admin' && (<button onClick={() => setActiveTab('laporan')} className={`flex flex-col items-center gap-1 ${activeTab === 'laporan' ? 'text-indigo-600' : 'text-slate-300'}`}><FileText size={24}/><span className="text-[8px] font-black uppercase">Entri</span></button>)}
