@@ -8,7 +8,7 @@ import {
 import { 
   ShieldCheck, Loader2, Plus, X, BarChart3, FileText, 
   LogOut, Trash2, Edit3, TrendingUp, Clock, Zap, UserPlus, Users, Download, ClipboardCheck, CheckCircle2,
-  LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, Image as ImageIcon, Link, Copy, ExternalLink, Search, FileSpreadsheet, Award, Trophy, Star, Heart
+  LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, Image as ImageIcon, Link, Copy, ExternalLink, Search, FileSpreadsheet, Award, Trophy, Star, Heart, Megaphone
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -70,6 +70,7 @@ const PIRUApp = () => {
   // STATE KHUSUS TELADAN
   const [peerReviews, setPeerReviews] = useState([]);
   const [winners, setWinners] = useState([]);
+  const [publishStatus, setPublishStatus] = useState({});
   const [showVotingModal, setShowVotingModal] = useState(false);
   const [selectedStaffForVote, setSelectedStaffForVote] = useState(null);
   const [voteData, setVoteData] = useState({ kinerja: 5, perilaku: 5, inovasi: 5 });
@@ -101,8 +102,7 @@ const PIRUApp = () => {
       setReports(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
-    const qVotes = query(collection(db, "peer_reviews"), where("year", "==", selectedYear));
-    const unsubVotes = onSnapshot(qVotes, (snap) => {
+    const unsubVotes = onSnapshot(collection(db, "peer_reviews"), (snap) => {
       setPeerReviews(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
@@ -110,8 +110,14 @@ const PIRUApp = () => {
       setWinners(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
-    return () => { unsubReports(); unsubVotes(); unsubWinners(); };
-  }, [user, selectedYear]);
+    const unsubPublish = onSnapshot(collection(db, "publish_status"), (snap) => {
+      const pubData = {};
+      snap.docs.forEach(d => pubData[d.id] = d.data());
+      setPublishStatus(pubData);
+    });
+
+    return () => { unsubReports(); unsubVotes(); unsubWinners(); unsubPublish(); };
+  }, [user]);
 
   const getFirstWord = (name) => {
     if (!name) return "";
@@ -155,6 +161,22 @@ const PIRUApp = () => {
     const seed = name.length % motivationalWords.length;
     return motivationalWords[seed];
   };
+
+  // LOGIKA WINDOW PERIOD (TANGGAL 1-7 SETELAH TW BERAKHIR)
+  const voteWindow = useMemo(() => {
+    const today = new Date();
+    const date = today.getDate();
+    const month = today.getMonth() + 1;
+    
+    const isActiveDate = (date >= 1 && date <= 7);
+
+    if (month === 4) return { active: isActiveDate, period: 'tw1', evalYear: today.getFullYear() };
+    if (month === 7) return { active: isActiveDate, period: 'tw2', evalYear: today.getFullYear() };
+    if (month === 10) return { active: isActiveDate, period: 'tw3', evalYear: today.getFullYear() };
+    if (month === 1) return { active: isActiveDate, period: 'tw4', evalYear: today.getFullYear() - 1 };
+
+    return { active: false, period: null };
+  }, []);
 
   const handleUploadKJK = async (e) => {
     const file = e.target.files[0];
@@ -333,8 +355,8 @@ const PIRUApp = () => {
       } else {
         let finalUserId = user.username; let finalUserName = user.name; let finalUserRole = user.role;
         if (activeTab === 'penilaian' && newReport.targetUser) {
-           const targetStaff = users.find(u => u.name === newReport.targetUser);
-           if (targetStaff) { finalUserId = targetStaff.username; finalUserName = targetStaff.name; finalUserRole = targetStaff.role; }
+            const targetStaff = users.find(u => u.name === newReport.targetUser);
+            if (targetStaff) { finalUserId = targetStaff.username; finalUserName = targetStaff.name; finalUserRole = targetStaff.role; }
         }
         await addDoc(collection(db, "reports"), {
           ...newReport, target: Number(newReport.target), realisasi: Number(newReport.realisasi),
@@ -418,50 +440,72 @@ const PIRUApp = () => {
 
   const leaderboardData = useMemo(() => {
     const staff = users.filter(u => !['admin', 'pimpinan'].includes(u.role));
-    let monthsToInclude = currentTW === 'tw1' ? [1, 2, 3] : currentTW === 'tw2' ? [4, 5, 6] : currentTW === 'tw3' ? [7, 8, 9] : [10, 11, 12];
+    
+    // Gunakan tahun dan periode dari voteWindow jika sedang dalam periode penilaian
+    const targetPeriod = voteWindow.period || currentTW;
+    const targetYear = voteWindow.evalYear || selectedYear;
+
+    let monthsToInclude = targetPeriod === 'tw1' ? [1, 2, 3] : targetPeriod === 'tw2' ? [4, 5, 6] : targetPeriod === 'tw3' ? [7, 8, 9] : [10, 11, 12];
     
     const results = staff.map(s => {
-      const sReports = reports.filter(r => r.userId === s.username && r.year === selectedYear && monthsToInclude.includes(r.month));
+      const sReports = reports.filter(r => r.userId === s.username && r.year === targetYear && monthsToInclude.includes(r.month));
       const avgCKP = sReports.length > 0 ? (sReports.reduce((acc, curr) => acc + (Number(curr.nilaiPimpinan) || 0), 0) / sReports.length) : 0;
       
       const sFirstWord = getFirstWord(s.name);
-      const sKJKs = kjkData.filter(k => getFirstWord(k.nama) === sFirstWord && k.year === selectedYear && monthsToInclude.includes(k.month));
+      const sKJKs = kjkData.filter(k => getFirstWord(k.nama) === sFirstWord && k.year === targetYear && monthsToInclude.includes(k.month));
       const totalKJKMins = sKJKs.reduce((acc, curr) => acc + timeToMinutes(curr.kjkValue), 0);
       const kjkScore = Math.max(0, 100 - ((totalKJKMins / 60) * 5));
       
-      const sVotes = peerReviews.filter(v => v.targetUserId === s.username && v.period === currentTW && v.year === selectedYear);
+      const sVotes = peerReviews.filter(v => v.targetUserId === s.username && v.period === targetPeriod && v.year === targetYear);
       const avgVote = sVotes.length > 0 ? (sVotes.reduce((acc, curr) => acc + (curr.kinerja + curr.perilaku + curr.inovasi) / 3, 0) / sVotes.length) * 10 : 0;
       
       const finalScore = ((avgCKP * 0.4) + (kjkScore * 0.3) + (avgVote * 0.3)).toFixed(2);
       
-      return { ...s, finalScore, avgCKP, kjkScore, avgVote };
+      return { ...s, finalScore, avgCKP, kjkScore, avgVote, totalVotesReceived: sVotes.length };
     });
 
     return results.sort((a, b) => b.finalScore - a.finalScore);
-  }, [users, reports, kjkData, peerReviews, currentTW, selectedYear]);
+  }, [users, reports, kjkData, peerReviews, voteWindow, currentTW, selectedYear]);
 
   const handleSetWinner = async (staff) => {
-    if (!window.confirm(`Tetapkan ${staff.name} sebagai pemenang periode ${currentTW.toUpperCase()}?`)) return;
+    const period = voteWindow.period || currentTW;
+    const year = voteWindow.evalYear || selectedYear;
+    if (!window.confirm(`Tetapkan ${staff.name} sebagai pemenang periode ${period.toUpperCase()} ${year}?`)) return;
     try {
-      const winnerRef = doc(db, "winners", `${selectedYear}_${currentTW}`);
+      const winnerRef = doc(db, "winners", `${year}_${period}`);
       await setDoc(winnerRef, {
         ...staff,
-        period: currentTW,
-        year: selectedYear,
+        period,
+        year,
         updatedAt: serverTimestamp()
       }, { merge: true });
       alert("Pemenang berhasil ditetapkan!");
     } catch (err) { alert("Gagal menetapkan pemenang."); }
   };
 
+  const handlePublish = async () => {
+    const period = voteWindow.period || currentTW;
+    const year = voteWindow.evalYear || selectedYear;
+    if (!window.confirm(`Publish pengumuman pemenang untuk periode ${period.toUpperCase()} ${year}?`)) return;
+    try {
+        await setDoc(doc(db, "publish_status", `${year}_${period}`), {
+            isPublished: true,
+            publishedAt: serverTimestamp()
+        });
+        alert("Pengumuman berhasil dipublikasikan secara global.");
+    } catch (err) { alert("Gagal mempublikasikan."); }
+  };
+
   const handleResetVotes = async (targetUserId = null) => {
+    const period = voteWindow.period || currentTW;
+    const year = voteWindow.evalYear || selectedYear;
     const msg = targetUserId ? "Reset voting untuk pegawai ini?" : "Reset SEMUA data voting periode ini?";
     if (!window.confirm(msg)) return;
     try {
       const batch = writeBatch(db);
       const votesToDelete = targetUserId 
-        ? peerReviews.filter(v => v.targetUserId === targetUserId && v.period === currentTW && v.year === selectedYear)
-        : peerReviews.filter(v => v.period === currentTW && v.year === selectedYear);
+        ? peerReviews.filter(v => v.targetUserId === targetUserId && v.period === period && v.year === year)
+        : peerReviews.filter(v => v.period === period && v.year === year);
       
       votesToDelete.forEach(v => {
         batch.delete(doc(db, "peer_reviews", v.id));
@@ -474,13 +518,13 @@ const PIRUApp = () => {
   const handleSubmitVote = async (e) => {
     e.preventDefault();
     try {
-      const docId = `${selectedYear}_${currentTW}_from_${user.username}_to_${selectedStaffForVote.username}`;
+      const docId = `${voteWindow.evalYear}_${voteWindow.period}_from_${user.username}_to_${selectedStaffForVote.username}`;
       await setDoc(doc(db, "peer_reviews", docId), {
         reviewerId: user.username,
         targetUserId: selectedStaffForVote.username,
         targetName: selectedStaffForVote.name,
-        year: selectedYear,
-        period: currentTW,
+        year: voteWindow.evalYear,
+        period: voteWindow.period,
         ...voteData,
         submittedAt: serverTimestamp()
       });
@@ -783,18 +827,19 @@ const PIRUApp = () => {
                         <Trophy className="text-amber-500" size={32} /> 
                         Top 3 Kandidat Teladan
                       </h2>
-                      <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-2 italic">Hasil Kalkulasi Otomatis Periode {currentTW.toUpperCase()} {selectedYear}</p>
+                      <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-2 italic">Hasil Kalkulasi Periode {voteWindow.period ? voteWindow.period.toUpperCase() : currentTW.toUpperCase()} {voteWindow.evalYear || selectedYear}</p>
                     </div>
                     {user.role === 'admin' && (
-                      <button onClick={() => handleResetVotes()} className="flex items-center gap-3 bg-red-500/10 text-red-500 px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-red-500 hover:text-white transition-all italic border border-red-500/20">
-                        <Trash2 size={16}/> Reset Semua Voting
-                      </button>
+                      <div className="flex gap-3">
+                         <button onClick={handlePublish} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic"><Megaphone size={16}/> Publish Pengumuman</button>
+                         <button onClick={() => handleResetVotes()} className="flex items-center gap-3 bg-red-500/10 text-red-500 px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-red-500 hover:text-white transition-all italic border border-red-500/20"><Trash2 size={16}/> Reset Semua Voting</button>
+                      </div>
                     )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8 italic">
                     {leaderboardData.slice(0, 3).map((staff, index) => {
-                      const isWinner = winners.some(w => w.username === staff.username && w.period === currentTW && w.year === selectedYear);
+                      const isWinner = winners.some(w => w.username === staff.username && w.period === (voteWindow.period || currentTW) && w.year === (voteWindow.evalYear || selectedYear));
                       return (
                         <div key={index} className={`relative p-8 rounded-[2.5rem] border-2 flex flex-col items-center text-center transition-all italic ${isWinner ? 'border-amber-500 bg-slate-800/50 shadow-[0_0_30px_rgba(245,158,11,0.1)]' : 'border-slate-800 bg-slate-900/50'}`}>
                           {index === 0 && <div className="absolute -top-4 -right-4 bg-amber-500 text-slate-900 w-12 h-12 rounded-full flex items-center justify-center shadow-lg transform rotate-12"><Star size={24} fill="currentColor"/></div>}
@@ -809,12 +854,11 @@ const PIRUApp = () => {
                             <div className="text-center border-x border-slate-800 italic px-1"><p className="text-[7px] text-slate-500 font-black uppercase mb-1 italic">KJK (30%)</p><p className="text-[11px] font-black text-white italic">{staff.kjkScore.toFixed(0)}</p></div>
                             <div className="text-center italic"><p className="text-[7px] text-slate-500 font-black uppercase mb-1 italic">VOTE (30%)</p><p className="text-[11px] font-black text-white italic">{staff.avgVote.toFixed(0)}</p></div>
                           </div>
-
-                          {user.role === 'pimpinan' && (
-                            <button onClick={() => handleSetWinner(staff)} className={`w-full mt-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all italic ${isWinner ? 'bg-amber-500 text-slate-900' : 'bg-white text-slate-900 hover:bg-amber-500 hover:text-slate-900'}`}>
+                          {user.role === 'admin' && <p className="text-[9px] text-amber-500 font-black mt-4 italic uppercase">{staff.totalVotesReceived} Suara Masuk</p>}
+                          {user.role === 'pimpinan' && <button onClick={() => handleSetWinner(staff)} className={`w-full mt-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all italic ${isWinner ? 'bg-amber-500 text-slate-900' : 'bg-white text-slate-900 hover:bg-amber-500 hover:text-slate-900'}`}>
                               {isWinner ? "PEMENANG TERPILIH" : "TETAPKAN PEMENANG"}
                             </button>
-                          )}
+                          }
                         </div>
                       );
                     })}
@@ -823,45 +867,65 @@ const PIRUApp = () => {
               )}
 
               {/* BAGIAN A: PEER REVIEW UNTUK SEMUA USER */}
-              <div className="bg-white p-8 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] shadow-sm border border-slate-100 italic">
-                <div className="flex items-center gap-6 mb-12 italic text-center md:text-left">
-                   <div className="bg-indigo-50 p-5 rounded-[2rem] text-indigo-600 shadow-inner"><Award size={40}/></div>
-                   <div className="italic">
-                      <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">Peer Review Pegawai</h2>
-                      <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1 italic">Beri Nilai Objektif Rekan Kerja Anda - Periode {currentTW.toUpperCase()} {selectedYear}</p>
-                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 italic">
-                  {users.filter(u => u.username !== user.username && !['admin', 'pimpinan'].includes(u.role)).map((staff, idx) => {
-                    const hasVoted = peerReviews.some(v => v.reviewerId === user.username && v.targetUserId === staff.username && v.period === currentTW);
-                    return (
-                      <div key={idx} className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 flex flex-col items-center text-center transition-all hover:bg-white hover:shadow-xl hover:border-indigo-100 group italic">
-                        <div className="w-20 h-20 rounded-[1.5rem] overflow-hidden mb-6 bg-white border border-slate-100 shadow-sm transition-transform group-hover:scale-110">
-                          {staff.photoURL ? <img src={staff.photoURL} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><User size={32}/></div>}
+              {user.role !== 'admin' && user.role !== 'pimpinan' && (
+                <div className="bg-white p-8 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] shadow-sm border border-slate-100 italic">
+                  {voteWindow.active ? (
+                    <>
+                      <div className="flex items-center gap-6 mb-12 italic text-center md:text-left">
+                        <div className="bg-indigo-50 p-5 rounded-[2rem] text-indigo-600 shadow-inner"><Award size={40}/></div>
+                        <div className="italic">
+                            <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">Peer Review {voteWindow.period.toUpperCase()} {voteWindow.evalYear}</h2>
+                            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1 italic">Beri Nilai Objektif Rekan Kerja Anda (Aktif 1-7 {new Date().toLocaleString('default', { month: 'long' })})</p>
                         </div>
-                        <p className="font-black text-slate-800 uppercase italic text-xs tracking-tighter mb-6 h-10 flex items-center justify-center">{staff.name}</p>
-                        
-                        {hasVoted ? (
-                          <div className="w-full py-4 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center gap-2 font-black text-[10px] uppercase italic">
-                            <CheckCircle2 size={16}/> Selesai Dinilai
-                          </div>
-                        ) : (
-                          <button onClick={() => { setSelectedStaffForVote(staff); setShowVotingModal(true); }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-100 active:scale-95 transition-all italic">
-                            Nilai Rekan
-                          </button>
-                        )}
-
-                        {user.role === 'admin' && peerReviews.some(v => v.targetUserId === staff.username && v.period === currentTW) && (
-                          <button onClick={() => handleResetVotes(staff.username)} className="mt-4 text-red-400 hover:text-red-600 font-bold text-[8px] uppercase italic flex items-center gap-1">
-                            <Trash2 size={12}/> Reset Vote Pegawai Ini
-                          </button>
-                        )}
                       </div>
-                    );
-                  })}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 italic">
+                        {users.filter(u => u.username !== user.username && !['admin', 'pimpinan'].includes(u.role)).map((staff, idx) => {
+                          const hasVoted = peerReviews.some(v => v.reviewerId === user.username && v.targetUserId === staff.username && v.period === voteWindow.period && v.year === voteWindow.evalYear);
+                          return (
+                            <div key={idx} className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 flex flex-col items-center text-center transition-all hover:bg-white hover:shadow-xl hover:border-indigo-100 group italic">
+                              <div className="w-20 h-20 rounded-[1.5rem] overflow-hidden mb-6 bg-white border border-slate-100 shadow-sm transition-transform group-hover:scale-110">
+                                {staff.photoURL ? <img src={staff.photoURL} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><User size={32}/></div>}
+                              </div>
+                              <p className="font-black text-slate-800 uppercase italic text-xs tracking-tighter mb-6 h-10 flex items-center justify-center">{staff.name}</p>
+                              {hasVoted ? (
+                                <div className="w-full py-4 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center gap-2 font-black text-[10px] uppercase italic"><CheckCircle2 size={16}/> Selesai Dinilai</div>
+                              ) : (
+                                <button onClick={() => { setSelectedStaffForVote(staff); setVoteData({kinerja:5, perilaku:5, inovasi:5}); setShowVotingModal(true); }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-100 active:scale-95 transition-all italic">Nilai Rekan</button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-20 italic">
+                       {/* CEK PUBLISH STATUS */}
+                       {publishStatus[`${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`]?.isPublished ? (
+                         <div className="animate-in fade-in duration-1000">
+                           <Trophy className="mx-auto text-amber-500 mb-8" size={80} />
+                           <h2 className="text-3xl font-black uppercase text-slate-800 italic">Pegawai Teladan Periode Ini</h2>
+                           {winners.filter(w => w.period === (voteWindow.period || currentTW) && w.year === (voteWindow.evalYear || selectedYear)).map((w, idx) => (
+                             <div key={idx} className="mt-12 bg-slate-900 p-12 rounded-[4rem] text-white max-w-md mx-auto italic shadow-2xl border-b-8 border-indigo-600">
+                                <div className="w-36 h-36 rounded-full overflow-hidden mx-auto mb-6 border-4 border-amber-500 shadow-lg">
+                                   {w.photoURL ? <img src={w.photoURL} className="w-full h-full object-cover"/> : <User size={50}/>}
+                                </div>
+                                <p className="font-black uppercase text-2xl italic tracking-tighter">{w.name}</p>
+                                <p className="text-indigo-400 font-bold uppercase text-[10px] mt-2 tracking-[0.2em]">{w.jabatan}</p>
+                                <div className="mt-8 pt-8 border-t border-slate-800"><p className="text-amber-500 font-black text-[10px] uppercase italic">Selamat atas Dedikasi Anda!</p></div>
+                             </div>
+                           ))}
+                         </div>
+                       ) : (
+                         <div className="flex flex-col items-center italic">
+                            <div className="bg-slate-50 p-12 rounded-full mb-8 text-slate-300"><Clock size={64}/></div>
+                            <h3 className="text-2xl font-black uppercase text-slate-400 italic">Penilaian Teladan Belum Dibuka</h3>
+                            <p className="text-[11px] font-black uppercase text-slate-400 mt-3 italic tracking-widest leading-loose text-center">Periode voting hanya aktif tgl 1 - 7 <br/> di bulan pertama Triwulan berikutnya.</p>
+                         </div>
+                       )}
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -1140,57 +1204,54 @@ const PIRUApp = () => {
         )}
 
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-4 pb-6 flex justify-around items-center z-40 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] not-italic">
-          {/* Dashboard - All Roles */}
           <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-300'}`}><LayoutDashboard size={24}/><span className="text-[8px] font-black uppercase">Home</span></button>
-          
-          {/* Role Based Navigation */}
           {user.role === 'admin' ? (
-            <>
-              <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button>
-              <button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button>
-              <button onClick={() => setActiveTab('users')} className={`flex flex-col items-center gap-1 ${activeTab === 'users' ? 'text-indigo-600' : 'text-slate-300'}`}><Users size={24}/><span className="text-[8px] font-black uppercase">Pegawai</span></button>
-            </>
+            <><button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button><button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button><button onClick={() => setActiveTab('users')} className={`flex flex-col items-center gap-1 ${activeTab === 'users' ? 'text-indigo-600' : 'text-slate-300'}`}><Users size={24}/><span className="text-[8px] font-black uppercase">Pegawai</span></button></>
           ) : user.role === 'pimpinan' ? (
-            <>
-              <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button>
-              <button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button>
-            </>
+            <><button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button><button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button></>
           ) : (
-            <>
-              <button onClick={() => setActiveTab('laporan')} className={`flex flex-col items-center gap-1 ${activeTab === 'laporan' ? 'text-indigo-600' : 'text-slate-300'}`}><FileText size={24}/><span className="text-[8px] font-black uppercase">Entri</span></button>
-              <button onClick={() => setActiveTab('bukti_dukung')} className={`flex flex-col items-center gap-1 ${activeTab === 'bukti_dukung' ? 'text-indigo-600' : 'text-slate-300'}`}><Link size={24}/><span className="text-[8px] font-black uppercase">Bukti</span></button>
-              {user.role === 'ketua' && <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button>}
-              <button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button>
-            </>
+            <><button onClick={() => setActiveTab('laporan')} className={`flex flex-col items-center gap-1 ${activeTab === 'laporan' ? 'text-indigo-600' : 'text-slate-300'}`}><FileText size={24}/><span className="text-[8px] font-black uppercase">Entri</span></button><button onClick={() => setActiveTab('bukti_dukung')} className={`flex flex-col items-center gap-1 ${activeTab === 'bukti_dukung' ? 'text-indigo-600' : 'text-slate-300'}`}><Link size={24}/><span className="text-[8px] font-black uppercase">Bukti</span></button>{user.role === 'ketua' && <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button>}<button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button></>
           )}
         </div>
       </main>
 
-      {/* MODAL VOTING PEGAWAI TELADAN */}
+      {/* MODAL VOTING PEGAWAI TELADAN DENGAN PENJELASAN KRITERIA */}
       {showVotingModal && selectedStaffForVote && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[110] font-sans italic">
-           <form onSubmit={handleSubmitVote} className="bg-white w-full max-w-lg rounded-[3rem] p-10 text-left overflow-y-auto max-h-[90vh] italic">
-              <div className="text-center mb-8 italic">
-                 <div className="w-20 h-20 rounded-3xl overflow-hidden mx-auto mb-4 border-4 border-slate-50 shadow-md">
-                    {selectedStaffForVote.photoURL ? <img src={selectedStaffForVote.photoURL} className="w-full h-full object-cover"/> : <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-300"><User size={40}/></div>}
+           <form onSubmit={handleSubmitVote} className="bg-white w-full max-w-lg rounded-[3rem] p-10 text-left overflow-y-auto max-h-[90vh] italic relative shadow-2xl">
+              <button type="button" onClick={() => setShowVotingModal(false)} className="absolute top-8 right-8 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
+              <div className="text-center mb-10 italic">
+                 <div className="w-24 h-24 rounded-3xl overflow-hidden mx-auto mb-4 border-4 border-white shadow-xl">
+                    {selectedStaffForVote.photoURL ? <img src={selectedStaffForVote.photoURL} className="w-full h-full object-cover"/> : <div className="bg-slate-100 w-full h-full flex items-center justify-center text-slate-300"><User size={40}/></div>}
                  </div>
-                 <h3 className="font-black uppercase text-slate-800 italic">{selectedStaffForVote.name}</h3>
-                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-2 italic">Beri Nilai Objektif (1 - 10)</p>
+                 <h3 className="font-black uppercase text-slate-800 italic leading-none">{selectedStaffForVote.name}</h3>
+                 <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-4 italic">Periode {voteWindow.period.toUpperCase()} {voteWindow.evalYear}</p>
               </div>
-              <div className="space-y-8 italic">
-                 {["kinerja", "perilaku", "inovasi"].map(key => (
-                   <div key={key} className="space-y-4 italic">
-                     <div className="flex justify-between items-center italic">
-                        <label className="text-[10px] font-black uppercase text-indigo-600 italic">{key}</label>
-                        <span className="font-black text-2xl text-slate-800 italic">{voteData[key]}</span>
-                     </div>
-                     <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData[key]} onChange={e => setVoteData({...voteData, [key]: Number(e.target.value)})} />
-                   </div>
-                 ))}
+              
+              <div className="space-y-10 italic">
+                 {/* KINERJA */}
+                 <div className="space-y-4 italic">
+                    <div className="flex justify-between items-center italic"><label className="text-[10px] font-black uppercase text-indigo-600 italic">1. Kinerja</label><span className="font-black text-3xl text-slate-800">{voteData.kinerja}</span></div>
+                    <p className="text-[8px] text-slate-400 font-bold uppercase italic leading-tight">Menilai ketepatan waktu, kualitas hasil kerja, dan pencapaian target laporan bulanan rekan.</p>
+                    <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.kinerja} onChange={e => setVoteData({...voteData, kinerja: Number(e.target.value)})} />
+                 </div>
+                 {/* PERILAKU */}
+                 <div className="space-y-4 italic">
+                    <div className="flex justify-between items-center italic"><label className="text-[10px] font-black uppercase text-indigo-600 italic">2. Perilaku</label><span className="font-black text-3xl text-slate-800">{voteData.perilaku}</span></div>
+                    <p className="text-[8px] text-slate-400 font-bold uppercase italic leading-tight">Menilai etika, kerja sama tim, integritas, dan sikap profesional rekan selama bekerja.</p>
+                    <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.perilaku} onChange={e => setVoteData({...voteData, perilaku: Number(e.target.value)})} />
+                 </div>
+                 {/* INOVASI */}
+                 <div className="space-y-4 italic">
+                    <div className="flex justify-between items-center italic"><label className="text-[10px] font-black uppercase text-indigo-600 italic">3. Inovasi</label><span className="font-black text-3xl text-slate-800">{voteData.inovasi}</span></div>
+                    <p className="text-[8px] text-slate-400 font-bold uppercase italic leading-tight">Menilai inisiatif rekan dalam memberikan ide baru atau solusi kreatif untuk mempermudah pekerjaan.</p>
+                    <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.inovasi} onChange={e => setVoteData({...voteData, inovasi: Number(e.target.value)})} />
+                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-4 mt-12 italic">
                  <button type="button" onClick={() => setShowVotingModal(false)} className="py-5 rounded-2xl font-black uppercase text-[10px] bg-slate-50 text-slate-400 italic">Batal</button>
-                 <button type="submit" className="py-5 rounded-2xl font-black uppercase text-[10px] bg-indigo-600 text-white shadow-xl italic">Kirim Nilai</button>
+                 <button type="submit" className="py-5 rounded-2xl font-black uppercase text-[10px] bg-indigo-600 text-white shadow-xl italic shadow-indigo-200">Kirim Penilaian</button>
               </div>
            </form>
         </div>
