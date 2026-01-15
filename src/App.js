@@ -1056,7 +1056,7 @@ const PIRUApp = () => {
       {/* MODAL VOTING TELADAN */}
       {showVotingModal && selectedStaffForVote && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[110] font-sans italic">
-           <form onSubmit={handleSubmitVote} className="bg-white w-full max-w-lg rounded-[3rem] p-10 shadow-2xl relative italic max-h-[90vh] overflow-y-auto">
+           <form onSubmit={handleSubmitVote} className="bg-white w-full max-w-lg rounded-[3rem] p-10 shadow-2xl relative italic max-h-[90vh] overflow-y-auto text-left">
               <button type="button" onClick={() => setShowVotingModal(false)} className="absolute top-8 right-8 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
               
               <div className="text-center mb-8 italic">
@@ -1070,28 +1070,31 @@ const PIRUApp = () => {
               <div className="space-y-8 italic">
                  {/* KINERJA */}
                  <div>
-                    <div className="flex justify-between items-center mb-3">
-                       <label className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2 italic"><Zap size={14} className="text-amber-500"/> Kinerja & Kerjasama</label>
+                    <div className="flex justify-between items-center mb-1">
+                       <label className="text-[10px] font-black uppercase text-slate-700 flex items-center gap-2 italic"><Zap size={14} className="text-amber-500"/> Kinerja & Kerjasama</label>
                        <span className="bg-amber-100 text-amber-600 px-3 py-1 rounded-full font-black text-xs italic">{voteData.kinerja}</span>
                     </div>
+                    <p className="text-[8px] text-slate-400 font-bold uppercase mb-3 italic leading-tight">Ketepatan waktu, kualitas hasil kerja, dan kolaborasi antar anggota/atasan.</p>
                     <input type="range" min="1" max="10" step="1" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.kinerja} onChange={e => setVoteData({...voteData, kinerja: parseInt(e.target.value)})}/>
                  </div>
 
                  {/* PERILAKU */}
                  <div>
-                    <div className="flex justify-between items-center mb-3">
-                       <label className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2 italic"><Heart size={14} className="text-red-500"/> Unjuk Perilaku (BerAKHLAK)</label>
+                    <div className="flex justify-between items-center mb-1">
+                       <label className="text-[10px] font-black uppercase text-slate-700 flex items-center gap-2 italic"><Heart size={14} className="text-red-500"/> Unjuk Perilaku (BerAKHLAK)</label>
                        <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full font-black text-xs italic">{voteData.perilaku}</span>
                     </div>
+                    <p className="text-[8px] text-slate-400 font-bold uppercase mb-3 italic leading-tight">Disiplin (kehadiran/atribut), etika komunikasi, kejujuran, dan sikap menghargai.</p>
                     <input type="range" min="1" max="10" step="1" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.perilaku} onChange={e => setVoteData({...voteData, perilaku: parseInt(e.target.value)})}/>
                  </div>
 
                  {/* INOVASI */}
                  <div>
-                    <div className="flex justify-between items-center mb-3">
-                       <label className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2 italic"><Rocket size={14} className="text-indigo-500"/> Prestasi & Inovasi</label>
+                    <div className="flex justify-between items-center mb-1">
+                       <label className="text-[10px] font-black uppercase text-slate-700 flex items-center gap-2 italic"><Rocket size={14} className="text-indigo-500"/> Prestasi & Inovasi</label>
                        <span className="bg-indigo-100 text-indigo-600 px-3 py-1 rounded-full font-black text-xs italic">{voteData.inovasi}</span>
                     </div>
+                    <p className="text-[8px] text-slate-400 font-bold uppercase mb-3 italic leading-tight">Motivasi kerja, kreativitas dalam program kerja, dan inisiatif solusi baru.</p>
                     <input type="range" min="1" max="10" step="1" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.inovasi} onChange={e => setVoteData({...voteData, inovasi: parseInt(e.target.value)})}/>
                  </div>
               </div>
