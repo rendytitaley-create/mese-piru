@@ -169,7 +169,6 @@ const PIRUApp = () => {
     const date = today.getDate();
     const month = today.getMonth() + 1;
     
-    // Jika Admin mengaktifkan simulasi, paksa status aktif
     const isActiveDate = isAdminSimulation ? true : (date >= 1 && date <= 7);
 
     if (month === 4 || (isAdminSimulation && month === 4)) return { active: isActiveDate, period: 'tw1', evalYear: today.getFullYear() };
@@ -177,7 +176,6 @@ const PIRUApp = () => {
     if (month === 10 || (isAdminSimulation && month === 10)) return { active: isActiveDate, period: 'tw3', evalYear: today.getFullYear() };
     if (month === 1 || (isAdminSimulation && month === 1)) return { active: isActiveDate, period: 'tw4', evalYear: today.getFullYear() - 1 };
 
-    // Default Fallback untuk testing di bulan apapun jika simulasi nyala
     if (isAdminSimulation) return { active: true, period: 'tw4', evalYear: today.getFullYear() - 1 };
 
     return { active: false, period: null };
@@ -445,8 +443,6 @@ const PIRUApp = () => {
 
   const leaderboardData = useMemo(() => {
     const staff = users.filter(u => !['admin', 'pimpinan'].includes(u.role));
-    
-    // Gunakan tahun dan periode dari voteWindow jika sedang dalam periode penilaian
     const targetPeriod = voteWindow.period || currentTW;
     const targetYear = voteWindow.evalYear || selectedYear;
 
@@ -631,7 +627,7 @@ const PIRUApp = () => {
 
   if (!user) return (
     <div className="h-screen bg-slate-900 flex items-center justify-center p-4 italic">
-      <div className="bg-white w-full max-md rounded-[2.5rem] p-12 shadow-2xl text-center font-sans">
+      <div className="bg-white w-full max-w-md rounded-[2.5rem] p-12 shadow-2xl text-center font-sans">
         {appSettings.logoURL ? (
             <img src={appSettings.logoURL} alt="Logo" className="h-16 mx-auto mb-6 object-contain" />
         ) : (
@@ -799,20 +795,20 @@ const PIRUApp = () => {
 
                   <div className="bg-indigo-600 p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl text-white flex flex-col md:flex-row items-center justify-between gap-8 border-b-8 border-indigo-800">
                     <div className="text-center md:text-left italic">
-                       <p className="text-indigo-200 text-[10px] font-black uppercase mb-1 tracking-widest">AKUMULASI KINERJA TAHUNAN</p>
-                       <h2 className="text-3xl font-black italic tracking-tighter uppercase leading-none">REKAP TAHUN {selectedYear}</h2>
+                        <p className="text-indigo-200 text-[10px] font-black uppercase mb-1 tracking-widest">AKUMULASI KINERJA TAHUNAN</p>
+                        <h2 className="text-3xl font-black italic tracking-tighter uppercase leading-none">REKAP TAHUN {selectedYear}</h2>
                     </div>
                     <div className="flex gap-12 text-center italic">
-                       <div>
-                          <p className="text-indigo-200 text-[8px] font-black uppercase mb-1">RATA-RATA CKP</p>
-                          <p className="text-4xl font-black tracking-tighter">{dashboardStats.myYearly}</p>
-                       </div>
-                       <div className="border-l border-indigo-500 pl-12">
-                          <p className="text-indigo-200 text-[8px] font-black uppercase mb-1">TOTAL KJK TAHUNAN</p>
-                          <p className={`text-2xl font-black italic mt-1 ${timeToMinutes(dashboardStats.myYearlyKJK) === 0 ? 'text-green-300' : 'text-red-300'}`}>
-                             {formatKJKDisplay(dashboardStats.myYearlyKJK)}
-                          </p>
-                       </div>
+                        <div>
+                           <p className="text-indigo-200 text-[8px] font-black uppercase mb-1">RATA-RATA CKP</p>
+                           <p className="text-4xl font-black tracking-tighter">{dashboardStats.myYearly}</p>
+                        </div>
+                        <div className="border-l border-indigo-500 pl-12">
+                           <p className="text-indigo-200 text-[8px] font-black uppercase mb-1">TOTAL KJK TAHUNAN</p>
+                           <p className={`text-2xl font-black italic mt-1 ${timeToMinutes(dashboardStats.myYearlyKJK) === 0 ? 'text-green-300' : 'text-red-300'}`}>
+                              {formatKJKDisplay(dashboardStats.myYearlyKJK)}
+                           </p>
+                        </div>
                     </div>
                   </div>
                 </div>
