@@ -3,12 +3,13 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { 
   getFirestore, collection, addDoc, updateDoc, doc, onSnapshot, 
-  serverTimestamp, query, orderBy, deleteDoc, enableIndexedDbPersistence, writeBatch, setDoc
+  serverTimestamp, query, orderBy, deleteDoc, enableIndexedDbPersistence, writeBatch, setDoc, where
 } from 'firebase/firestore';
 import { 
   ShieldCheck, Loader2, Plus, X, BarChart3, FileText, 
   LogOut, Trash2, Edit3, TrendingUp, Clock, Zap, UserPlus, Users, Download, ClipboardCheck, CheckCircle2,
-  LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, Image as ImageIcon, Link, Copy, ExternalLink, Search, FileSpreadsheet
+  LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, Image as ImageIcon, Link, Copy, ExternalLink, Search, FileSpreadsheet,
+  Award, Heart, Star, Rocket
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -68,6 +69,12 @@ const PIRUApp = () => {
 
   const [tempLinks, setTempLinks] = useState({});
 
+  // === STATE BARU: PENILAIAN TELADAN ===
+  const [peerReviews, setPeerReviews] = useState([]);
+  const [showVotingModal, setShowVotingModal] = useState(false);
+  const [selectedStaffForVote, setSelectedStaffForVote] = useState(null);
+  const [voteData, setVoteData] = useState({ kinerja: 5, perilaku: 5, inovasi: 5 });
+
   useEffect(() => {
     signInAnonymously(auth);
     const unsubAuth = onAuthStateChanged(auth, (fUser) => {
@@ -94,8 +101,15 @@ const PIRUApp = () => {
     const unsubReports = onSnapshot(q, (snap) => {
       setReports(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
-    return () => unsubReports();
-  }, [user]);
+    
+    // Sinkronisasi Peer Reviews
+    const qVote = query(collection(db, "peer_reviews"), where("year", "==", selectedYear));
+    const unsubVotes = onSnapshot(qVote, (snap) => {
+      setPeerReviews(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
+    return () => { unsubReports(); unsubVotes(); };
+  }, [user, selectedYear]);
 
   // UTILITY: Ambil kata pertama untuk pencocokan nama yang fleksibel
   const getFirstWord = (name) => {
@@ -395,6 +409,34 @@ const PIRUApp = () => {
     const buffer = await workbook.xlsx.writeBuffer(); saveAs(new Blob([buffer]), `CKP_${targetStaff?.name}_${monthNames[selectedMonth-1]}.xlsx`);
   };
 
+  // === LOGIKA PENILAIAN TELADAN ===
+  const currentTW = useMemo(() => {
+    if (selectedMonth <= 3) return "tw1";
+    if (selectedMonth <= 6) return "tw2";
+    if (selectedMonth <= 9) return "tw3";
+    return "tw4";
+  }, [selectedMonth]);
+
+  const handleSubmitVote = async (e) => {
+    e.preventDefault();
+    if (!selectedStaffForVote) return;
+    const docId = `${selectedYear}_${currentTW}_from_${user.username}_to_${selectedStaffForVote.username}`;
+    try {
+      await setDoc(doc(db, "peer_reviews", docId), {
+        reviewerId: user.username,
+        targetUserId: selectedStaffForVote.username,
+        targetName: selectedStaffForVote.name,
+        year: selectedYear,
+        period: currentTW,
+        ...voteData,
+        submittedAt: serverTimestamp()
+      });
+      alert(`Berhasil menilai ${selectedStaffForVote.name}`);
+      setShowVotingModal(false);
+      setVoteData({ kinerja: 5, perilaku: 5, inovasi: 5 });
+    } catch (err) { alert("Gagal mengirim penilaian."); }
+  };
+
   const currentFilteredReports = useMemo(() => {
     let res = reports.filter(r => r.month === selectedMonth && r.year === selectedYear);
     if (activeTab === 'laporan') {
@@ -529,6 +571,7 @@ const PIRUApp = () => {
           {user.role !== 'admin' && (<button onClick={() => setActiveTab('laporan')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'laporan' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><FileText size={20}/> Entri Pekerjaan</button>)}
           <button onClick={() => setActiveTab('bukti_dukung')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'bukti_dukung' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Link size={20}/> Bukti Dukung</button>
           {['admin', 'pimpinan', 'ketua'].includes(user.role) && (<button onClick={() => setActiveTab('penilaian')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'penilaian' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><ClipboardCheck size={20}/> Penilaian Anggota</button>)}
+          <button onClick={() => setActiveTab('teladan')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'teladan' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Award size={20}/> Pegawai Teladan</button>
           {user.role === 'admin' && (<button onClick={() => setActiveTab('kjk_management')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'kjk_management' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><FileSpreadsheet size={20}/> Manajemen KJK</button>)}
           {user.role === 'admin' && (<button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'users' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Users size={20}/> Data Pegawai</button>)}
         </nav>
@@ -579,7 +622,7 @@ const PIRUApp = () => {
                  {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <option key={y} value={y}>{y}</option>)}
                </select>
                <button onClick={exportToExcel} className="bg-green-600 text-white px-4 py-2.5 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-md italic"><Download size={14}/> Cetak</button>
-               {user.role !== 'admin' && <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-black uppercase text-[10px] shadow-lg flex items-center gap-2 italic"><Plus size={14}/> Entri</button>}
+               {user.role !== 'admin' && activeTab !== 'teladan' && <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-black uppercase text-[10px] shadow-lg flex items-center gap-2 italic"><Plus size={14}/> Entri</button>}
              </div>
           </div>
         </header>
@@ -674,6 +717,55 @@ const PIRUApp = () => {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'teladan' && (
+            <div className="animate-in slide-in-from-bottom-4 duration-500 italic mb-20">
+               <div className="bg-white rounded-[2.5rem] shadow-sm border p-8 md:p-12 mb-10 text-center md:text-left">
+                  <div className="flex flex-col md:flex-row items-center gap-8 italic">
+                      <div className="w-24 h-24 rounded-3xl bg-amber-50 flex items-center justify-center text-amber-500 shadow-inner">
+                          <Award size={48} />
+                      </div>
+                      <div className="flex-1 italic">
+                          <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter mb-2 italic">Penilaian Pegawai Teladan</h2>
+                          <p className="text-[11px] text-slate-400 font-bold uppercase italic mb-4">Silakan nilai rekan kerja anda berdasarkan kinerja, perilaku, dan inovasi pada periode {currentTW.toUpperCase()} {selectedYear}</p>
+                          <div className="inline-flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-full border border-slate-100">
+                             <CheckCircle2 size={14} className="text-green-500"/>
+                             <span className="text-[10px] font-black uppercase text-slate-500">Skala Penilaian: 1 - 10</span>
+                          </div>
+                      </div>
+                  </div>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 italic">
+                  {users.filter(u => u.username !== user.username && !['admin', 'pimpinan'].includes(u.role)).map(u => {
+                    const hasVoted = peerReviews.some(v => v.reviewerId === user.username && v.targetUserId === u.username && v.period === currentTW);
+                    return (
+                      <div key={u.firestoreId} className={`bg-white p-8 rounded-[2.5rem] shadow-xl border-2 transition-all ${hasVoted ? 'border-green-100 opacity-80' : 'border-transparent hover:border-indigo-100'}`}>
+                         <div className="flex items-center gap-4 mb-6">
+                            <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-sm bg-slate-50 border-2 border-white">
+                               {u.photoURL ? <img src={u.photoURL} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center text-indigo-200 font-black">{u.name.charAt(0)}</div>}
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                               <h3 className="font-black text-slate-800 uppercase text-xs truncate italic">{u.name}</h3>
+                               <p className="text-[9px] font-bold text-slate-400 truncate italic">{u.jabatan || u.role}</p>
+                            </div>
+                         </div>
+                         
+                         {hasVoted ? (
+                           <div className="w-full bg-green-50 text-green-600 py-4 rounded-2xl text-center font-black uppercase text-[10px] flex items-center justify-center gap-2 italic">
+                              <CheckCircle2 size={16}/> Terkirim
+                           </div>
+                         ) : (
+                           <button onClick={() => { setSelectedStaffForVote(u); setShowVotingModal(true); }} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all italic">
+                              Beri Penilaian
+                           </button>
+                         )}
+                      </div>
+                    );
+                  })}
+               </div>
             </div>
           )}
 
@@ -956,9 +1048,58 @@ const PIRUApp = () => {
           {user.role !== 'admin' && (<button onClick={() => setActiveTab('laporan')} className={`flex flex-col items-center gap-1 ${activeTab === 'laporan' ? 'text-indigo-600' : 'text-slate-300'}`}><FileText size={24}/><span className="text-[8px] font-black uppercase">Entri</span></button>)}
           <button onClick={() => setActiveTab('bukti_dukung')} className={`flex flex-col items-center gap-1 ${activeTab === 'bukti_dukung' ? 'text-indigo-600' : 'text-slate-300'}`}><Link size={24}/><span className="text-[8px] font-black uppercase">Bukti</span></button>
           {['admin', 'pimpinan', 'ketua'].includes(user.role) && (<button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button>)}
+          <button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button>
           {user.role === 'admin' && (<button onClick={() => setActiveTab('users')} className={`flex flex-col items-center gap-1 ${activeTab === 'users' ? 'text-indigo-600' : 'text-slate-300'}`}><Users size={24}/><span className="text-[8px] font-black uppercase">Pegawai</span></button>)}
         </div>
       </main>
+
+      {/* MODAL VOTING TELADAN */}
+      {showVotingModal && selectedStaffForVote && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[110] font-sans italic">
+           <form onSubmit={handleSubmitVote} className="bg-white w-full max-w-lg rounded-[3rem] p-10 shadow-2xl relative italic max-h-[90vh] overflow-y-auto">
+              <button type="button" onClick={() => setShowVotingModal(false)} className="absolute top-8 right-8 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
+              
+              <div className="text-center mb-8 italic">
+                 <div className="w-20 h-20 rounded-3xl overflow-hidden mx-auto mb-4 border-4 border-indigo-50 shadow-md">
+                    {selectedStaffForVote.photoURL ? <img src={selectedStaffForVote.photoURL} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center bg-indigo-50 text-indigo-600 font-black">{selectedStaffForVote.name.charAt(0)}</div>}
+                 </div>
+                 <h3 className="text-xl font-black uppercase text-slate-800 italic">{selectedStaffForVote.name}</h3>
+                 <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest italic">{selectedStaffForVote.jabatan}</p>
+              </div>
+
+              <div className="space-y-8 italic">
+                 {/* KINERJA */}
+                 <div>
+                    <div className="flex justify-between items-center mb-3">
+                       <label className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2 italic"><Zap size={14} className="text-amber-500"/> Kinerja & Kerjasama</label>
+                       <span className="bg-amber-100 text-amber-600 px-3 py-1 rounded-full font-black text-xs italic">{voteData.kinerja}</span>
+                    </div>
+                    <input type="range" min="1" max="10" step="1" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.kinerja} onChange={e => setVoteData({...voteData, kinerja: parseInt(e.target.value)})}/>
+                 </div>
+
+                 {/* PERILAKU */}
+                 <div>
+                    <div className="flex justify-between items-center mb-3">
+                       <label className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2 italic"><Heart size={14} className="text-red-500"/> Unjuk Perilaku (BerAKHLAK)</label>
+                       <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full font-black text-xs italic">{voteData.perilaku}</span>
+                    </div>
+                    <input type="range" min="1" max="10" step="1" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.perilaku} onChange={e => setVoteData({...voteData, perilaku: parseInt(e.target.value)})}/>
+                 </div>
+
+                 {/* INOVASI */}
+                 <div>
+                    <div className="flex justify-between items-center mb-3">
+                       <label className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2 italic"><Rocket size={14} className="text-indigo-500"/> Prestasi & Inovasi</label>
+                       <span className="bg-indigo-100 text-indigo-600 px-3 py-1 rounded-full font-black text-xs italic">{voteData.inovasi}</span>
+                    </div>
+                    <input type="range" min="1" max="10" step="1" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.inovasi} onChange={e => setVoteData({...voteData, inovasi: parseInt(e.target.value)})}/>
+                 </div>
+              </div>
+
+              <button type="submit" className="w-full bg-slate-900 text-white font-black py-6 rounded-2xl shadow-xl uppercase tracking-widest text-[10px] mt-10 italic transition-all active:scale-95 text-center">Simpan Penilaian</button>
+           </form>
+        </div>
+      )}
 
       {showPasswordModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[100] font-sans italic">
