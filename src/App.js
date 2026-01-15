@@ -631,7 +631,7 @@ const PIRUApp = () => {
 
   if (!user) return (
     <div className="h-screen bg-slate-900 flex items-center justify-center p-4 italic">
-      <div className="bg-white w-full max-w-md rounded-[2.5rem] p-12 shadow-2xl text-center font-sans">
+      <div className="bg-white w-full max-md rounded-[2.5rem] p-12 shadow-2xl text-center font-sans">
         {appSettings.logoURL ? (
             <img src={appSettings.logoURL} alt="Logo" className="h-16 mx-auto mb-6 object-contain" />
         ) : (
@@ -822,7 +822,6 @@ const PIRUApp = () => {
 
           {activeTab === 'teladan' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 italic space-y-10">
-              {/* BAGIAN B: DASHBOARD KHUSUS PIMPINAN & ADMIN */}
               {['admin', 'pimpinan'].includes(user.role) && (
                 <div className="bg-slate-900 p-8 md:p-12 rounded-[3rem] md:rounded-[4rem] text-white shadow-2xl border border-slate-800 relative overflow-hidden italic">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 blur-[100px] -z-10"></div>
@@ -852,7 +851,7 @@ const PIRUApp = () => {
                         <div key={index} className={`relative p-8 rounded-[2.5rem] border-2 flex flex-col items-center text-center transition-all italic ${isWinner ? 'border-amber-500 bg-slate-800/50 shadow-[0_0_30px_rgba(245,158,11,0.1)]' : 'border-slate-800 bg-slate-900/50'}`}>
                           {index === 0 && <div className="absolute -top-4 -right-4 bg-amber-500 text-slate-900 w-12 h-12 rounded-full flex items-center justify-center shadow-lg transform rotate-12"><Star size={24} fill="currentColor"/></div>}
                           <div className="w-24 h-24 rounded-[2rem] overflow-hidden mb-6 border-4 border-slate-800 shadow-xl bg-slate-800">
-                            {staff.photoURL ? <img src={staff.photoURL} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-indigo-400"><User size={40}/></div>}
+                            {staff.photoURL ? <img src={staff.photoURL} className="w-full h-full object-cover" alt={staff.name} /> : <div className="w-full h-full flex items-center justify-center text-indigo-400"><User size={40}/></div>}
                           </div>
                           <p className="font-black text-white uppercase italic text-sm tracking-tighter mb-1">{staff.name}</p>
                           <p className="text-indigo-400 font-black text-3xl italic mb-6 tracking-tighter">{staff.finalScore}</p>
@@ -862,16 +861,16 @@ const PIRUApp = () => {
                             <div className="text-center border-x border-slate-800 italic px-1"><p className="text-[7px] text-slate-500 font-black uppercase mb-1 italic">KJK (30%)</p><p className="text-[11px] font-black text-white italic">{staff.kjkScore.toFixed(0)}</p></div>
                             <div className="text-center italic"><p className="text-[7px] text-slate-500 font-black uppercase mb-1 italic">VOTE (30%)</p><p className="text-[11px] font-black text-white italic">{staff.avgVote.toFixed(0)}</p></div>
                           </div>
-                          {user.role === 'pimpinan' && <button onClick={() => handleSetWinner(staff)} className={`w-full mt-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all italic ${isWinner ? 'bg-amber-500 text-slate-900' : 'bg-white text-slate-900 hover:bg-amber-500 hover:text-slate-900'}`}>
+                          {user.role === 'pimpinan' && (
+                            <button onClick={() => handleSetWinner(staff)} className={`w-full mt-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all italic ${isWinner ? 'bg-amber-500 text-slate-900' : 'bg-white text-slate-900 hover:bg-amber-500 hover:text-slate-900'}`}>
                               {isWinner ? "PEMENANG TERPILIH" : "TETAPKAN PEMENANG"}
                             </button>
-                          }
+                          )}
                         </div>
                       );
                     })}
                   </div>
 
-                  {/* MONITORING PARTISIPASI VOTING UNTUK ADMIN */}
                   {user.role === 'admin' && (
                     <div className="bg-slate-800/40 rounded-[2.5rem] p-8 border border-slate-700/50 italic">
                       <div className="flex items-center gap-4 mb-8 italic">
@@ -917,7 +916,6 @@ const PIRUApp = () => {
                 </div>
               )}
 
-              {/* BAGIAN A: PEER REVIEW UNTUK SEMUA USER */}
               {user.role !== 'admin' && user.role !== 'pimpinan' && (
                 <div className="bg-white p-8 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] shadow-sm border border-slate-100 italic">
                   {voteWindow.active ? (
@@ -950,7 +948,6 @@ const PIRUApp = () => {
                     </>
                   ) : (
                     <div className="text-center py-20 italic">
-                       {/* CEK PUBLISH STATUS */}
                        {publishStatus[`${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`]?.isPublished ? (
                          <div className="animate-in fade-in duration-1000">
                            <Trophy className="mx-auto text-amber-500 mb-8" size={80} />
@@ -958,7 +955,7 @@ const PIRUApp = () => {
                            {winners.filter(w => w.period === (voteWindow.period || currentTW) && w.year === (voteWindow.evalYear || selectedYear)).map((w, idx) => (
                              <div key={idx} className="mt-12 bg-slate-900 p-12 rounded-[4rem] text-white max-w-md mx-auto italic shadow-2xl border-b-8 border-indigo-600">
                                 <div className="w-36 h-36 rounded-full overflow-hidden mx-auto mb-6 border-4 border-amber-500 shadow-lg">
-                                   {w.photoURL ? <img src={w.photoURL} className="w-full h-full object-cover"/> : <User size={50}/>}
+                                   {w.photoURL ? <img src={w.photoURL} className="w-full h-full object-cover" alt={w.name}/> : <User size={50}/>}
                                 </div>
                                 <p className="font-black uppercase text-2xl italic tracking-tighter">{w.name}</p>
                                 <p className="text-indigo-400 font-bold uppercase text-[10px] mt-2 tracking-[0.2em]">{w.jabatan}</p>
@@ -1159,7 +1156,7 @@ const PIRUApp = () => {
                   <thead><tr className="bg-slate-50 border-b text-[9px] font-black text-slate-400 uppercase italic"><th className="p-4">Pegawai</th><th className="p-4 text-center">Aksi</th></tr></thead>
                   <tbody>{users.map(u => (<tr key={u.firestoreId} className="border-b hover:bg-slate-50 italic"><td className="p-4 flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0">
-                      {u.photoURL ? <img src={u.photoURL} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-400">{u.name.charAt(0)}</div>}
+                      {u.photoURL ? <img src={u.photoURL} className="w-full h-full object-cover" alt={u.name} /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-400">{u.name.charAt(0)}</div>}
                     </div>
                     <div><p className="font-black text-slate-800 uppercase tracking-tighter leading-none">{u.name}</p><p className="text-indigo-500 text-[8px] font-bold mt-1">@{u.username} | {u.role}</p></div>
                   </td><td className="p-4 text-center"><div className="flex justify-center gap-2"><button onClick={() => { setIsEditingUser(true); setCurrentUserId(u.firestoreId); setNewUser({ name: u.name, username: u.username, password: u.password, role: u.role, jabatan: u.jabatan, photoURL: u.photoURL || '' }); setShowUserModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button><button onClick={() => deleteDoc(doc(db, "users", u.firestoreId))} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button></div></td></tr>))}</tbody>
@@ -1169,7 +1166,7 @@ const PIRUApp = () => {
               {user.role === 'admin' && (
                 <div className="bg-white rounded-[2.5rem] shadow-sm border p-8 flex flex-col md:flex-row items-center gap-8 italic">
                     <div className="w-32 h-32 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group">
-                       {appSettings.logoURL ? ( <img src={appSettings.logoURL} className="w-full h-full object-contain p-2" /> ) : ( <ImageIcon size={32} className="text-slate-300" /> )}
+                       {appSettings.logoURL ? ( <img src={appSettings.logoURL} className="w-full h-full object-contain p-2" alt="App Logo" /> ) : ( <ImageIcon size={32} className="text-slate-300" /> )}
                        <input type="file" accept="image/png, image/jpeg" onChange={handleLogoUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
                     </div>
                     <div className="flex-1 text-center md:text-left italic">
@@ -1196,10 +1193,10 @@ const PIRUApp = () => {
                         <td className="p-4 italic"><p className="font-black text-[12px] text-slate-800 uppercase tracking-tight leading-none mb-1 italic">{r.title}</p><span className="text-indigo-600 text-[8px] font-black uppercase bg-indigo-50 px-2 py-0.5 rounded-lg italic">{r.userName}</span></td>
                         <td className="p-4 text-center font-bold text-slate-500 uppercase text-[10px] italic">{r.satuan || '-'}</td>
                         <td className="p-4 text-center font-black italic">{r.realisasi} / {r.target}</td>
-                        <td className="p-4 text-center font-black text-indigo-600 italic text-center">{((r.realisasi/r.target)*100).toFixed(0)}%</td>
+                        <td className="p-4 text-center font-black text-indigo-600 italic">{((r.realisasi/r.target)*100).toFixed(0)}%</td>
                         <td className="p-4 text-center font-black text-slate-300 text-lg italic"><div className="relative group inline-block">{r.nilaiKetua || '-'}{user.role === 'admin' && activeTab === 'penilaian' && r.nilaiKetua > 0 && (<button onClick={() => clearGrade(r.id, 'nilaiKetua')} className="absolute -top-1 -right-3 text-red-400 opacity-0 group-hover:opacity-100 italic"><Trash2 size={10}/></button>)}</div></td>
                         <td className="p-4 text-center font-black text-indigo-600 text-lg italic"><div className="relative group inline-block">{r.nilaiPimpinan || '-'}{user.role === 'admin' && activeTab === 'penilaian' && r.nilaiPimpinan > 0 && (<button onClick={() => clearGrade(r.id, 'nilaiPimpinan')} className="absolute -top-1 -right-3 text-red-400 opacity-0 group-hover:opacity-100 italic"><Trash2 size={10}/></button>)}</div></td>
-                        <td className="p-4 text-center italic"><div className="flex justify-center gap-1 italic">{activeTab === 'laporan' && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button></>}{activeTab === 'penilaian' && (<>{['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Ketua</button>{['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Pimp</button>}</>)}</div></td>
+                        <td className="p-4 text-center italic"><div className="flex justify-center gap-1 italic">{activeTab === 'laporan' && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button></>}{activeTab === 'penilaian' && (<>{['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Ketua</button>}{['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Pimp</button>}</>)}</div></td>
                       </tr>
                     ))}
                   </tbody>
@@ -1270,33 +1267,29 @@ const PIRUApp = () => {
         </div>
       </main>
 
-      {/* MODAL VOTING PEGAWAI TELADAN DENGAN PENJELASAN KRITERIA */}
       {showVotingModal && selectedStaffForVote && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[110] font-sans italic">
            <form onSubmit={handleSubmitVote} className="bg-white w-full max-w-lg rounded-[3rem] p-10 text-left overflow-y-auto max-h-[90vh] italic relative shadow-2xl">
               <button type="button" onClick={() => setShowVotingModal(false)} className="absolute top-8 right-8 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
               <div className="text-center mb-10 italic">
                  <div className="w-24 h-24 rounded-3xl overflow-hidden mx-auto mb-4 border-4 border-white shadow-xl">
-                    {selectedStaffForVote.photoURL ? <img src={selectedStaffForVote.photoURL} className="w-full h-full object-cover"/> : <div className="bg-slate-100 w-full h-full flex items-center justify-center text-slate-300"><User size={40}/></div>}
+                    {selectedStaffForVote.photoURL ? <img src={selectedStaffForVote.photoURL} className="w-full h-full object-cover" alt={selectedStaffForVote.name}/> : <div className="bg-slate-100 w-full h-full flex items-center justify-center text-slate-300"><User size={40}/></div>}
                  </div>
                  <h3 className="font-black uppercase text-slate-800 italic leading-none">{selectedStaffForVote.name}</h3>
                  <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-4 italic">Periode {voteWindow.period.toUpperCase()} {voteWindow.evalYear}</p>
               </div>
               
               <div className="space-y-10 italic">
-                 {/* KINERJA */}
                  <div className="space-y-4 italic text-left">
                     <div className="flex justify-between items-center italic"><label className="text-[10px] font-black uppercase text-indigo-600 italic">1. Kinerja</label><span className="font-black text-3xl text-slate-800">{voteData.kinerja}</span></div>
                     <p className="text-[8px] text-slate-400 font-bold uppercase italic leading-tight">Menilai ketepatan waktu, kualitas hasil kerja, dan pencapaian target laporan bulanan rekan.</p>
                     <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.kinerja} onChange={e => setVoteData({...voteData, kinerja: Number(e.target.value)})} />
                  </div>
-                 {/* PERILAKU */}
                  <div className="space-y-4 italic text-left">
                     <div className="flex justify-between items-center italic"><label className="text-[10px] font-black uppercase text-indigo-600 italic">2. Perilaku</label><span className="font-black text-3xl text-slate-800">{voteData.perilaku}</span></div>
                     <p className="text-[8px] text-slate-400 font-bold uppercase italic leading-tight">Menilai etika, kerja sama tim, integritas, dan sikap profesional rekan selama bekerja.</p>
                     <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.perilaku} onChange={e => setVoteData({...voteData, perilaku: Number(e.target.value)})} />
                  </div>
-                 {/* INOVASI */}
                  <div className="space-y-4 italic text-left">
                     <div className="flex justify-between items-center italic"><label className="text-[10px] font-black uppercase text-indigo-600 italic">3. Inovasi</label><span className="font-black text-3xl text-slate-800">{voteData.inovasi}</span></div>
                     <p className="text-[8px] text-slate-400 font-bold uppercase italic leading-tight">Menilai inisiatif rekan dalam memberikan ide baru atau solusi kreatif untuk mempermudah pekerjaan.</p>
@@ -1341,7 +1334,7 @@ const PIRUApp = () => {
             <div className="space-y-4 italic">
                 <div className="flex flex-col items-center mb-6">
                    <div className="w-24 h-24 rounded-3xl bg-slate-100 border-2 border-dashed border-slate-300 overflow-hidden flex items-center justify-center relative group">
-                      {newUser.photoURL ? ( <img src={newUser.photoURL} className="w-full h-full object-cover" /> ) : ( <Camera size={28} className="text-slate-300" /> )}
+                      {newUser.photoURL ? ( <img src={newUser.photoURL} className="w-full h-full object-cover" alt="Pegawai" /> ) : ( <Camera size={28} className="text-slate-300" /> )}
                       <input type="file" accept="image/*" onChange={handlePhotoUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
                    </div>
                    <p className="text-[9px] font-black text-indigo-600 uppercase mt-2 italic text-center">Klik untuk Upload Foto</p>
