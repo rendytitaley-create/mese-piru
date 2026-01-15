@@ -74,7 +74,6 @@ const PIRUApp = () => {
   const [showVotingModal, setShowVotingModal] = useState(false);
   const [selectedStaffForVote, setSelectedStaffForVote] = useState(null);
   const [voteData, setVoteData] = useState({ kinerja: 5, perilaku: 5, inovasi: 5 });
-  const [isAdminSimulation, setIsAdminSimulation] = useState(false); // Mode Simulasi Admin
 
   useEffect(() => {
     signInAnonymously(auth);
@@ -169,17 +168,15 @@ const PIRUApp = () => {
     const date = today.getDate();
     const month = today.getMonth() + 1;
     
-    const isActiveDate = isAdminSimulation ? true : (date >= 1 && date <= 7);
+    const isActiveDate = (date >= 1 && date <= 7);
 
-    if (month === 4 || (isAdminSimulation && month === 4)) return { active: isActiveDate, period: 'tw1', evalYear: today.getFullYear() };
-    if (month === 7 || (isAdminSimulation && month === 7)) return { active: isActiveDate, period: 'tw2', evalYear: today.getFullYear() };
-    if (month === 10 || (isAdminSimulation && month === 10)) return { active: isActiveDate, period: 'tw3', evalYear: today.getFullYear() };
-    if (month === 1 || (isAdminSimulation && month === 1)) return { active: isActiveDate, period: 'tw4', evalYear: today.getFullYear() - 1 };
-
-    if (isAdminSimulation) return { active: true, period: 'tw4', evalYear: today.getFullYear() - 1 };
+    if (month === 4) return { active: isActiveDate, period: 'tw1', evalYear: today.getFullYear() };
+    if (month === 7) return { active: isActiveDate, period: 'tw2', evalYear: today.getFullYear() };
+    if (month === 10) return { active: isActiveDate, period: 'tw3', evalYear: today.getFullYear() };
+    if (month === 1) return { active: isActiveDate, period: 'tw4', evalYear: today.getFullYear() - 1 };
 
     return { active: false, period: null };
-  }, [isAdminSimulation]);
+  }, []);
 
   const handleUploadKJK = async (e) => {
     const file = e.target.files[0];
@@ -831,9 +828,6 @@ const PIRUApp = () => {
                     </div>
                     {user.role === 'admin' && (
                       <div className="flex gap-3">
-                         <button onClick={() => setIsAdminSimulation(!isAdminSimulation)} className={`flex items-center gap-3 px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic transition-all ${isAdminSimulation ? 'bg-amber-500 text-slate-900' : 'bg-slate-700 text-white hover:bg-slate-600'}`}>
-                            <Play size={16}/> {isAdminSimulation ? "Matikan Simulasi" : "Aktifkan Simulasi"}
-                         </button>
                          <button onClick={handlePublish} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic"><Megaphone size={16}/> Publish Pengumuman</button>
                          <button onClick={() => handleResetVotes()} className="flex items-center gap-3 bg-red-500/10 text-red-500 px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-red-500 hover:text-white transition-all italic border border-red-500/20"><Trash2 size={16}/> Reset Voting</button>
                       </div>
@@ -1248,7 +1242,7 @@ const PIRUApp = () => {
         </div>
         
         {((activeTab === 'laporan' && user.role !== 'admin') || (activeTab === 'penilaian' && ['admin', 'pimpinan', 'ketua'].includes(user.role))) && ( 
-          <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="md:hidden fixed bottom-28 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center z-50 active:scale-95 transition-all"> <Plus size={32}/> </button> 
+          <button onClick={() => { resetReportForm(); setShowReportModal(false); }} className="md:hidden fixed bottom-28 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center z-50 active:scale-95 transition-all"> <Plus size={32}/> </button> 
         )}
 
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-4 pb-6 flex justify-around items-center z-40 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] not-italic">
