@@ -8,7 +8,7 @@ import {
 import { 
   ShieldCheck, Loader2, Plus, X, BarChart3, FileText, 
   LogOut, Trash2, Edit3, TrendingUp, Clock, Zap, UserPlus, Users, Download, ClipboardCheck, CheckCircle2,
-  LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, Image as ImageIcon, Link, Copy, ExternalLink, Search, FileSpreadsheet, Award, Trophy, Star, Heart, Megaphone
+  LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, Image as ImageIcon, Link, Copy, ExternalLink, Search, FileSpreadsheet, Award, Trophy, Star, Heart, Megaphone, Play
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -74,6 +74,7 @@ const PIRUApp = () => {
   const [showVotingModal, setShowVotingModal] = useState(false);
   const [selectedStaffForVote, setSelectedStaffForVote] = useState(null);
   const [voteData, setVoteData] = useState({ kinerja: 5, perilaku: 5, inovasi: 5 });
+  const [isAdminSimulation, setIsAdminSimulation] = useState(false); // Mode Simulasi Admin
 
   useEffect(() => {
     signInAnonymously(auth);
@@ -168,15 +169,19 @@ const PIRUApp = () => {
     const date = today.getDate();
     const month = today.getMonth() + 1;
     
-    const isActiveDate = (date >= 1 && date <= 7);
+    // Jika Admin mengaktifkan simulasi, paksa status aktif
+    const isActiveDate = isAdminSimulation ? true : (date >= 1 && date <= 7);
 
-    if (month === 4) return { active: isActiveDate, period: 'tw1', evalYear: today.getFullYear() };
-    if (month === 7) return { active: isActiveDate, period: 'tw2', evalYear: today.getFullYear() };
-    if (month === 10) return { active: isActiveDate, period: 'tw3', evalYear: today.getFullYear() };
-    if (month === 1) return { active: isActiveDate, period: 'tw4', evalYear: today.getFullYear() - 1 };
+    if (month === 4 || (isAdminSimulation && month === 4)) return { active: isActiveDate, period: 'tw1', evalYear: today.getFullYear() };
+    if (month === 7 || (isAdminSimulation && month === 7)) return { active: isActiveDate, period: 'tw2', evalYear: today.getFullYear() };
+    if (month === 10 || (isAdminSimulation && month === 10)) return { active: isActiveDate, period: 'tw3', evalYear: today.getFullYear() };
+    if (month === 1 || (isAdminSimulation && month === 1)) return { active: isActiveDate, period: 'tw4', evalYear: today.getFullYear() - 1 };
+
+    // Default Fallback untuk testing di bulan apapun jika simulasi nyala
+    if (isAdminSimulation) return { active: true, period: 'tw4', evalYear: today.getFullYear() - 1 };
 
     return { active: false, period: null };
-  }, []);
+  }, [isAdminSimulation]);
 
   const handleUploadKJK = async (e) => {
     const file = e.target.files[0];
@@ -831,13 +836,16 @@ const PIRUApp = () => {
                     </div>
                     {user.role === 'admin' && (
                       <div className="flex gap-3">
+                         <button onClick={() => setIsAdminSimulation(!isAdminSimulation)} className={`flex items-center gap-3 px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic transition-all ${isAdminSimulation ? 'bg-amber-500 text-slate-900' : 'bg-slate-700 text-white hover:bg-slate-600'}`}>
+                            <Play size={16}/> {isAdminSimulation ? "Matikan Simulasi" : "Aktifkan Simulasi"}
+                         </button>
                          <button onClick={handlePublish} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic"><Megaphone size={16}/> Publish Pengumuman</button>
-                         <button onClick={() => handleResetVotes()} className="flex items-center gap-3 bg-red-500/10 text-red-500 px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-red-500 hover:text-white transition-all italic border border-red-500/20"><Trash2 size={16}/> Reset Semua Voting</button>
+                         <button onClick={() => handleResetVotes()} className="flex items-center gap-3 bg-red-500/10 text-red-500 px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-red-500 hover:text-white transition-all italic border border-red-500/20"><Trash2 size={16}/> Reset Voting</button>
                       </div>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 italic">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 italic mb-12">
                     {leaderboardData.slice(0, 3).map((staff, index) => {
                       const isWinner = winners.some(w => w.username === staff.username && w.period === (voteWindow.period || currentTW) && w.year === (voteWindow.evalYear || selectedYear));
                       return (
@@ -854,7 +862,6 @@ const PIRUApp = () => {
                             <div className="text-center border-x border-slate-800 italic px-1"><p className="text-[7px] text-slate-500 font-black uppercase mb-1 italic">KJK (30%)</p><p className="text-[11px] font-black text-white italic">{staff.kjkScore.toFixed(0)}</p></div>
                             <div className="text-center italic"><p className="text-[7px] text-slate-500 font-black uppercase mb-1 italic">VOTE (30%)</p><p className="text-[11px] font-black text-white italic">{staff.avgVote.toFixed(0)}</p></div>
                           </div>
-                          {user.role === 'admin' && <p className="text-[9px] text-amber-500 font-black mt-4 italic uppercase">{staff.totalVotesReceived} Suara Masuk</p>}
                           {user.role === 'pimpinan' && <button onClick={() => handleSetWinner(staff)} className={`w-full mt-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all italic ${isWinner ? 'bg-amber-500 text-slate-900' : 'bg-white text-slate-900 hover:bg-amber-500 hover:text-slate-900'}`}>
                               {isWinner ? "PEMENANG TERPILIH" : "TETAPKAN PEMENANG"}
                             </button>
@@ -863,6 +870,50 @@ const PIRUApp = () => {
                       );
                     })}
                   </div>
+
+                  {/* MONITORING PARTISIPASI VOTING UNTUK ADMIN */}
+                  {user.role === 'admin' && (
+                    <div className="bg-slate-800/40 rounded-[2.5rem] p-8 border border-slate-700/50 italic">
+                      <div className="flex items-center gap-4 mb-8 italic">
+                        <Users size={24} className="text-indigo-400" />
+                        <h3 className="font-black uppercase text-sm tracking-tighter italic">Monitoring Partisipasi & Bukti Dukung</h3>
+                      </div>
+                      <div className="overflow-x-auto italic">
+                        <table className="w-full text-left italic border-collapse">
+                          <thead>
+                            <tr className="border-b border-slate-700 text-[9px] font-black text-slate-500 uppercase tracking-widest italic">
+                              <th className="pb-4 italic">Nama Pegawai</th>
+                              <th className="pb-4 text-center italic">Progres Voting</th>
+                              <th className="pb-4 text-center italic">Status</th>
+                              {(!voteWindow.active || publishStatus[`${voteWindow.evalYear}_${voteWindow.period}`]?.isPublished) && <th className="pb-4 text-center italic">Skor Akhir</th>}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {leaderboardData.map((staff, idx) => {
+                              const votesDone = peerReviews.filter(v => v.reviewerId === staff.username && v.period === (voteWindow.period || currentTW) && v.year === (voteWindow.evalYear || selectedYear)).length;
+                              const totalRekan = users.filter(u => !['admin', 'pimpinan'].includes(u.role)).length - 1;
+                              const isComplete = votesDone >= totalRekan;
+                              
+                              return (
+                                <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/20 italic">
+                                  <td className="py-4 font-black uppercase text-[10px] italic">{staff.name}</td>
+                                  <td className="py-4 text-center italic font-bold text-slate-400 text-[10px]">{votesDone} / {totalRekan} Rekan</td>
+                                  <td className="py-4 text-center italic">
+                                    <span className={`text-[8px] font-black uppercase px-3 py-1 rounded-full ${isComplete ? 'bg-green-500/10 text-green-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                                      {isComplete ? "Lengkap" : "Proses"}
+                                    </span>
+                                  </td>
+                                  {(!voteWindow.active || publishStatus[`${voteWindow.evalYear}_${voteWindow.period}`]?.isPublished) && (
+                                    <td className="py-4 text-center italic font-black text-indigo-400 text-xs">{staff.finalScore}</td>
+                                  )}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -873,7 +924,7 @@ const PIRUApp = () => {
                     <>
                       <div className="flex items-center gap-6 mb-12 italic text-center md:text-left">
                         <div className="bg-indigo-50 p-5 rounded-[2rem] text-indigo-600 shadow-inner"><Award size={40}/></div>
-                        <div className="italic">
+                        <div className="italic text-left">
                             <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">Peer Review {voteWindow.period.toUpperCase()} {voteWindow.evalYear}</h2>
                             <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1 italic">Beri Nilai Objektif Rekan Kerja Anda (Aktif 1-7 {new Date().toLocaleString('default', { month: 'long' })})</p>
                         </div>
@@ -918,8 +969,12 @@ const PIRUApp = () => {
                        ) : (
                          <div className="flex flex-col items-center italic">
                             <div className="bg-slate-50 p-12 rounded-full mb-8 text-slate-300"><Clock size={64}/></div>
-                            <h3 className="text-2xl font-black uppercase text-slate-400 italic">Penilaian Teladan Belum Dibuka</h3>
-                            <p className="text-[11px] font-black uppercase text-slate-400 mt-3 italic tracking-widest leading-loose text-center">Periode voting hanya aktif tgl 1 - 7 <br/> di bulan pertama Triwulan berikutnya.</p>
+                            <h3 className="text-2xl font-black uppercase text-slate-400 italic text-center leading-tight">
+                                Penilaian Pegawai Teladan Triwulan {voteWindow.period ? voteWindow.period.toUpperCase() : currentTW.toUpperCase()} Belum Dibuka.
+                            </h3>
+                            <p className="text-[11px] font-black uppercase text-slate-400 mt-3 italic tracking-widest leading-loose text-center">
+                                Masa Penilaian akan aktif pada tanggal 1 s/d 7 di bulan pertama Triwulan berikutnya.
+                            </p>
                          </div>
                        )}
                     </div>
@@ -1144,7 +1199,7 @@ const PIRUApp = () => {
                         <td className="p-4 text-center font-black text-indigo-600 italic text-center">{((r.realisasi/r.target)*100).toFixed(0)}%</td>
                         <td className="p-4 text-center font-black text-slate-300 text-lg italic"><div className="relative group inline-block">{r.nilaiKetua || '-'}{user.role === 'admin' && activeTab === 'penilaian' && r.nilaiKetua > 0 && (<button onClick={() => clearGrade(r.id, 'nilaiKetua')} className="absolute -top-1 -right-3 text-red-400 opacity-0 group-hover:opacity-100 italic"><Trash2 size={10}/></button>)}</div></td>
                         <td className="p-4 text-center font-black text-indigo-600 text-lg italic"><div className="relative group inline-block">{r.nilaiPimpinan || '-'}{user.role === 'admin' && activeTab === 'penilaian' && r.nilaiPimpinan > 0 && (<button onClick={() => clearGrade(r.id, 'nilaiPimpinan')} className="absolute -top-1 -right-3 text-red-400 opacity-0 group-hover:opacity-100 italic"><Trash2 size={10}/></button>)}</div></td>
-                        <td className="p-4 text-center italic"><div className="flex justify-center gap-1 italic">{activeTab === 'laporan' && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button></>}{activeTab === 'penilaian' && (<>{['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Ketua</button>}{['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Pimp</button>}</>)}</div></td>
+                        <td className="p-4 text-center italic"><div className="flex justify-center gap-1 italic">{activeTab === 'laporan' && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button></>}{activeTab === 'penilaian' && (<>{['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Ketua</button>{['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Pimp</button>}</>)}</div></td>
                       </tr>
                     ))}
                   </tbody>
@@ -1230,19 +1285,19 @@ const PIRUApp = () => {
               
               <div className="space-y-10 italic">
                  {/* KINERJA */}
-                 <div className="space-y-4 italic">
+                 <div className="space-y-4 italic text-left">
                     <div className="flex justify-between items-center italic"><label className="text-[10px] font-black uppercase text-indigo-600 italic">1. Kinerja</label><span className="font-black text-3xl text-slate-800">{voteData.kinerja}</span></div>
                     <p className="text-[8px] text-slate-400 font-bold uppercase italic leading-tight">Menilai ketepatan waktu, kualitas hasil kerja, dan pencapaian target laporan bulanan rekan.</p>
                     <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.kinerja} onChange={e => setVoteData({...voteData, kinerja: Number(e.target.value)})} />
                  </div>
                  {/* PERILAKU */}
-                 <div className="space-y-4 italic">
+                 <div className="space-y-4 italic text-left">
                     <div className="flex justify-between items-center italic"><label className="text-[10px] font-black uppercase text-indigo-600 italic">2. Perilaku</label><span className="font-black text-3xl text-slate-800">{voteData.perilaku}</span></div>
                     <p className="text-[8px] text-slate-400 font-bold uppercase italic leading-tight">Menilai etika, kerja sama tim, integritas, dan sikap profesional rekan selama bekerja.</p>
                     <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.perilaku} onChange={e => setVoteData({...voteData, perilaku: Number(e.target.value)})} />
                  </div>
                  {/* INOVASI */}
-                 <div className="space-y-4 italic">
+                 <div className="space-y-4 italic text-left">
                     <div className="flex justify-between items-center italic"><label className="text-[10px] font-black uppercase text-indigo-600 italic">3. Inovasi</label><span className="font-black text-3xl text-slate-800">{voteData.inovasi}</span></div>
                     <p className="text-[8px] text-slate-400 font-bold uppercase italic leading-tight">Menilai inisiatif rekan dalam memberikan ide baru atau solusi kreatif untuk mempermudah pekerjaan.</p>
                     <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.inovasi} onChange={e => setVoteData({...voteData, inovasi: Number(e.target.value)})} />
@@ -1279,7 +1334,7 @@ const PIRUApp = () => {
       )}
 
       {showUserModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[100] font-sans italic">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[100] font-sans italic text-center">
           <form onSubmit={handleAddOrEditUser} className="bg-white w-full max-w-xl rounded-[3rem] p-12 shadow-2xl relative italic">
             <button type="button" onClick={() => { setShowUserModal(false); resetUserForm(); }} className="absolute top-8 right-8 p-4 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
             <h3 className="text-2xl font-black uppercase tracking-tighter mb-8 text-slate-800 italic text-center">{isEditingUser ? "Edit Akun Pegawai" : "Tambah Pegawai"}</h3>
@@ -1300,7 +1355,7 @@ const PIRUApp = () => {
                     </div>
                 </div>
                 <input type="text" placeholder="Jabatan" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic text-center" value={newUser.jabatan} onChange={e => setNewUser({...newUser, jabatan: e.target.value})} />
-                <select className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-600 border border-slate-100 italic" value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
+                <select className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-600 border border-slate-100 italic text-center" value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
                     <option value="pegawai">Pegawai</option><option value="ketua">Ketua Tim</option><option value="pimpinan">Pimpinan</option><option value="admin">Admin</option>
                 </select>
                 <button type="submit" className="w-full bg-indigo-600 text-white font-black py-6 rounded-2xl shadow-xl uppercase tracking-widest text-[10px] mt-6 italic transition-all active:scale-95 text-center">Simpan</button>
@@ -1315,7 +1370,7 @@ const PIRUApp = () => {
             <button type="button" onClick={() => { resetReportForm(); setShowReportModal(false); }} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
             <h3 className="text-2xl font-black uppercase tracking-tighter mb-8 text-slate-800 italic text-center">{isEditing ? "Update Pekerjaan" : (activeTab === 'penilaian' ? "Entri Anggota" : "Entri Pekerjaan Saya")}</h3>
             <div className="space-y-4 italic text-center">
-               {activeTab === 'penilaian' && !isEditing && ( <select required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-indigo-600 border border-slate-100 italic" value={newReport.targetUser} onChange={e => setNewReport({...newReport, targetUser: e.target.value})}> <option value="">-- Pilih Nama Pegawai --</option> {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)} </select> )}
+               {activeTab === 'penilaian' && !isEditing && ( <select required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-indigo-600 border border-slate-100 italic text-center" value={newReport.targetUser} onChange={e => setNewReport({...newReport, targetUser: e.target.value})}> <option value="">-- Pilih Nama Pegawai --</option> {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)} </select> )}
                <input required type="text" placeholder="Uraian Pekerjaan" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" value={newReport.title} onChange={e => setNewReport({...newReport, title: e.target.value})} />
                <div className="grid grid-cols-2 gap-4 italic text-center"> <input required type="number" placeholder="Target" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" value={newReport.target} onChange={e => setNewReport({...newReport, target: e.target.value})} /> <input required type="number" placeholder="Realisasi" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" value={newReport.realisasi} onChange={e => setNewReport({...newReport, realisasi: e.target.value})} /> </div>
                <input list="satuan-list" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" placeholder="Satuan" value={newReport.satuan} onChange={e => setNewReport({...newReport, satuan: e.target.value})} />
