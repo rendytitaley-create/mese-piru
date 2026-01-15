@@ -575,6 +575,9 @@ const PIRUApp = () => {
                <select className="bg-white border border-slate-200 rounded-xl px-3 py-2 font-black text-[10px] text-slate-600 outline-none shadow-sm cursor-pointer italic" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
                  {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
                </select>
+               <select className="bg-white border border-slate-200 rounded-xl px-3 py-2 font-black text-[10px] text-slate-600 outline-none shadow-sm cursor-pointer italic" value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}>
+                 {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <option key={y} value={y}>{y}</option>)}
+               </select>
                <button onClick={exportToExcel} className="bg-green-600 text-white px-4 py-2.5 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-md italic"><Download size={14}/> Cetak</button>
                {user.role !== 'admin' && <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-black uppercase text-[10px] shadow-lg flex items-center gap-2 italic"><Plus size={14}/> Entri</button>}
              </div>
@@ -583,8 +586,11 @@ const PIRUApp = () => {
 
         <div className="md:hidden px-6 py-4 bg-white border-b flex items-center justify-center gap-4 z-20">
             <span className="text-[10px] font-black uppercase text-slate-400 italic">Periode:</span>
-            <select className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-black text-[12px] text-indigo-600 outline-none shadow-sm cursor-pointer italic" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
+            <select className="bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 font-black text-[11px] text-indigo-600 outline-none shadow-sm cursor-pointer italic" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
                 {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
+            </select>
+            <select className="bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 font-black text-[11px] text-indigo-600 outline-none shadow-sm cursor-pointer italic" value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}>
+                {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <option key={y} value={y}>{y}</option>)}
             </select>
             {activeTab === 'dashboard' && ['admin', 'pimpinan'].includes(user.role) && (
               <select className="bg-slate-900 text-white border-none rounded-xl px-2 py-2 font-black text-[10px] shadow-lg outline-none italic" value={periodType} onChange={e => setPeriodType(e.target.value)}>
@@ -593,7 +599,6 @@ const PIRUApp = () => {
                  <option value="yearly">THN</option>
               </select>
             )}
-            <span className="font-black text-[12px] italic text-slate-400">{selectedYear}</span>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-8 custom-scrollbar mb-24 md:mb-0">
@@ -729,7 +734,7 @@ const PIRUApp = () => {
                             <div className="italic">
                                 <p className="text-[10px] font-black text-indigo-600 uppercase italic mb-1">#{idx+1} - {selectedMonth}/{selectedYear}</p>
                                 <h3 className="font-black text-slate-800 uppercase text-xs italic">{k.nama}</h3>
-                                <p className={`text-[10px] font-black uppercase mt-2 italic ${timeToMinutes(k.kjkValue) === 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                <p className={`text-[10px] font-black uppercase mt-2 italic ${timeToMinutes(k.kjkValue) === 0 ? 'text-green-600' : 'text-red-400'}`}>
                                     KJK: {formatKJKDisplay(k.kjkValue)}
                                 </p>
                             </div>
