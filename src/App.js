@@ -957,7 +957,7 @@ const PIRUApp = () => {
                          <div className="flex flex-col items-center italic">
                             <div className="bg-slate-50 p-12 rounded-full mb-8 text-slate-300"><Clock size={64}/></div>
                             <h3 className="text-2xl font-black uppercase text-slate-400 italic text-center leading-tight">
-                                Penilaian Pegawai Teladan Triwulan {voteWindow.period ? voteWindow.period.toUpperCase() : currentTW.toUpperCase()} Belum Dibuka.
+                                Silahkan Kembali Lagi Pada Periode Penilaian Selanjutnya.
                             </h3>
                             <p className="text-[11px] font-black uppercase text-slate-400 mt-3 italic tracking-widest leading-loose text-center">
                                 Masa Penilaian akan aktif pada tanggal 1 s/d 7 di bulan pertama Triwulan berikutnya.
@@ -1369,3 +1369,4 @@ const PIRUApp = () => {
 };
 
 export default PIRUApp;
+
