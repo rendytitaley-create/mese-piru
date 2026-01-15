@@ -1073,7 +1073,7 @@ const PIRUApp = () => {
                             <td className="p-4">
                                <div className="flex flex-col md:flex-row items-center gap-2 italic">
                                   {r.userId === user.username ? (
-                                    <div className="flex items-center gap-2 w-full max-w-md">
+                                    <div className="flex items-center gap-2 w-full max-md:max-w-md">
                                        <input 
                                          type="url" 
                                          placeholder="Paste Link Drive..." 
@@ -1241,10 +1241,6 @@ const PIRUApp = () => {
           )}
         </div>
         
-        {((activeTab === 'laporan' && user.role !== 'admin') || (activeTab === 'penilaian' && ['admin', 'pimpinan', 'ketua'].includes(user.role))) && ( 
-          <button onClick={() => { resetReportForm(); setShowReportModal(false); }} className="md:hidden fixed bottom-28 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center z-50 active:scale-95 transition-all"> <Plus size={32}/> </button> 
-        )}
-
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-4 pb-6 flex justify-around items-center z-40 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] not-italic">
           <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-300'}`}><LayoutDashboard size={24}/><span className="text-[8px] font-black uppercase">Home</span></button>
           {user.role === 'admin' ? (
@@ -1256,6 +1252,16 @@ const PIRUApp = () => {
           )}
         </div>
       </main>
+
+      {/* FLOATING ACTION BUTTON (MOBILE) - DIPINDAHKAN KE LUAR MAIN UNTUK MENGHINDARI BUG LAYER */}
+      {((activeTab === 'laporan' && user.role !== 'admin') || (activeTab === 'penilaian' && ['admin', 'pimpinan', 'ketua'].includes(user.role))) && ( 
+          <button 
+            onClick={() => { resetReportForm(); setShowReportModal(true); }} 
+            className="md:hidden fixed bottom-28 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-[0_10px_25px_rgba(79,70,229,0.4)] flex items-center justify-center z-[100] active:scale-95 transition-all animate-in zoom-in duration-300"
+          > 
+            <Plus size={32} strokeWidth={3} /> 
+          </button> 
+      )}
 
       {showVotingModal && selectedStaffForVote && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[110] font-sans italic">
@@ -1296,7 +1302,7 @@ const PIRUApp = () => {
       )}
 
       {showPasswordModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[100] font-sans italic">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[110] font-sans italic">
           <form onSubmit={handleUpdatePassword} className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl relative italic">
             <button type="button" onClick={() => setShowPasswordModal(false)} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
             <KeyRound size={40} className="text-indigo-600 mb-6" />
@@ -1317,7 +1323,7 @@ const PIRUApp = () => {
       )}
 
       {showUserModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[100] font-sans italic text-center">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[110] font-sans italic text-center">
           <form onSubmit={handleAddOrEditUser} className="bg-white w-full max-w-xl rounded-[3rem] p-12 shadow-2xl relative italic">
             <button type="button" onClick={() => { setShowUserModal(false); resetUserForm(); }} className="absolute top-8 right-8 p-4 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
             <h3 className="text-2xl font-black uppercase tracking-tighter mb-8 text-slate-800 italic text-center">{isEditingUser ? "Edit Akun Pegawai" : "Tambah Pegawai"}</h3>
@@ -1348,7 +1354,7 @@ const PIRUApp = () => {
       )}
 
       {showReportModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[100] font-sans italic text-center">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[120] font-sans italic text-center">
           <form onSubmit={handleSubmitReport} className="bg-white w-full max-w-2xl rounded-[3rem] p-8 md:p-12 shadow-2xl relative italic max-h-[90vh] overflow-y-auto">
             <button type="button" onClick={() => { resetReportForm(); setShowReportModal(false); }} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
             <h3 className="text-2xl font-black uppercase tracking-tighter mb-8 text-slate-800 italic text-center">{isEditing ? "Update Pekerjaan" : (activeTab === 'penilaian' ? "Entri Anggota" : "Entri Pekerjaan Saya")}</h3>
@@ -1369,4 +1375,3 @@ const PIRUApp = () => {
 };
 
 export default PIRUApp;
-
