@@ -819,12 +819,12 @@ const PIRUApp = () => {
                 <div className="bg-slate-900 p-8 md:p-12 rounded-[3rem] md:rounded-[4rem] text-white shadow-2xl border border-slate-800 relative overflow-hidden italic">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 blur-[100px] -z-10"></div>
                   <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12 italic text-center md:text-left">
-                    <div className="italic">
+                    <div className="italic text-center md:text-left">
                       <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter flex items-center justify-center md:justify-start gap-4 italic">
                         <Trophy className="text-amber-500" size={32} /> 
-                        Top 3 Kandidat Teladan
+                        Top 3 Kandidat Pegawai Teladan
                       </h2>
-                      <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-2 italic">Hasil Kalkulasi Periode {voteWindow.period ? voteWindow.period.toUpperCase() : currentTW.toUpperCase()} {voteWindow.evalYear || selectedYear}</p>
+                      <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-2 italic">{(voteWindow.period || currentTW).toUpperCase()} {voteWindow.evalYear || selectedYear}</p>
                     </div>
                     {user.role === 'admin' && (
                       <div className="flex gap-3">
