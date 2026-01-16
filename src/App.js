@@ -3,10 +3,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { 
-  getFirestore, collection, addDoc, updateDoc, doc, onSnapshot, 
-  serverTimestamp, query, orderBy, deleteDoc, enableIndexedDbPersistence, writeBatch, setDoc, where
-} from 'firebase/firestore';
-import { 
   ShieldCheck, Loader2, Plus, X, BarChart3, FileText, 
   LogOut, Trash2, Edit3, TrendingUp, Clock, Zap, UserPlus, Users, Download, ClipboardCheck, CheckCircle2,
   LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, ImageIcon, Link, Copy, ExternalLink, Search, FileSpreadsheet, Award, Trophy, Star, Heart, Megaphone, Play,
@@ -778,12 +774,13 @@ const PIRUApp = () => {
 
         {/* --- MODUL BARU: AGENDA (VISUAL KALENDER) --- */}
         {activeTab === 'agenda' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 italic pb-20">
-            <div className="flex flex-col xl:flex-row gap-8">
-              {/* KOLOM KALENDER */}
-              <div className="flex-1 bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100">
-                <div className="flex items-center justify-between mb-8 italic">
-                  <h2 className="text-xl font-black uppercase italic tracking-tighter">
+          <div className="flex-1 flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-500 italic overflow-hidden">
+            <div className="flex-1 flex flex-col xl:flex-row gap-4 md:gap-8 px-6 md:px-10 pb-24 md:pb-10 overflow-hidden">
+              
+              {/* KOLOM KALENDER - Mobile: Lebih Ringkas */}
+              <div className="flex-shrink-0 xl:flex-1 bg-white rounded-[2.5rem] p-6 md:p-8 shadow-sm border border-slate-100 overflow-y-auto">
+                <div className="flex items-center justify-between mb-4 md:mb-8 italic">
+                  <h2 className="text-lg md:text-xl font-black uppercase italic tracking-tighter">
                     {calendarDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                   </h2>
                   <div className="flex gap-2">
@@ -792,9 +789,9 @@ const PIRUApp = () => {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-7 gap-2 md:gap-4 italic">
+                <div className="grid grid-cols-7 gap-1 md:gap-4 italic">
                   {['Min','Sen','Sel','Rab','Kam','Jum','Sab'].map(d => (
-                    <div key={d} className="text-center text-[10px] font-black text-slate-300 uppercase italic py-2">{d}</div>
+                    <div key={d} className="text-center text-[8px] md:text-[10px] font-black text-slate-300 uppercase italic py-2">{d}</div>
                   ))}
                   {calendarDays.map((day, idx) => {
                     const currentFullDate = day ? `${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` : null;
@@ -805,85 +802,90 @@ const PIRUApp = () => {
                         key={idx} 
                         onClick={() => {
                           if (day) {
-                            setSelectedCalendarDate(currentFullDate); // SEKARANG HANYA SET TANGGAL UNTUK FILTER
+                            setSelectedCalendarDate(currentFullDate); 
                           }
                         }}
-                        className={`aspect-square rounded-2xl md:rounded-3xl border flex flex-col items-center justify-center relative cursor-pointer transition-all ${day ? 'hover:border-indigo-600 hover:bg-indigo-50/30' : 'border-transparent'} ${currentFullDate === selectedCalendarDate ? 'bg-indigo-600 border-indigo-600' : hasAgenda ? 'bg-indigo-50 border-indigo-200' : 'border-slate-50'}`}
+                        className={`aspect-square rounded-xl md:rounded-3xl border flex flex-col items-center justify-center relative cursor-pointer transition-all ${day ? 'hover:border-indigo-600 hover:bg-indigo-50/30' : 'border-transparent'} ${currentFullDate === selectedCalendarDate ? 'bg-indigo-600 border-indigo-600 scale-95 shadow-lg' : hasAgenda ? 'bg-indigo-50 border-indigo-200' : 'border-slate-50'}`}
                       >
-                        <span className={`text-xs md:text-lg font-black italic ${currentFullDate === selectedCalendarDate ? 'text-white' : hasAgenda ? 'text-indigo-600' : 'text-slate-400'}`}>{day}</span>
-                        {hasAgenda > 0 && currentFullDate !== selectedCalendarDate && <div className="absolute bottom-2 w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></div>}
+                        <span className={`text-[10px] md:text-lg font-black italic ${currentFullDate === selectedCalendarDate ? 'text-white' : hasAgenda ? 'text-indigo-600' : 'text-slate-400'}`}>{day}</span>
+                        {hasAgenda > 0 && currentFullDate !== selectedCalendarDate && <div className="absolute bottom-1 md:bottom-2 w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-indigo-600 animate-pulse"></div>}
                       </div>
                     );
                   })}
                 </div>
               </div>
 
-              {/* KOLOM LIST AGENDA - DIPERBARUI VISUALNYA */}
-              <div className="w-full xl:w-96 space-y-4 italic">
-                {/* Header Panel Samping yang Lebih Ringkas */}
-                <div className="bg-slate-900 p-6 rounded-[2.5rem] text-white shadow-xl italic">
-                   <div className="flex items-center justify-between gap-4">
-                      <div className="min-w-0">
-                         <h3 className="font-black uppercase text-[10px] tracking-widest italic text-indigo-400 truncate">
+              {/* KOLOM LIST AGENDA - MOBILE: SCROLLABLE & LEBIH LUAS */}
+              <div className="flex-1 xl:w-96 flex flex-col overflow-hidden italic">
+                {/* Header Panel Samping yang Lebih Ringkas & Sticky */}
+                <div className="bg-slate-900 p-5 md:p-6 rounded-t-[2.5rem] xl:rounded-[2.5rem] text-white shadow-xl italic z-10 shrink-0">
+                    <div className="flex items-center justify-between gap-4">
+                       <div className="min-w-0">
+                          <h3 className="font-black uppercase text-[9px] md:text-[10px] tracking-widest italic text-indigo-400 truncate">
                             {selectedCalendarDate ? `${selectedCalendarDate}` : "Pilih Tanggal"}
-                         </h3>
-                         <p className="text-[9px] text-slate-400 italic">Daftar Agenda Harian</p>
-                      </div>
-                      {selectedCalendarDate && (user.role === 'pegawai' || filterStaffName === 'Semua') && (
+                          </h3>
+                          <p className="text-[8px] md:text-[9px] text-slate-400 italic">Daftar Agenda Harian</p>
+                       </div>
+                       {selectedCalendarDate && (user.role === 'pegawai' || filterStaffName === 'Semua') && (
                         <button 
                           onClick={() => {
                             setNewAgenda({...newAgenda, date: selectedCalendarDate});
                             setShowAgendaModal(true);
                           }} 
-                          className="shrink-0 p-3 bg-indigo-600 rounded-xl font-black text-[9px] uppercase shadow-lg shadow-indigo-900/20 italic flex items-center gap-2"
+                          className="shrink-0 p-2 md:p-3 bg-indigo-600 rounded-xl font-black text-[8px] md:text-[9px] uppercase shadow-lg shadow-indigo-900/20 italic flex items-center gap-1 md:gap-2"
                         >
-                          <Plus size={14}/> Tambah
+                          <Plus size={12}/> Tambah
                         </button>
                       )}
-                   </div>
+                    </div>
                 </div>
 
-                <div className="space-y-3 overflow-y-auto max-h-[600px] pr-2 custom-scrollbar italic pb-10">
-                  {agendas.filter(a => 
-                    (filterStaffName === 'Semua' ? a.userId === user.username : a.userName === filterStaffName) && 
-                    (selectedCalendarDate ? a.date === selectedCalendarDate : a.date.includes(`${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}`))
-                  ).length === 0 ? (
-                    <div className="text-center py-10 text-slate-400 font-bold text-[10px] uppercase italic bg-white rounded-3xl border border-dashed">Tidak ada catatan</div>
-                  ) : (
-                    agendas
-                      .filter(a => 
-                        (filterStaffName === 'Semua' ? a.userId === user.username : a.userName === filterStaffName) && 
-                        (selectedCalendarDate ? a.date === selectedCalendarDate : a.date.includes(`${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}`))
-                      )
-                      .sort((a,b) => new Date(b.date) - new Date(a.date))
-                      .map(a => (
-                        <div key={a.id} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-start group italic gap-3">
-                          <div className="flex-1 min-w-0 italic">
-                            <p className="text-[7px] font-black text-indigo-500 uppercase italic mb-1">{a.date}</p>
-                            <h4 className="font-black text-slate-800 uppercase text-[10px] leading-normal break-words whitespace-pre-wrap italic">
-                              {a.taskName}
-                            </h4>
-                            <p className="text-[9px] text-slate-400 font-bold italic mt-2 bg-slate-50 inline-block px-2 py-1 rounded-lg">
-                              {a.volume} {a.satuan}
-                            </p>
+                {/* AREA LIST: Scroll Mandiri agar Mobile Bisa Lihat Banyak Catatan */}
+                <div className="flex-1 bg-white xl:bg-transparent overflow-y-auto px-2 pb-20 custom-scrollbar italic -mt-2 xl:mt-4">
+                  <div className="pt-6 space-y-3">
+                    {agendas.filter(a => 
+                      (filterStaffName === 'Semua' ? a.userId === user.username : a.userName === filterStaffName) && 
+                      (selectedCalendarDate ? a.date === selectedCalendarDate : a.date.includes(`${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}`))
+                    ).length === 0 ? (
+                      <div className="text-center py-10 text-slate-400 font-bold text-[9px] md:text-[10px] uppercase italic bg-white rounded-3xl border border-dashed mx-2">Tidak ada catatan</div>
+                    ) : (
+                      agendas
+                        .filter(a => 
+                          (filterStaffName === 'Semua' ? a.userId === user.username : a.userName === filterStaffName) && 
+                          (selectedCalendarDate ? a.date === selectedCalendarDate : a.date.includes(`${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}`))
+                        )
+                        .sort((a,b) => new Date(b.date) - new Date(a.date))
+                        .map(a => (
+                          <div key={a.id} className="bg-white p-4 md:p-5 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-start group italic gap-3 mx-2 hover:shadow-md transition-shadow">
+                            <div className="flex-1 min-w-0 italic">
+                              <p className="text-[7px] font-black text-indigo-500 uppercase italic mb-1">{a.date}</p>
+                              <h4 className="font-black text-slate-800 uppercase text-[9px] md:text-[10px] leading-normal break-words whitespace-pre-wrap italic">
+                                {a.taskName}
+                              </h4>
+                              <p className="text-[8px] md:text-[9px] text-slate-400 font-bold italic mt-2 bg-slate-50 inline-block px-2 py-1 rounded-lg">
+                                {a.volume} {a.satuan}
+                              </p>
+                            </div>
+                            <div className="flex flex-col gap-2 shrink-0 italic">
+                              {a.isImported && <CheckSquare size={14} className="text-green-500"/>}
+                              {(user.role === 'pegawai' || filterStaffName === 'Semua') && (
+                                 <button 
+                                   onClick={(e) => { 
+                                     e.stopPropagation(); 
+                                     deleteAgenda(a.id); 
+                                   }} 
+                                   className="text-red-400 hover:text-red-600 p-1"
+                                 >
+                                   <Trash2 size={14}/>
+                                 </button>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex flex-col gap-2 shrink-0 italic">
-                            {a.isImported && <CheckSquare size={14} className="text-green-500"/>}
-                            {(user.role === 'pegawai' || filterStaffName === 'Semua') && (
-                               <button 
-                                 onClick={(e) => { 
-                                   e.stopPropagation(); 
-                                   deleteAgenda(a.id); 
-                                 }} 
-                                 className="text-red-400 hover:text-red-600 p-1"
-                               >
-                                 <Trash2 size={14}/>
-                               </button>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                  )}
+                        ))
+                    )}
+                    {/* Padding Bawah Ekstra Untuk Scroll Aman di Mobile */}
+                    <div className="h-10"></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1433,6 +1435,7 @@ const PIRUApp = () => {
           )}
         </div>
         
+        {/* NAVIGASI BAWAH MOBILE - Diperbarui Sesuai Instruksi (Tanpa Bukti Dukung) */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-4 pb-6 flex justify-around items-center z-40 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] not-italic">
           <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-300'}`}><LayoutDashboard size={24}/><span className="text-[8px] font-black uppercase">Home</span></button>
           {user.role === 'admin' ? (
@@ -1443,7 +1446,6 @@ const PIRUApp = () => {
             <>
               <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center gap-1 ${activeTab === 'agenda' ? 'text-indigo-600' : 'text-slate-300'}`}><CalendarIcon size={24}/><span className="text-[8px] font-black uppercase">Agenda</span></button>
               <button onClick={() => setActiveTab('laporan')} className={`flex flex-col items-center gap-1 ${activeTab === 'laporan' ? 'text-indigo-600' : 'text-slate-300'}`}><FileText size={24}/><span className="text-[8px] font-black uppercase">Entri</span></button>
-              <button onClick={() => setActiveTab('bukti_dukung')} className={`flex flex-col items-center gap-1 ${activeTab === 'bukti_dukung' ? 'text-indigo-600' : 'text-slate-300'}`}><Link size={24}/><span className="text-[8px] font-black uppercase">Bukti</span></button>
               {user.role === 'ketua' && <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button>}
               <button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button>
             </>
@@ -1546,7 +1548,6 @@ const PIRUApp = () => {
                   <div className="space-y-4 italic text-left">
                     <div className="flex justify-between items-center italic"><label className="text-[10px] font-black uppercase text-indigo-600 italic">3. Inovasi</label><span className="font-black text-3xl text-slate-800">{voteData.inovasi}</span></div>
                     <p className="text-[8px] text-slate-400 font-bold uppercase italic leading-tight">Menilai inisiatif rekan dalam memberikan ide baru atau solusi kreatif untuk mempermudah pekerjaan.</p>
-                    {/* BARIS 1531 DIBAWAH INI SUDAH DIPERBAIKI MENJADI setVoteData */}
                     <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.inovasi} onChange={e => setVoteData({...voteData, inovasi: Number(e.target.value)})} />
                   </div>
               </div>
