@@ -8,7 +8,8 @@ import {
 import { 
   ShieldCheck, Loader2, Plus, X, BarChart3, FileText, 
   LogOut, Trash2, Edit3, TrendingUp, Clock, Zap, UserPlus, Users, Download, ClipboardCheck, CheckCircle2,
-  LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, Image as ImageIcon, Link, Copy, ExternalLink, Search, FileSpreadsheet, Award, Trophy, Star, Heart, Megaphone, Play
+  LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, Image as ImageIcon, Link, Copy, ExternalLink, Search, FileSpreadsheet, Award, Trophy, Star, Heart, Megaphone, Play,
+  Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckSquare
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -75,6 +76,13 @@ const PIRUApp = () => {
   const [selectedStaffForVote, setSelectedStaffForVote] = useState(null);
   const [voteData, setVoteData] = useState({ kinerja: 5, perilaku: 5, inovasi: 5 });
 
+  // === BARU: STATE AGENDA & KALENDER ===
+  const [agendas, setAgendas] = useState([]);
+  const [showAgendaModal, setShowAgendaModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [newAgenda, setNewAgenda] = useState({ taskName: '', volume: '', satuan: '', date: new Date().toISOString().split('T')[0] });
+  const [calendarDate, setCalendarDate] = useState(new Date());
+
   useEffect(() => {
     signInAnonymously(auth);
     const unsubAuth = onAuthStateChanged(auth, (fUser) => {
@@ -116,8 +124,48 @@ const PIRUApp = () => {
       setPublishStatus(pubData);
     });
 
-    return () => { unsubReports(); unsubVotes(); unsubWinners(); unsubPublish(); };
+    // === BARU: LISTENER AGENDA ===
+    const unsubAgenda = onSnapshot(collection(db, "agendas"), (snap) => {
+      setAgendas(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
+    return () => { unsubReports(); unsubVotes(); unsubWinners(); unsubPublish(); unsubAgenda(); };
   }, [user]);
+
+  // === BARU: FUNGSI AGENDA ===
+  const handleAddAgenda = async (e) => {
+    e.preventDefault();
+    try {
+      await addDoc(collection(db, "agendas"), {
+        ...newAgenda,
+        userId: user.username,
+        userName: user.name,
+        isImported: false,
+        createdAt: serverTimestamp()
+      });
+      setShowAgendaModal(false);
+      setNewAgenda({ taskName: '', volume: '', satuan: '', date: new Date().toISOString().split('T')[0] });
+    } catch (err) { alert("Gagal menyimpan agenda."); }
+  };
+
+  const deleteAgenda = async (id) => {
+    if (window.confirm("Hapus catatan agenda ini?")) {
+      await deleteDoc(doc(db, "agendas", id));
+    }
+  };
+
+  // LOGIKA KALENDER MANUAL
+  const calendarDays = useMemo(() => {
+    const year = calendarDate.getFullYear();
+    const month = calendarDate.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    const days = [];
+    for (let i = 0; i < firstDay; i++) { days.push(null); }
+    for (let i = 1; i <= daysInMonth; i++) { days.push(i); }
+    return days;
+  }, [calendarDate]);
 
   const getFirstWord = (name) => {
     if (!name) return "";
@@ -661,7 +709,13 @@ const PIRUApp = () => {
         </div>
         <nav className="flex-1 space-y-3 font-sans not-italic">
           <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><LayoutDashboard size={20}/> Dashboard</button>
-          {user.role !== 'admin' && (<button onClick={() => setActiveTab('laporan')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'laporan' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><FileText size={20}/> Entri Pekerjaan</button>)}
+          {user.role !== 'admin' && (
+            <>
+              {/* TAB BARU: AGENDA */}
+              <button onClick={() => setActiveTab('agenda')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'agenda' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><CalendarIcon size={20}/> Agenda Kerja</button>
+              <button onClick={() => setActiveTab('laporan')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'laporan' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><FileText size={20}/> Entri Pekerjaan</button>
+            </>
+          )}
           <button onClick={() => setActiveTab('bukti_dukung')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'bukti_dukung' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Link size={20}/> Bukti Dukung</button>
           {['admin', 'pimpinan', 'ketua'].includes(user.role) && (<button onClick={() => setActiveTab('penilaian')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'penilaian' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><ClipboardCheck size={20}/> Penilaian Anggota</button>)}
           <button onClick={() => setActiveTab('teladan')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'teladan' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Award size={20}/> Pegawai Teladan</button>
@@ -699,7 +753,7 @@ const PIRUApp = () => {
                     <option value="yearly">TAHUNAN</option>
                  </select>
                )}
-               {(activeTab === 'penilaian' || activeTab === 'bukti_dukung' || activeTab === 'kjk_management') && ['admin', 'pimpinan', 'ketua'].includes(user.role) && (
+               {(activeTab === 'penilaian' || activeTab === 'bukti_dukung' || activeTab === 'kjk_management' || activeTab === 'agenda') && ['admin', 'pimpinan', 'ketua'].includes(user.role) && (
                   <>
                     <select className="p-2 bg-white border border-slate-200 rounded-xl font-black text-[10px] text-slate-600 shadow-sm outline-none italic" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
                       <option value="Semua">Data Saya</option>
@@ -719,6 +773,83 @@ const PIRUApp = () => {
              </div>
           </div>
         </header>
+
+        {/* --- MODUL BARU: AGENDA (VISUAL KALENDER) --- */}
+        {activeTab === 'agenda' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 italic pb-20">
+            <div className="flex flex-col xl:flex-row gap-8">
+              {/* KOLOM KALENDER */}
+              <div className="flex-1 bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100">
+                <div className="flex items-center justify-between mb-8 italic">
+                  <h2 className="text-xl font-black uppercase italic tracking-tighter">
+                    {calendarDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                  </h2>
+                  <div className="flex gap-2">
+                    <button onClick={() => setCalendarDate(new Date(calendarDate.setMonth(calendarDate.getMonth()-1)))} className="p-2 hover:bg-slate-50 rounded-full text-indigo-600"><ChevronLeft/></button>
+                    <button onClick={() => setCalendarDate(new Date(calendarDate.setMonth(calendarDate.getMonth()+1)))} className="p-2 hover:bg-slate-50 rounded-full text-indigo-600"><ChevronRight/></button>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-7 gap-2 md:gap-4 italic">
+                  {['Min','Sen','Sel','Rab','Kam','Jum','Sab'].map(d => (
+                    <div key={d} className="text-center text-[10px] font-black text-slate-300 uppercase italic py-2">{d}</div>
+                  ))}
+                  {calendarDays.map((day, idx) => {
+                    const currentFullDate = day ? `${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` : null;
+                    const hasAgenda = agendas.filter(a => a.date === currentFullDate && (filterStaffName === 'Semua' ? a.userId === user.username : a.userName === filterStaffName)).length;
+                    
+                    return (
+                      <div 
+                        key={idx} 
+                        onClick={() => day && (user.role === 'pegawai' || filterStaffName === 'Semua') && (setNewAgenda({...newAgenda, date: currentFullDate}), setShowAgendaModal(true))}
+                        className={`aspect-square rounded-2xl md:rounded-3xl border flex flex-col items-center justify-center relative cursor-pointer transition-all ${day ? 'hover:border-indigo-600 hover:bg-indigo-50/30' : 'border-transparent'} ${hasAgenda ? 'bg-indigo-50 border-indigo-200' : 'border-slate-50'}`}
+                      >
+                        <span className={`text-xs md:text-lg font-black italic ${hasAgenda ? 'text-indigo-600' : 'text-slate-400'}`}>{day}</span>
+                        {hasAgenda > 0 && <div className="absolute bottom-2 w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* KOLOM LIST AGENDA */}
+              <div className="w-full xl:w-96 space-y-4 italic">
+                <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-xl italic">
+                  <h3 className="font-black uppercase text-xs tracking-widest mb-4 italic text-indigo-400">Papan Agenda</h3>
+                  <p className="text-[10px] text-slate-400 leading-relaxed italic mb-6">Pilih tanggal di kalender untuk mencatat pekerjaan harian Anda agar mudah ditarik ke CKP akhir bulan.</p>
+                  {(user.role === 'pegawai' || filterStaffName === 'Semua') && (
+                    <button onClick={() => setShowAgendaModal(true)} className="w-full py-4 bg-indigo-600 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-indigo-900/20 italic">Tambah Catatan</button>
+                  )}
+                </div>
+
+                <div className="space-y-3 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar italic">
+                  {agendas.filter(a => (filterStaffName === 'Semua' ? a.userId === user.username : a.userName === filterStaffName) && a.date.includes(`${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}`)).length === 0 ? (
+                    <div className="text-center py-10 text-slate-400 font-bold text-[10px] uppercase italic">Belum ada agenda bulan ini</div>
+                  ) : (
+                    agendas
+                      .filter(a => (filterStaffName === 'Semua' ? a.userId === user.username : a.userName === filterStaffName) && a.date.includes(`${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}`))
+                      .sort((a,b) => new Date(b.date) - new Date(a.date))
+                      .map(a => (
+                        <div key={a.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-center group italic">
+                          <div className="italic">
+                            <p className="text-[8px] font-black text-indigo-500 uppercase italic mb-1">{a.date}</p>
+                            <h4 className="font-black text-slate-800 uppercase text-[11px] leading-tight italic">{a.taskName}</h4>
+                            <p className="text-[10px] text-slate-400 font-bold italic mt-1">{a.volume} {a.satuan}</p>
+                          </div>
+                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all italic">
+                            {a.isImported && <CheckSquare size={16} className="text-green-500"/>}
+                            {(user.role === 'pegawai' || filterStaffName === 'Semua') && (
+                               <button onClick={() => deleteAgenda(a.id)} className="text-red-400 hover:text-red-600"><Trash2 size={16}/></button>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="md:hidden px-6 py-4 bg-white border-b flex items-center justify-center gap-4 z-20">
             <span className="text-[10px] font-black uppercase text-slate-400 italic">Periode:</span>
@@ -1248,56 +1379,119 @@ const PIRUApp = () => {
           ) : user.role === 'pimpinan' ? (
             <><button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button><button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button></>
           ) : (
-            <><button onClick={() => setActiveTab('laporan')} className={`flex flex-col items-center gap-1 ${activeTab === 'laporan' ? 'text-indigo-600' : 'text-slate-300'}`}><FileText size={24}/><span className="text-[8px] font-black uppercase">Entri</span></button><button onClick={() => setActiveTab('bukti_dukung')} className={`flex flex-col items-center gap-1 ${activeTab === 'bukti_dukung' ? 'text-indigo-600' : 'text-slate-300'}`}><Link size={24}/><span className="text-[8px] font-black uppercase">Bukti</span></button>{user.role === 'ketua' && <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button>}<button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button></>
+            <>
+              {/* MOBILE NAV BARU: AGENDA */}
+              <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center gap-1 ${activeTab === 'agenda' ? 'text-indigo-600' : 'text-slate-300'}`}><CalendarIcon size={24}/><span className="text-[8px] font-black uppercase">Agenda</span></button>
+              <button onClick={() => setActiveTab('laporan')} className={`flex flex-col items-center gap-1 ${activeTab === 'laporan' ? 'text-indigo-600' : 'text-slate-300'}`}><FileText size={24}/><span className="text-[8px] font-black uppercase">Entri</span></button>
+              <button onClick={() => setActiveTab('bukti_dukung')} className={`flex flex-col items-center gap-1 ${activeTab === 'bukti_dukung' ? 'text-indigo-600' : 'text-slate-300'}`}><Link size={24}/><span className="text-[8px] font-black uppercase">Bukti</span></button>
+              {user.role === 'ketua' && <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button>}
+              <button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button>
+            </>
           )}
         </div>
       </main>
 
-      {/* FLOATING ACTION BUTTON (MOBILE) - DIPINDAHKAN KE LUAR MAIN UNTUK MENGHINDARI BUG LAYER */}
-      {((activeTab === 'laporan' && user.role !== 'admin') || (activeTab === 'penilaian' && ['admin', 'pimpinan', 'ketua'].includes(user.role))) && ( 
+      {/* FLOATING ACTION BUTTON (MOBILE) */}
+      {((activeTab === 'laporan' && user.role !== 'admin') || (activeTab === 'penilaian' && ['admin', 'pimpinan', 'ketua'].includes(user.role)) || (activeTab === 'agenda')) && ( 
           <button 
-            onClick={() => { resetReportForm(); setShowReportModal(true); }} 
+            onClick={() => {
+              if(activeTab === 'agenda') setShowAgendaModal(true);
+              else { resetReportForm(); setShowReportModal(true); }
+            }} 
             className="md:hidden fixed bottom-28 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-[0_10px_25px_rgba(79,70,229,0.4)] flex items-center justify-center z-[100] active:scale-95 transition-all animate-in zoom-in duration-300"
           > 
             <Plus size={32} strokeWidth={3} /> 
           </button> 
       )}
 
+      {/* MODAL BARU: INPUT AGENDA */}
+      {showAgendaModal && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[130] font-sans italic text-center">
+          <form onSubmit={handleAddAgenda} className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl relative italic">
+            <button type="button" onClick={() => setShowAgendaModal(false)} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400"><X size={20}/></button>
+            <CalendarIcon size={40} className="text-indigo-600 mb-6 mx-auto" />
+            <h3 className="text-xl font-black uppercase italic mb-8">Catat Agenda: {newAgenda.date}</h3>
+            <div className="space-y-4 italic">
+              <input required type="text" placeholder="Apa yang Anda kerjakan?" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic" value={newAgenda.taskName} onChange={e => setNewAgenda({...newAgenda, taskName: e.target.value})} />
+              <div className="grid grid-cols-2 gap-4 italic text-center">
+                <input required type="number" placeholder="Volume" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic" value={newAgenda.volume} onChange={e => setNewAgenda({...newAgenda, volume: e.target.value})} />
+                <input required type="text" placeholder="Satuan" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic" value={newAgenda.satuan} onChange={e => setNewAgenda({...newAgenda, satuan: e.target.value})} />
+              </div>
+            </div>
+            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-5 rounded-2xl shadow-xl uppercase text-[10px] mt-8 italic transition-all active:scale-95">Simpan Catatan</button>
+          </form>
+        </div>
+      )}
+
+      {/* MODAL BARU: IMPORT AGENDA KE LAPORAN */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[140] font-sans italic">
+          <div className="bg-white w-full max-w-lg rounded-[3rem] p-10 shadow-2xl italic max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-8 italic">
+              <h3 className="font-black uppercase text-sm italic">Pilih Agenda Bulan Ini</h3>
+              <button onClick={() => setShowImportModal(false)} className="p-2 bg-slate-50 rounded-full text-slate-400"><X size={18}/></button>
+            </div>
+            <div className="space-y-3 italic">
+              {agendas.filter(a => a.userId === user.username && !a.isImported && a.date.includes(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`)).length === 0 ? (
+                <p className="text-center py-10 text-slate-400 font-bold text-[10px] uppercase italic">Tidak ada agenda yang tersedia</p>
+              ) : (
+                agendas.filter(a => a.userId === user.username && !a.isImported && a.date.includes(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`)).map(a => (
+                  <div 
+                    key={a.id} 
+                    onClick={async () => {
+                      setNewReport({...newReport, title: a.taskName, target: a.volume, realisasi: a.volume, satuan: a.satuan});
+                      setShowImportModal(false);
+                      // Tandai sebagai terpakai
+                      await updateDoc(doc(db, "agendas", a.id), { isImported: true });
+                    }}
+                    className="p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-600 cursor-pointer italic group transition-all"
+                  >
+                    <p className="text-[8px] font-black text-indigo-500 uppercase italic mb-1">{a.date}</p>
+                    <h4 className="font-black text-slate-800 uppercase text-[10px] italic">{a.taskName}</h4>
+                    <p className="text-[9px] text-slate-400 italic">{a.volume} {a.satuan}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {showVotingModal && selectedStaffForVote && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[110] font-sans italic">
-           <form onSubmit={handleSubmitVote} className="bg-white w-full max-w-lg rounded-[3rem] p-10 text-left overflow-y-auto max-h-[90vh] italic relative shadow-2xl">
+            <form onSubmit={handleSubmitVote} className="bg-white w-full max-w-lg rounded-[3rem] p-10 text-left overflow-y-auto max-h-[90vh] italic relative shadow-2xl">
               <button type="button" onClick={() => setShowVotingModal(false)} className="absolute top-8 right-8 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
               <div className="text-center mb-10 italic">
-                 <div className="w-24 h-24 rounded-3xl overflow-hidden mx-auto mb-4 border-4 border-white shadow-xl">
+                  <div className="w-24 h-24 rounded-3xl overflow-hidden mx-auto mb-4 border-4 border-white shadow-xl">
                     {selectedStaffForVote.photoURL ? <img src={selectedStaffForVote.photoURL} className="w-full h-full object-cover" alt={selectedStaffForVote.name}/> : <div className="bg-slate-100 w-full h-full flex items-center justify-center text-slate-300"><User size={40}/></div>}
-                 </div>
-                 <h3 className="font-black uppercase text-slate-800 italic leading-none">{selectedStaffForVote.name}</h3>
-                 <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-4 italic">Periode {voteWindow.period.toUpperCase()} {voteWindow.evalYear}</p>
+                  </div>
+                  <h3 className="font-black uppercase text-slate-800 italic leading-none">{selectedStaffForVote.name}</h3>
+                  <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-4 italic">Periode {voteWindow.period.toUpperCase()} {voteWindow.evalYear}</p>
               </div>
               
               <div className="space-y-10 italic">
-                 <div className="space-y-4 italic text-left">
+                  <div className="space-y-4 italic text-left">
                     <div className="flex justify-between items-center italic"><label className="text-[10px] font-black uppercase text-indigo-600 italic">1. Kinerja</label><span className="font-black text-3xl text-slate-800">{voteData.kinerja}</span></div>
                     <p className="text-[8px] text-slate-400 font-bold uppercase italic leading-tight">Menilai ketepatan waktu, kualitas hasil kerja, dan pencapaian target laporan bulanan rekan.</p>
                     <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.kinerja} onChange={e => setVoteData({...voteData, kinerja: Number(e.target.value)})} />
-                 </div>
-                 <div className="space-y-4 italic text-left">
+                  </div>
+                  <div className="space-y-4 italic text-left">
                     <div className="flex justify-between items-center italic"><label className="text-[10px] font-black uppercase text-indigo-600 italic">2. Perilaku</label><span className="font-black text-3xl text-slate-800">{voteData.perilaku}</span></div>
                     <p className="text-[8px] text-slate-400 font-bold uppercase italic leading-tight">Menilai etika, kerja sama tim, integritas, dan sikap profesional rekan selama bekerja.</p>
                     <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.perilaku} onChange={e => setVoteData({...voteData, perilaku: Number(e.target.value)})} />
-                 </div>
-                 <div className="space-y-4 italic text-left">
+                  </div>
+                  <div className="space-y-4 italic text-left">
                     <div className="flex justify-between items-center italic"><label className="text-[10px] font-black uppercase text-indigo-600 italic">3. Inovasi</label><span className="font-black text-3xl text-slate-800">{voteData.inovasi}</span></div>
                     <p className="text-[8px] text-slate-400 font-bold uppercase italic leading-tight">Menilai inisiatif rekan dalam memberikan ide baru atau solusi kreatif untuk mempermudah pekerjaan.</p>
                     <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.inovasi} onChange={e => setVoteData({...voteData, inovasi: Number(e.target.value)})} />
-                 </div>
+                  </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mt-12 italic">
-                 <button type="button" onClick={() => setShowVotingModal(false)} className="py-5 rounded-2xl font-black uppercase text-[10px] bg-slate-50 text-slate-400 italic">Batal</button>
-                 <button type="submit" className="py-5 rounded-2xl font-black uppercase text-[10px] bg-indigo-600 text-white shadow-xl italic shadow-indigo-200">Kirim Penilaian</button>
+                  <button type="button" onClick={() => setShowVotingModal(false)} className="py-5 rounded-2xl font-black uppercase text-[10px] bg-slate-50 text-slate-400 italic">Batal</button>
+                  <button type="submit" className="py-5 rounded-2xl font-black uppercase text-[10px] bg-indigo-600 text-white shadow-xl italic shadow-indigo-200">Kirim Penilaian</button>
               </div>
-           </form>
+            </form>
         </div>
       )}
 
@@ -1358,6 +1552,18 @@ const PIRUApp = () => {
           <form onSubmit={handleSubmitReport} className="bg-white w-full max-w-2xl rounded-[3rem] p-8 md:p-12 shadow-2xl relative italic max-h-[90vh] overflow-y-auto">
             <button type="button" onClick={() => { resetReportForm(); setShowReportModal(false); }} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
             <h3 className="text-2xl font-black uppercase tracking-tighter mb-8 text-slate-800 italic text-center">{isEditing ? "Update Pekerjaan" : (activeTab === 'penilaian' ? "Entri Anggota" : "Entri Pekerjaan Saya")}</h3>
+            
+            {/* BUTTON IMPORT DARI AGENDA */}
+            {activeTab === 'laporan' && !isEditing && (
+              <button 
+                type="button" 
+                onClick={() => setShowImportModal(true)}
+                className="mb-8 w-full py-4 border-2 border-dashed border-indigo-200 rounded-2xl text-indigo-600 font-black uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-indigo-50 transition-all italic"
+              >
+                <Zap size={16}/> Ambil Data Dari Agenda Harian
+              </button>
+            )}
+
             <div className="space-y-4 italic text-center">
                {activeTab === 'penilaian' && !isEditing && ( <select required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-indigo-600 border border-slate-100 italic text-center" value={newReport.targetUser} onChange={e => setNewReport({...newReport, targetUser: e.target.value})}> <option value="">-- Pilih Nama Pegawai --</option> {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)} </select> )}
                <input required type="text" placeholder="Uraian Pekerjaan" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" value={newReport.title} onChange={e => setNewReport({...newReport, title: e.target.value})} />
