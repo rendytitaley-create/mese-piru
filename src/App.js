@@ -1528,7 +1528,7 @@ const PIRUApp = () => {
                   <div className="space-y-4 italic text-left">
                     <div className="flex justify-between items-center italic"><label className="text-[10px] font-black uppercase text-indigo-600 italic">3. Inovasi</label><span className="font-black text-3xl text-slate-800">{voteData.inovasi}</span></div>
                     <p className="text-[8px] text-slate-400 font-bold uppercase italic leading-tight">Menilai inisiatif rekan dalam memberikan ide baru atau solusi kreatif untuk mempermudah pekerjaan.</p>
-                    <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.inovasi} onChange={e => setNewVoteData({...voteData, inovasi: Number(e.target.value)})} />
+                    <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.inovasi} onChange={e => setVoteData({...voteData, inovasi: Number(e.target.value)})} />
                   </div>
               </div>
 
@@ -1626,3 +1626,4 @@ const PIRUApp = () => {
 };
 
 export default PIRUApp;
+
