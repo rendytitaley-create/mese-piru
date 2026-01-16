@@ -697,7 +697,7 @@ const PIRUApp = () => {
   );
 
   return (
-    <div className={`h-screen bg-slate-50 flex flex-col md:flex-row font-sans overflow-hidden text-slate-800 italic`}>
+    <div className="h-screen bg-slate-50 flex flex-col md:flex-row font-sans overflow-hidden text-slate-800 italic">
       <div className="hidden md:flex w-72 bg-white border-r p-8 flex-col h-full sticky top-0 not-italic">
         <div className="flex items-center gap-4 mb-14 px-2 italic">
           <div className="p-2 rounded-2xl text-white">
@@ -1432,17 +1432,25 @@ const PIRUApp = () => {
           )}
         </div>
         
+        {/* NAVIGASI BAWAH MOBILE - DIPERBAIKI SESUAI INSTRUKSI */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-4 pb-6 flex justify-around items-center z-[50] shadow-[0_-4px_12px_rgba(0,0,0,0.05)] not-italic">
           <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-300'}`}><LayoutDashboard size={24}/><span className="text-[8px] font-black uppercase">Home</span></button>
           {user.role === 'admin' ? (
-            <><button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button><button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button><button onClick={() => setActiveTab('users')} className={`flex flex-col items-center gap-1 ${activeTab === 'users' ? 'text-indigo-600' : 'text-slate-300'}`}><Users size={24}/><span className="text-[8px] font-black uppercase">Pegawai</span></button></>
+            <>
+              <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button>
+              <button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button>
+              <button onClick={() => setActiveTab('users')} className={`flex flex-col items-center gap-1 ${activeTab === 'users' ? 'text-indigo-600' : 'text-slate-300'}`}><Users size={24}/><span className="text-[8px] font-black uppercase">Pegawai</span></button>
+            </>
           ) : user.role === 'pimpinan' ? (
-            <><button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button><button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button></>
+            <>
+              <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center gap-1 ${activeTab === 'agenda' ? 'text-indigo-600' : 'text-slate-300'}`}><CalendarIcon size={24}/><span className="text-[8px] font-black uppercase">Agenda</span></button>
+              <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button>
+              <button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button>
+            </>
           ) : (
             <>
               <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center gap-1 ${activeTab === 'agenda' ? 'text-indigo-600' : 'text-slate-300'}`}><CalendarIcon size={24}/><span className="text-[8px] font-black uppercase">Agenda</span></button>
               <button onClick={() => setActiveTab('laporan')} className={`flex flex-col items-center gap-1 ${activeTab === 'laporan' ? 'text-indigo-600' : 'text-slate-300'}`}><FileText size={24}/><span className="text-[8px] font-black uppercase">Entri</span></button>
-              <button onClick={() => setActiveTab('bukti_dukung')} className={`flex flex-col items-center gap-1 ${activeTab === 'bukti_dukung' ? 'text-indigo-600' : 'text-slate-300'}`}><Link size={24}/><span className="text-[8px] font-black uppercase">Bukti</span></button>
               {user.role === 'ketua' && <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button>}
               <button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button>
             </>
