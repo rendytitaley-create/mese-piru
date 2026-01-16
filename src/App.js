@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
@@ -8,7 +9,7 @@ import {
 import { 
   ShieldCheck, Loader2, Plus, X, BarChart3, FileText, 
   LogOut, Trash2, Edit3, TrendingUp, Clock, Zap, UserPlus, Users, Download, ClipboardCheck, CheckCircle2,
-  LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, Image as ImageIcon, Link, Copy, ExternalLink, Search, FileSpreadsheet, Award, Trophy, Star, Heart, Megaphone, Play,
+  LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, ImageIcon, Link, Copy, ExternalLink, Search, FileSpreadsheet, Award, Trophy, Star, Heart, Megaphone, Play,
   Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckSquare
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
@@ -960,7 +961,7 @@ const PIRUApp = () => {
                     {user.role === 'admin' && (
                       <div className="flex gap-3">
                          <button onClick={handlePublish} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic"><Megaphone size={16}/> Publish Pengumuman</button>
-                         <button onClick={() => handleResetVotes()} className="flex items-center gap-3 bg-red-500/10 text-red-500 px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-red-500 hover:text-white transition-all italic border border-red-500/20"><Trash2 size={16}/> Reset Voting</button>
+                         <button onClick={() => handleResetVotes()} className="flex items-center gap-3 bg-red-50/10 text-red-500 px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-red-500 hover:text-white transition-all italic border border-red-500/20"><Trash2 size={16}/> Reset Voting</button>
                       </div>
                     )}
                   </div>
@@ -1054,7 +1055,7 @@ const PIRUApp = () => {
                           return (
                             <div key={idx} className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 flex flex-col items-center text-center transition-all hover:bg-white hover:shadow-xl hover:border-indigo-100 group italic">
                               <div className="w-20 h-20 rounded-[1.5rem] overflow-hidden mb-6 bg-white border border-slate-100 shadow-sm transition-transform group-hover:scale-110">
-                                {staff.photoURL ? <img src={staff.photoURL} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><User size={32}/></div>}
+                                {staff.photoURL ? <img src={staff.photoURL} alt={staff.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><User size={32}/></div>}
                               </div>
                               <p className="font-black text-slate-800 uppercase italic text-xs tracking-tighter mb-6 h-10 flex items-center justify-center">{staff.name}</p>
                               {hasVoted ? (
@@ -1076,7 +1077,7 @@ const PIRUApp = () => {
                            {winners.filter(w => w.period === (voteWindow.period || currentTW) && w.year === (voteWindow.evalYear || selectedYear)).map((w, idx) => (
                              <div key={idx} className="mt-12 bg-slate-900 p-12 rounded-[4rem] text-white max-w-md mx-auto italic shadow-2xl border-b-8 border-indigo-600">
                                 <div className="w-36 h-36 rounded-full overflow-hidden mx-auto mb-6 border-4 border-amber-500 shadow-lg">
-                                   {w.photoURL ? <img src={w.photoURL} className="w-full h-full object-cover" alt={w.name}/> : <User size={50}/>}
+                                   {w.photoURL ? <img src={w.photoURL} alt={w.name} className="w-full h-full object-cover"/> : <User size={50}/>}
                                 </div>
                                 <p className="font-black uppercase text-2xl italic tracking-tighter">{w.name}</p>
                                 <p className="text-indigo-400 font-bold uppercase text-[10px] mt-2 tracking-[0.2em]">{w.jabatan}</p>
@@ -1463,7 +1464,7 @@ const PIRUApp = () => {
               <button type="button" onClick={() => setShowVotingModal(false)} className="absolute top-8 right-8 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
               <div className="text-center mb-10 italic">
                   <div className="w-24 h-24 rounded-3xl overflow-hidden mx-auto mb-4 border-4 border-white shadow-xl">
-                    {selectedStaffForVote.photoURL ? <img src={selectedStaffForVote.photoURL} className="w-full h-full object-cover" alt={selectedStaffForVote.name}/> : <div className="bg-slate-100 w-full h-full flex items-center justify-center text-slate-300"><User size={40}/></div>}
+                    {selectedStaffForVote.photoURL ? <img src={selectedStaffForVote.photoURL} alt={selectedStaffForVote.name} className="w-full h-full object-cover" /> : <div className="bg-slate-100 w-full h-full flex items-center justify-center text-slate-300"><User size={40}/></div>}
                   </div>
                   <h3 className="font-black uppercase text-slate-800 italic leading-none">{selectedStaffForVote.name}</h3>
                   <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-4 italic">Periode {voteWindow.period.toUpperCase()} {voteWindow.evalYear}</p>
