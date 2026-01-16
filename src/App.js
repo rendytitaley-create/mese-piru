@@ -61,7 +61,7 @@ const PIRUApp = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [currentReportId, setCurrentReportId] = useState(null);
-  const [newReport, setNewReport] = useState({ title: '', target: '', realisasi: '', satuan: '', keterangan: '', targetUser: '' });
+  const [newReport, setNewReport] = useState({ title: '', target: '', realisasi: '', satuan: '', keterangan: '', targetUser: '', originalAgendaId: '' });
   
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -83,6 +83,7 @@ const PIRUApp = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [newAgenda, setNewAgenda] = useState({ taskName: '', volume: '', satuan: '', date: new Date().toISOString().split('T')[0] });
   const [calendarDate, setCalendarDate] = useState(new Date());
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(null); // Filter klik tanggal
 
   useEffect(() => {
     signInAnonymously(auth);
@@ -376,7 +377,7 @@ const PIRUApp = () => {
     } catch (err) { alert("Gagal memproses data pegawai."); }
   };
 
-  const resetReportForm = () => { setIsEditing(false); setCurrentReportId(null); setNewReport({ title: '', target: '', realisasi: '', satuan: '', keterangan: '', targetUser: '' }); };
+  const resetReportForm = () => { setIsEditing(false); setCurrentReportId(null); setNewReport({ title: '', target: '', realisasi: '', satuan: '', keterangan: '', targetUser: '', originalAgendaId: '' }); };
   const resetUserForm = () => { setIsEditingUser(false); setCurrentUserId(null); setNewUser({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '' }); };
 
   const handleNilaiSemua = async () => {
@@ -770,7 +771,7 @@ const PIRUApp = () => {
                  {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <option key={y} value={y}>{y}</option>)}
                </select>
                <button onClick={exportToExcel} className="bg-green-600 text-white px-4 py-2.5 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-md italic"><Download size={14}/> Cetak</button>
-               {user.role !== 'admin' && <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-black uppercase text-[10px] shadow-lg flex items-center gap-2 italic"><Plus size={14}/> Entri</button>}
+               {user.role !== 'admin' && activeTab !== 'agenda' && <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-black uppercase text-[10px] shadow-lg flex items-center gap-2 italic"><Plus size={14}/> Entri</button>}
              </div>
           </div>
         </header>
@@ -802,11 +803,19 @@ const PIRUApp = () => {
                     return (
                       <div 
                         key={idx} 
-                        onClick={() => day && (user.role === 'pegawai' || filterStaffName === 'Semua') && (setNewAgenda({...newAgenda, date: currentFullDate}), setShowAgendaModal(true))}
-                        className={`aspect-square rounded-2xl md:rounded-3xl border flex flex-col items-center justify-center relative cursor-pointer transition-all ${day ? 'hover:border-indigo-600 hover:bg-indigo-50/30' : 'border-transparent'} ${hasAgenda ? 'bg-indigo-50 border-indigo-200' : 'border-slate-50'}`}
+                        onClick={() => {
+                          if (day) {
+                            setSelectedCalendarDate(currentFullDate);
+                            if (user.role === 'pegawai' || filterStaffName === 'Semua') {
+                              setNewAgenda({...newAgenda, date: currentFullDate}); 
+                              setShowAgendaModal(true);
+                            }
+                          }
+                        }}
+                        className={`aspect-square rounded-2xl md:rounded-3xl border flex flex-col items-center justify-center relative cursor-pointer transition-all ${day ? 'hover:border-indigo-600 hover:bg-indigo-50/30' : 'border-transparent'} ${currentFullDate === selectedCalendarDate ? 'bg-indigo-600 border-indigo-600' : hasAgenda ? 'bg-indigo-50 border-indigo-200' : 'border-slate-50'}`}
                       >
-                        <span className={`text-xs md:text-lg font-black italic ${hasAgenda ? 'text-indigo-600' : 'text-slate-400'}`}>{day}</span>
-                        {hasAgenda > 0 && <div className="absolute bottom-2 w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></div>}
+                        <span className={`text-xs md:text-lg font-black italic ${currentFullDate === selectedCalendarDate ? 'text-white' : hasAgenda ? 'text-indigo-600' : 'text-slate-400'}`}>{day}</span>
+                        {hasAgenda > 0 && currentFullDate !== selectedCalendarDate && <div className="absolute bottom-2 w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></div>}
                       </div>
                     );
                   })}
@@ -816,19 +825,27 @@ const PIRUApp = () => {
               {/* KOLOM LIST AGENDA */}
               <div className="w-full xl:w-96 space-y-4 italic">
                 <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-xl italic">
-                  <h3 className="font-black uppercase text-xs tracking-widest mb-4 italic text-indigo-400">Papan Agenda</h3>
-                  <p className="text-[10px] text-slate-400 leading-relaxed italic mb-6">Pilih tanggal di kalender untuk mencatat pekerjaan harian Anda agar mudah ditarik ke CKP akhir bulan.</p>
-                  {(user.role === 'pegawai' || filterStaffName === 'Semua') && (
-                    <button onClick={() => setShowAgendaModal(true)} className="w-full py-4 bg-indigo-600 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-indigo-900/20 italic">Tambah Catatan</button>
+                  <h3 className="font-black uppercase text-xs tracking-widest mb-4 italic text-indigo-400">
+                    {selectedCalendarDate ? `Agenda ${selectedCalendarDate}` : "Pilih Tanggal"}
+                  </h3>
+                  <p className="text-[10px] text-slate-400 leading-relaxed italic mb-6">Klik pada salah satu tanggal di kalender untuk melihat atau menambah catatan pekerjaan.</p>
+                  {selectedCalendarDate && (user.role === 'pegawai' || filterStaffName === 'Semua') && (
+                    <button onClick={() => setShowAgendaModal(true)} className="w-full py-4 bg-indigo-600 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-indigo-900/20 italic">Tambah di Tanggal Ini</button>
                   )}
                 </div>
 
                 <div className="space-y-3 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar italic">
-                  {agendas.filter(a => (filterStaffName === 'Semua' ? a.userId === user.username : a.userName === filterStaffName) && a.date.includes(`${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}`)).length === 0 ? (
-                    <div className="text-center py-10 text-slate-400 font-bold text-[10px] uppercase italic">Belum ada agenda bulan ini</div>
+                  {agendas.filter(a => 
+                    (filterStaffName === 'Semua' ? a.userId === user.username : a.userName === filterStaffName) && 
+                    (selectedCalendarDate ? a.date === selectedCalendarDate : a.date.includes(`${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}`))
+                  ).length === 0 ? (
+                    <div className="text-center py-10 text-slate-400 font-bold text-[10px] uppercase italic">Tidak ada catatan</div>
                   ) : (
                     agendas
-                      .filter(a => (filterStaffName === 'Semua' ? a.userId === user.username : a.userName === filterStaffName) && a.date.includes(`${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}`))
+                      .filter(a => 
+                        (filterStaffName === 'Semua' ? a.userId === user.username : a.userName === filterStaffName) && 
+                        (selectedCalendarDate ? a.date === selectedCalendarDate : a.date.includes(`${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}`))
+                      )
                       .sort((a,b) => new Date(b.date) - new Date(a.date))
                       .map(a => (
                         <div key={a.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-center group italic">
@@ -1173,15 +1190,15 @@ const PIRUApp = () => {
 
           {activeTab === 'bukti_dukung' && (
             <div className="animate-in slide-in-from-bottom-4 duration-500 italic mb-10">
-               {['admin', 'pimpinan', 'ketua'].includes(user.role) && (
+                {['admin', 'pimpinan', 'ketua'].includes(user.role) && (
                   <div className="md:hidden flex flex-col gap-3 mb-6 not-italic">
                     <select className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-black text-[12px] text-slate-600 shadow-sm italic outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
                       <option value="Semua">Data Saya</option>
                       {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                     </select>
                   </div>
-               )}
-               <div className="hidden md:block bg-white rounded-[2.5rem] shadow-sm border overflow-hidden p-0 italic">
+                )}
+                <div className="hidden md:block bg-white rounded-[2.5rem] shadow-sm border overflow-hidden p-0 italic">
                   <table className="w-full text-left italic text-xs border-collapse">
                     <thead className="bg-slate-100 border-b text-[9px] font-black text-slate-500 uppercase tracking-widest italic sticky top-0 z-20">
                       <tr>
@@ -1217,10 +1234,10 @@ const PIRUApp = () => {
                                     </div>
                                   ) : null}
                                   {r.linkDrive && (
-                                     <div className="flex items-center gap-2">
-                                        <a href={r.linkDrive} target="_blank" rel="noopener noreferrer" className="p-3 bg-green-50 text-green-600 rounded-xl flex items-center gap-2 font-black text-[10px] uppercase shadow-sm"><ExternalLink size={14}/> Buka</a>
-                                        <button onClick={() => {navigator.clipboard.writeText(r.linkDrive); alert("Link berhasil disalin!");}} className="p-3 bg-slate-100 text-slate-600 rounded-xl flex items-center gap-2 font-black text-[10px] uppercase shadow-sm"><Copy size={14}/> Salin</button>
-                                     </div>
+                                      <div className="flex items-center gap-2">
+                                         <a href={r.linkDrive} target="_blank" rel="noopener noreferrer" className="p-3 bg-green-50 text-green-600 rounded-xl flex items-center gap-2 font-black text-[10px] uppercase shadow-sm"><ExternalLink size={14}/> Buka</a>
+                                         <button onClick={() => {navigator.clipboard.writeText(r.linkDrive); alert("Link berhasil disalin!");}} className="p-3 bg-slate-100 text-slate-600 rounded-xl flex items-center gap-2 font-black text-[10px] uppercase shadow-sm"><Copy size={14}/> Salin</button>
+                                      </div>
                                   )}
                                </div>
                             </td>
@@ -1229,8 +1246,8 @@ const PIRUApp = () => {
                       )}
                     </tbody>
                   </table>
-               </div>
-               <div className="md:hidden space-y-4">
+                </div>
+                <div className="md:hidden space-y-4">
                   {currentFilteredReports.length === 0 ? (
                     <div className="bg-white p-10 rounded-[2.5rem] border border-dashed border-slate-200 text-center italic">
                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Tidak ada data lapor</p>
@@ -1267,7 +1284,7 @@ const PIRUApp = () => {
                       </div>
                     ))
                   )}
-               </div>
+                </div>
             </div>
           )}
 
@@ -1318,7 +1335,25 @@ const PIRUApp = () => {
                         <td className="p-4 text-center font-black text-indigo-600 italic">{((r.realisasi/r.target)*100).toFixed(0)}%</td>
                         <td className="p-4 text-center font-black text-slate-300 text-lg italic"><div className="relative group inline-block">{r.nilaiKetua || '-'}{user.role === 'admin' && activeTab === 'penilaian' && r.nilaiKetua > 0 && (<button onClick={() => clearGrade(r.id, 'nilaiKetua')} className="absolute -top-1 -right-3 text-red-400 opacity-0 group-hover:opacity-100 italic"><Trash2 size={10}/></button>)}</div></td>
                         <td className="p-4 text-center font-black text-indigo-600 text-lg italic"><div className="relative group inline-block">{r.nilaiPimpinan || '-'}{user.role === 'admin' && activeTab === 'penilaian' && r.nilaiPimpinan > 0 && (<button onClick={() => clearGrade(r.id, 'nilaiPimpinan')} className="absolute -top-1 -right-3 text-red-400 opacity-0 group-hover:opacity-100 italic"><Trash2 size={10}/></button>)}</div></td>
-                        <td className="p-4 text-center italic"><div className="flex justify-center gap-1 italic">{activeTab === 'laporan' && r.status === 'pending' && <><button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button><button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button></>}{activeTab === 'penilaian' && (<>{['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Ketua</button>}{['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Pimp</button>}</>)}</div></td>
+                        <td className="p-4 text-center italic">
+                          <div className="flex justify-center gap-1 italic">
+                            {activeTab === 'laporan' && r.status === 'pending' && (
+                              <>
+                                <button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button>
+                                <button onClick={async () => {
+                                  if (window.confirm("Hapus laporan ini?")) {
+                                    // SINKRONISASI: Jika laporan berasal dari agenda, kembalikan status agenda
+                                    if (r.originalAgendaId) {
+                                      await updateDoc(doc(db, "agendas", r.originalAgendaId), { isImported: false });
+                                    }
+                                    await deleteDoc(doc(db, "reports", r.id));
+                                  }
+                                }} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button>
+                              </>
+                            )}
+                            {activeTab === 'penilaian' && (<>{['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Ketua</button>}{['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Pimp</button>}</>)}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -1348,7 +1383,12 @@ const PIRUApp = () => {
                           {activeTab === 'laporan' && r.status === 'pending' && (
                             <>
                               <button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="text-indigo-400"><Edit3 size={18}/></button>
-                              <button onClick={() => deleteDoc(doc(db, "reports", r.id))} className="text-red-400"><Trash2 size={18}/></button>
+                              <button onClick={async () => {
+                                if (window.confirm("Hapus laporan ini?")) {
+                                  if (r.originalAgendaId) await updateDoc(doc(db, "agendas", r.originalAgendaId), { isImported: false });
+                                  await deleteDoc(doc(db, "reports", r.id));
+                                }
+                              }} className="text-red-400"><Trash2 size={18}/></button>
                             </>
                           )}
                         </div>
@@ -1393,12 +1433,9 @@ const PIRUApp = () => {
       </main>
 
       {/* FLOATING ACTION BUTTON (MOBILE) */}
-      {((activeTab === 'laporan' && user.role !== 'admin') || (activeTab === 'penilaian' && ['admin', 'pimpinan', 'ketua'].includes(user.role)) || (activeTab === 'agenda')) && ( 
+      {((activeTab === 'laporan' && user.role !== 'admin') || (activeTab === 'penilaian' && ['admin', 'pimpinan', 'ketua'].includes(user.role))) && ( 
           <button 
-            onClick={() => {
-              if(activeTab === 'agenda') setShowAgendaModal(true);
-              else { resetReportForm(); setShowReportModal(true); }
-            }} 
+            onClick={() => { resetReportForm(); setShowReportModal(true); }} 
             className="md:hidden fixed bottom-28 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-[0_10px_25px_rgba(79,70,229,0.4)] flex items-center justify-center z-[100] active:scale-95 transition-all animate-in zoom-in duration-300"
           > 
             <Plus size={32} strokeWidth={3} /> 
@@ -1440,7 +1477,14 @@ const PIRUApp = () => {
                   <div 
                     key={a.id} 
                     onClick={async () => {
-                      setNewReport({...newReport, title: a.taskName, target: a.volume, realisasi: a.volume, satuan: a.satuan});
+                      setNewReport({
+                        ...newReport, 
+                        title: a.taskName, 
+                        target: a.volume, 
+                        realisasi: a.volume, 
+                        satuan: a.satuan,
+                        originalAgendaId: a.id // Simpan ID asli untuk sinkronisasi hapus
+                      });
                       setShowImportModal(false);
                       // Tandai sebagai terpakai
                       await updateDoc(doc(db, "agendas", a.id), { isImported: true });
@@ -1484,7 +1528,7 @@ const PIRUApp = () => {
                   <div className="space-y-4 italic text-left">
                     <div className="flex justify-between items-center italic"><label className="text-[10px] font-black uppercase text-indigo-600 italic">3. Inovasi</label><span className="font-black text-3xl text-slate-800">{voteData.inovasi}</span></div>
                     <p className="text-[8px] text-slate-400 font-bold uppercase italic leading-tight">Menilai inisiatif rekan dalam memberikan ide baru atau solusi kreatif untuk mempermudah pekerjaan.</p>
-                    <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.inovasi} onChange={e => setVoteData({...voteData, inovasi: Number(e.target.value)})} />
+                    <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.inovasi} onChange={e => setNewVoteData({...voteData, inovasi: Number(e.target.value)})} />
                   </div>
               </div>
 
