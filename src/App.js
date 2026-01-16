@@ -805,11 +805,7 @@ const PIRUApp = () => {
                         key={idx} 
                         onClick={() => {
                           if (day) {
-                            setSelectedCalendarDate(currentFullDate);
-                            if (user.role === 'pegawai' || filterStaffName === 'Semua') {
-                              setNewAgenda({...newAgenda, date: currentFullDate}); 
-                              setShowAgendaModal(true);
-                            }
+                            setSelectedCalendarDate(currentFullDate); // SEKARANG HANYA SET TANGGAL UNTUK FILTER
                           }
                         }}
                         className={`aspect-square rounded-2xl md:rounded-3xl border flex flex-col items-center justify-center relative cursor-pointer transition-all ${day ? 'hover:border-indigo-600 hover:bg-indigo-50/30' : 'border-transparent'} ${currentFullDate === selectedCalendarDate ? 'bg-indigo-600 border-indigo-600' : hasAgenda ? 'bg-indigo-50 border-indigo-200' : 'border-slate-50'}`}
@@ -828,18 +824,26 @@ const PIRUApp = () => {
                   <h3 className="font-black uppercase text-xs tracking-widest mb-4 italic text-indigo-400">
                     {selectedCalendarDate ? `Agenda ${selectedCalendarDate}` : "Pilih Tanggal"}
                   </h3>
-                  <p className="text-[10px] text-slate-400 leading-relaxed italic mb-6">Klik pada salah satu tanggal di kalender untuk melihat atau menambah catatan pekerjaan.</p>
+                  <p className="text-[10px] text-slate-400 leading-relaxed italic mb-6">Pilih tanggal di kalender untuk melihat daftar agenda Anda. Gunakan tombol di bawah jika ingin menambah catatan baru.</p>
                   {selectedCalendarDate && (user.role === 'pegawai' || filterStaffName === 'Semua') && (
-                    <button onClick={() => setShowAgendaModal(true)} className="w-full py-4 bg-indigo-600 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-indigo-900/20 italic">Tambah di Tanggal Ini</button>
+                    <button 
+                      onClick={() => {
+                        setNewAgenda({...newAgenda, date: selectedCalendarDate});
+                        setShowAgendaModal(true);
+                      }} 
+                      className="w-full py-4 bg-indigo-600 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-indigo-900/20 italic"
+                    >
+                      Tambah di Tanggal Ini
+                    </button>
                   )}
                 </div>
 
-                <div className="space-y-3 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar italic">
+                <div className="space-y-3 overflow-y-auto max-h-[600px] pr-2 custom-scrollbar italic">
                   {agendas.filter(a => 
                     (filterStaffName === 'Semua' ? a.userId === user.username : a.userName === filterStaffName) && 
                     (selectedCalendarDate ? a.date === selectedCalendarDate : a.date.includes(`${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}`))
                   ).length === 0 ? (
-                    <div className="text-center py-10 text-slate-400 font-bold text-[10px] uppercase italic">Tidak ada catatan</div>
+                    <div className="text-center py-10 text-slate-400 font-bold text-[10px] uppercase italic bg-white rounded-3xl border border-dashed">Tidak ada catatan</div>
                   ) : (
                     agendas
                       .filter(a => 
@@ -848,16 +852,28 @@ const PIRUApp = () => {
                       )
                       .sort((a,b) => new Date(b.date) - new Date(a.date))
                       .map(a => (
-                        <div key={a.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-center group italic">
-                          <div className="italic">
-                            <p className="text-[8px] font-black text-indigo-500 uppercase italic mb-1">{a.date}</p>
-                            <h4 className="font-black text-slate-800 uppercase text-[11px] leading-tight italic">{a.taskName}</h4>
-                            <p className="text-[10px] text-slate-400 font-bold italic mt-1">{a.volume} {a.satuan}</p>
+                        <div key={a.id} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-start group italic gap-3">
+                          <div className="flex-1 min-w-0 italic">
+                            <p className="text-[7px] font-black text-indigo-500 uppercase italic mb-1">{a.date}</p>
+                            <h4 className="font-black text-slate-800 uppercase text-[10px] leading-normal break-words whitespace-pre-wrap italic">
+                              {a.taskName}
+                            </h4>
+                            <p className="text-[9px] text-slate-400 font-bold italic mt-2 bg-slate-50 inline-block px-2 py-1 rounded-lg">
+                              {a.volume} {a.satuan}
+                            </p>
                           </div>
-                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all italic">
-                            {a.isImported && <CheckSquare size={16} className="text-green-500"/>}
+                          <div className="flex flex-col gap-2 shrink-0 italic">
+                            {a.isImported && <CheckSquare size={14} className="text-green-500"/>}
                             {(user.role === 'pegawai' || filterStaffName === 'Semua') && (
-                               <button onClick={() => deleteAgenda(a.id)} className="text-red-400 hover:text-red-600"><Trash2 size={16}/></button>
+                               <button 
+                                 onClick={(e) => { 
+                                   e.stopPropagation(); 
+                                   deleteAgenda(a.id); 
+                                 }} 
+                                 className="text-red-400 hover:text-red-600 p-1"
+                               >
+                                 <Trash2 size={14}/>
+                               </button>
                             )}
                           </div>
                         </div>
@@ -1235,8 +1251,8 @@ const PIRUApp = () => {
                                   ) : null}
                                   {r.linkDrive && (
                                       <div className="flex items-center gap-2">
-                                         <a href={r.linkDrive} target="_blank" rel="noopener noreferrer" className="p-3 bg-green-50 text-green-600 rounded-xl flex items-center gap-2 font-black text-[10px] uppercase shadow-sm"><ExternalLink size={14}/> Buka</a>
-                                         <button onClick={() => {navigator.clipboard.writeText(r.linkDrive); alert("Link berhasil disalin!");}} className="p-3 bg-slate-100 text-slate-600 rounded-xl flex items-center gap-2 font-black text-[10px] uppercase shadow-sm"><Copy size={14}/> Salin</button>
+                                          <a href={r.linkDrive} target="_blank" rel="noopener noreferrer" className="p-3 bg-green-50 text-green-600 rounded-xl flex items-center gap-2 font-black text-[10px] uppercase shadow-sm"><ExternalLink size={14}/> Buka</a>
+                                          <button onClick={() => {navigator.clipboard.writeText(r.linkDrive); alert("Link berhasil disalin!");}} className="p-3 bg-slate-100 text-slate-600 rounded-xl flex items-center gap-2 font-black text-[10px] uppercase shadow-sm"><Copy size={14}/> Salin</button>
                                       </div>
                                   )}
                                </div>
@@ -1342,7 +1358,6 @@ const PIRUApp = () => {
                                 <button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button>
                                 <button onClick={async () => {
                                   if (window.confirm("Hapus laporan ini?")) {
-                                    // SINKRONISASI: Jika laporan berasal dari agenda, kembalikan status agenda
                                     if (r.originalAgendaId) {
                                       await updateDoc(doc(db, "agendas", r.originalAgendaId), { isImported: false });
                                     }
@@ -1421,7 +1436,6 @@ const PIRUApp = () => {
             <><button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button><button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button></>
           ) : (
             <>
-              {/* MOBILE NAV BARU: AGENDA */}
               <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center gap-1 ${activeTab === 'agenda' ? 'text-indigo-600' : 'text-slate-300'}`}><CalendarIcon size={24}/><span className="text-[8px] font-black uppercase">Agenda</span></button>
               <button onClick={() => setActiveTab('laporan')} className={`flex flex-col items-center gap-1 ${activeTab === 'laporan' ? 'text-indigo-600' : 'text-slate-300'}`}><FileText size={24}/><span className="text-[8px] font-black uppercase">Entri</span></button>
               <button onClick={() => setActiveTab('bukti_dukung')} className={`flex flex-col items-center gap-1 ${activeTab === 'bukti_dukung' ? 'text-indigo-600' : 'text-slate-300'}`}><Link size={24}/><span className="text-[8px] font-black uppercase">Bukti</span></button>
@@ -1483,10 +1497,9 @@ const PIRUApp = () => {
                         target: a.volume, 
                         realisasi: a.volume, 
                         satuan: a.satuan,
-                        originalAgendaId: a.id // Simpan ID asli untuk sinkronisasi hapus
+                        originalAgendaId: a.id 
                       });
                       setShowImportModal(false);
-                      // Tandai sebagai terpakai
                       await updateDoc(doc(db, "agendas", a.id), { isImported: true });
                     }}
                     className="p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-600 cursor-pointer italic group transition-all"
@@ -1528,6 +1541,7 @@ const PIRUApp = () => {
                   <div className="space-y-4 italic text-left">
                     <div className="flex justify-between items-center italic"><label className="text-[10px] font-black uppercase text-indigo-600 italic">3. Inovasi</label><span className="font-black text-3xl text-slate-800">{voteData.inovasi}</span></div>
                     <p className="text-[8px] text-slate-400 font-bold uppercase italic leading-tight">Menilai inisiatif rekan dalam memberikan ide baru atau solusi kreatif untuk mempermudah pekerjaan.</p>
+                    {/* BARIS 1531 DIBAWAH INI SUDAH DIPERBAIKI MENJADI setVoteData */}
                     <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.inovasi} onChange={e => setVoteData({...voteData, inovasi: Number(e.target.value)})} />
                   </div>
               </div>
@@ -1626,4 +1640,3 @@ const PIRUApp = () => {
 };
 
 export default PIRUApp;
-
