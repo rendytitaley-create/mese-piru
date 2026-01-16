@@ -818,27 +818,32 @@ const PIRUApp = () => {
                 </div>
               </div>
 
-              {/* KOLOM LIST AGENDA */}
+              {/* KOLOM LIST AGENDA - DIPERBARUI VISUALNYA */}
               <div className="w-full xl:w-96 space-y-4 italic">
-                <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-xl italic">
-                  <h3 className="font-black uppercase text-xs tracking-widest mb-4 italic text-indigo-400">
-                    {selectedCalendarDate ? `Agenda ${selectedCalendarDate}` : "Pilih Tanggal"}
-                  </h3>
-                  <p className="text-[10px] text-slate-400 leading-relaxed italic mb-6">Pilih tanggal di kalender untuk melihat daftar agenda Anda. Gunakan tombol di bawah jika ingin menambah catatan baru.</p>
-                  {selectedCalendarDate && (user.role === 'pegawai' || filterStaffName === 'Semua') && (
-                    <button 
-                      onClick={() => {
-                        setNewAgenda({...newAgenda, date: selectedCalendarDate});
-                        setShowAgendaModal(true);
-                      }} 
-                      className="w-full py-4 bg-indigo-600 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-indigo-900/20 italic"
-                    >
-                      Tambah di Tanggal Ini
-                    </button>
-                  )}
+                {/* Header Panel Samping yang Lebih Ringkas */}
+                <div className="bg-slate-900 p-6 rounded-[2.5rem] text-white shadow-xl italic">
+                   <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                         <h3 className="font-black uppercase text-[10px] tracking-widest italic text-indigo-400 truncate">
+                            {selectedCalendarDate ? `${selectedCalendarDate}` : "Pilih Tanggal"}
+                         </h3>
+                         <p className="text-[9px] text-slate-400 italic">Daftar Agenda Harian</p>
+                      </div>
+                      {selectedCalendarDate && (user.role === 'pegawai' || filterStaffName === 'Semua') && (
+                        <button 
+                          onClick={() => {
+                            setNewAgenda({...newAgenda, date: selectedCalendarDate});
+                            setShowAgendaModal(true);
+                          }} 
+                          className="shrink-0 p-3 bg-indigo-600 rounded-xl font-black text-[9px] uppercase shadow-lg shadow-indigo-900/20 italic flex items-center gap-2"
+                        >
+                          <Plus size={14}/> Tambah
+                        </button>
+                      )}
+                   </div>
                 </div>
 
-                <div className="space-y-3 overflow-y-auto max-h-[600px] pr-2 custom-scrollbar italic">
+                <div className="space-y-3 overflow-y-auto max-h-[600px] pr-2 custom-scrollbar italic pb-10">
                   {agendas.filter(a => 
                     (filterStaffName === 'Semua' ? a.userId === user.username : a.userName === filterStaffName) && 
                     (selectedCalendarDate ? a.date === selectedCalendarDate : a.date.includes(`${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}`))
