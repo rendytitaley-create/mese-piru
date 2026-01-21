@@ -413,6 +413,11 @@ const PIRUApp = () => {
           userId: finalUserId, userName: finalUserName, userRole: finalUserRole,
           month: selectedMonth, year: selectedYear, status: 'pending', nilaiKetua: 0, nilaiPimpinan: 0, createdAt: serverTimestamp()
         });
+        
+        // PERBAIKAN: Update status agenda HANYA saat laporan berhasil disimpan
+        if (newReport.originalAgendaId) {
+          await updateDoc(doc(db, "agendas", newReport.originalAgendaId), { isImported: true });
+        }
       }
       setShowReportModal(false); resetReportForm();
     } catch (err) { alert("Data berhasil disimpan."); }
@@ -1270,7 +1275,7 @@ const PIRUApp = () => {
                 <div className="md:hidden space-y-4">
                   {currentFilteredReports.length === 0 ? (
                     <div className="bg-white p-10 rounded-[2.5rem] border border-dashed border-slate-200 text-center italic">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Tidak ada data lapor</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Tidak ada data lapor</p>
                     </div>
                   ) : (
                     currentFilteredReports.map((r, idx) => (
@@ -1476,7 +1481,8 @@ const PIRUApp = () => {
             <CalendarIcon size={40} className="text-indigo-600 mb-6 mx-auto" />
             <h3 className="text-xl font-black uppercase italic mb-8">Catat Agenda: {newAgenda.date}</h3>
             <div className="space-y-4 italic">
-              <input required type="text" placeholder="Apa yang Anda kerjakan?" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic" value={newAgenda.taskName} onChange={e => setNewAgenda({...newAgenda, taskName: e.target.value})} />
+              {/* PERBAIKAN: Input menjadi Textarea agar uraian panjang terlihat */}
+              <textarea required placeholder="Apa yang Anda kerjakan?" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic h-32 resize-none" value={newAgenda.taskName} onChange={e => setNewAgenda({...newAgenda, taskName: e.target.value})} />
               <div className="grid grid-cols-2 gap-4 italic text-center">
                 <input required type="number" placeholder="Volume" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic" value={newAgenda.volume} onChange={e => setNewAgenda({...newAgenda, volume: e.target.value})} />
                 <input required type="text" placeholder="Satuan" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic" value={newAgenda.satuan} onChange={e => setNewAgenda({...newAgenda, satuan: e.target.value})} />
@@ -1499,7 +1505,10 @@ const PIRUApp = () => {
               {agendas.filter(a => a.userId === user.username && !a.isImported && a.date.includes(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`)).length === 0 ? (
                 <p className="text-center py-10 text-slate-400 font-bold text-[10px] uppercase italic">Tidak ada agenda yang tersedia</p>
               ) : (
-                agendas.filter(a => a.userId === user.username && !a.isImported && a.date.includes(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`)).map(a => (
+                agendas.filter(a => a.userId === user.username && !a.isImported && a.date.includes(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`))
+                // PERBAIKAN: Urutkan tanggal dari terkecil ke terbesar
+                .sort((a, b) => new Date(a.date) - new Date(b.date))
+                .map(a => (
                   <div 
                     key={a.id} 
                     onClick={async () => {
@@ -1512,7 +1521,7 @@ const PIRUApp = () => {
                         originalAgendaId: a.id 
                       });
                       setShowImportModal(false);
-                      await updateDoc(doc(db, "agendas", a.id), { isImported: true });
+                      // BUG FIXED: updateDoc dipindahkan ke handleSubmitReport
                     }}
                     className="p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-600 cursor-pointer italic group transition-all"
                   >
@@ -1567,7 +1576,7 @@ const PIRUApp = () => {
 
       {showPasswordModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[110] font-sans italic">
-          <form onSubmit={handleUpdatePassword} className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl relative italic">
+          <form onSubmit={handleUpdatePassword} className="bg-white w-full max-md:max-w-md rounded-[3rem] p-10 shadow-2xl relative italic">
             <button type="button" onClick={() => setShowPasswordModal(false)} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
             <KeyRound size={40} className="text-indigo-600 mb-6" />
             <h3 className="text-2xl font-black uppercase tracking-tighter mb-2 text-slate-800 italic text-center">Ganti Password</h3>
@@ -1636,7 +1645,8 @@ const PIRUApp = () => {
 
             <div className="space-y-4 italic text-center">
                {activeTab === 'penilaian' && !isEditing && ( <select required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-indigo-600 border border-slate-100 italic text-center" value={newReport.targetUser} onChange={e => setNewReport({...newReport, targetUser: e.target.value})}> <option value="">-- Pilih Nama Pegawai --</option> {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)} </select> )}
-               <input required type="text" placeholder="Uraian Pekerjaan" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" value={newReport.title} onChange={e => setNewReport({...newReport, title: e.target.value})} />
+               {/* PERBAIKAN: Input menjadi Textarea agar uraian panjang terlihat */}
+               <textarea required placeholder="Uraian Pekerjaan" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center h-32 resize-none" value={newReport.title} onChange={e => setNewReport({...newReport, title: e.target.value})} />
                <div className="grid grid-cols-2 gap-4 italic text-center"> <input required type="number" placeholder="Target" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" value={newReport.target} onChange={e => setNewReport({...newReport, target: e.target.value})} /> <input required type="number" placeholder="Realisasi" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" value={newReport.realisasi} onChange={e => setNewReport({...newReport, realisasi: e.target.value})} /> </div>
                <input list="satuan-list" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" placeholder="Satuan" value={newReport.satuan} onChange={e => setNewReport({...newReport, satuan: e.target.value})} />
                <datalist id="satuan-list"><option value="Dokumen"/><option value="Kegiatan"/><option value="Laporan"/><option value="Paket"/></datalist>
@@ -1651,4 +1661,3 @@ const PIRUApp = () => {
 };
 
 export default PIRUApp;
-
