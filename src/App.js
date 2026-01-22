@@ -85,6 +85,14 @@ const PIRUApp = () => {
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null); // Filter klik tanggal
 
+  // SINKRONISASI OTOMATIS: KALENDER MENGIKUTI HEADER
+  useEffect(() => {
+    const newDate = new Date(selectedYear, selectedMonth - 1, 1);
+    setCalendarDate(newDate);
+    // Reset pilihan tanggal jika bulan berganti agar tidak "nyangkut" di tanggal bulan lalu
+    setSelectedCalendarDate(null);
+  }, [selectedMonth, selectedYear]);
+
   useEffect(() => {
     signInAnonymously(auth);
     const unsubAuth = onAuthStateChanged(auth, (fUser) => {
@@ -792,8 +800,18 @@ const PIRUApp = () => {
                     {calendarDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                   </h2>
                   <div className="flex gap-2">
-                    <button onClick={() => setCalendarDate(new Date(calendarDate.setMonth(calendarDate.getMonth()-1)))} className="p-2 hover:bg-slate-50 rounded-full text-indigo-600"><ChevronLeft/></button>
-                    <button onClick={() => setCalendarDate(new Date(calendarDate.setMonth(calendarDate.getMonth()+1)))} className="p-2 hover:bg-slate-50 rounded-full text-indigo-600"><ChevronRight/></button>
+                    <button onClick={() => {
+                        const newDate = new Date(calendarDate.setMonth(calendarDate.getMonth()-1));
+                        setCalendarDate(new Date(newDate));
+                        setSelectedMonth(newDate.getMonth() + 1);
+                        setSelectedYear(newDate.getFullYear());
+                    }} className="p-2 hover:bg-slate-50 rounded-full text-indigo-600"><ChevronLeft/></button>
+                    <button onClick={() => {
+                        const newDate = new Date(calendarDate.setMonth(calendarDate.getMonth()+1));
+                        setCalendarDate(new Date(newDate));
+                        setSelectedMonth(newDate.getMonth() + 1);
+                        setSelectedYear(newDate.getFullYear());
+                    }} className="p-2 hover:bg-slate-50 rounded-full text-indigo-600"><ChevronRight/></button>
                   </div>
                 </div>
                 
@@ -850,14 +868,14 @@ const PIRUApp = () => {
                 <div className="space-y-3 italic pb-10">
                   {agendas.filter(a => 
                     (filterStaffName === 'Semua' ? a.userId === user.username : a.userName === filterStaffName) && 
-                    (selectedCalendarDate ? a.date === selectedCalendarDate : a.date.includes(`${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}`))
+                    (selectedCalendarDate ? a.date === selectedCalendarDate : a.date.includes(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`))
                   ).length === 0 ? (
                     <div className="text-center py-10 text-slate-400 font-bold text-[10px] uppercase italic bg-white rounded-3xl border border-dashed">Tidak ada catatan</div>
                   ) : (
                     agendas
                       .filter(a => 
                         (filterStaffName === 'Semua' ? a.userId === user.username : a.userName === filterStaffName) && 
-                        (selectedCalendarDate ? a.date === selectedCalendarDate : a.date.includes(`${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}`))
+                        (selectedCalendarDate ? a.date === selectedCalendarDate : a.date.includes(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`))
                       )
                       .sort((a,b) => new Date(b.date) - new Date(a.date))
                       .map(a => (
@@ -1038,7 +1056,7 @@ const PIRUApp = () => {
                   {user.role === 'admin' && (
                     <div className="bg-slate-800/40 rounded-[2.5rem] p-8 border border-slate-700/50 italic">
                       <div className="flex items-center gap-4 mb-8 italic">
-                        <Users size={24} className="text-indigo-400" />
+                        <OpenIcon size={24} className="text-indigo-400" />
                         <h3 className="font-black uppercase text-sm tracking-tighter italic">Monitoring Partisipasi & Bukti Dukung</h3>
                       </div>
                       <div className="overflow-x-auto italic">
@@ -1437,7 +1455,7 @@ const PIRUApp = () => {
           )}
         </div>
         
-        {/* NAVIGASI BAWAH MOBILE - DIPERBAIKI SESUAI INSTRUKSI */}
+        {/* NAVIGASI BAWAH MOBILE */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-4 pb-6 flex justify-around items-center z-[50] shadow-[0_-4px_12px_rgba(0,0,0,0.05)] not-italic">
           <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-300'}`}><LayoutDashboard size={24}/><span className="text-[8px] font-black uppercase">Home</span></button>
           {user.role === 'admin' ? (
@@ -1481,7 +1499,6 @@ const PIRUApp = () => {
             <CalendarIcon size={40} className="text-indigo-600 mb-6 mx-auto" />
             <h3 className="text-xl font-black uppercase italic mb-8">Catat Agenda: {newAgenda.date}</h3>
             <div className="space-y-4 italic">
-              {/* PERBAIKAN: Input menjadi Textarea agar uraian panjang terlihat */}
               <textarea required placeholder="Apa yang Anda kerjakan?" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic h-32 resize-none" value={newAgenda.taskName} onChange={e => setNewAgenda({...newAgenda, taskName: e.target.value})} />
               <div className="grid grid-cols-2 gap-4 italic text-center">
                 <input required type="number" placeholder="Volume" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic" value={newAgenda.volume} onChange={e => setNewAgenda({...newAgenda, volume: e.target.value})} />
@@ -1506,7 +1523,6 @@ const PIRUApp = () => {
                 <p className="text-center py-10 text-slate-400 font-bold text-[10px] uppercase italic">Tidak ada agenda yang tersedia</p>
               ) : (
                 agendas.filter(a => a.userId === user.username && !a.isImported && a.date.includes(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`))
-                // PERBAIKAN: Urutkan tanggal dari terkecil ke terbesar
                 .sort((a, b) => new Date(a.date) - new Date(b.date))
                 .map(a => (
                   <div 
@@ -1521,7 +1537,6 @@ const PIRUApp = () => {
                         originalAgendaId: a.id 
                       });
                       setShowImportModal(false);
-                      // BUG FIXED: updateDoc dipindahkan ke handleSubmitReport
                     }}
                     className="p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-600 cursor-pointer italic group transition-all"
                   >
@@ -1645,7 +1660,6 @@ const PIRUApp = () => {
 
             <div className="space-y-4 italic text-center">
                {activeTab === 'penilaian' && !isEditing && ( <select required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-indigo-600 border border-slate-100 italic text-center" value={newReport.targetUser} onChange={e => setNewReport({...newReport, targetUser: e.target.value})}> <option value="">-- Pilih Nama Pegawai --</option> {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)} </select> )}
-               {/* PERBAIKAN: Input menjadi Textarea agar uraian panjang terlihat */}
                <textarea required placeholder="Uraian Pekerjaan" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center h-32 resize-none" value={newReport.title} onChange={e => setNewReport({...newReport, title: e.target.value})} />
                <div className="grid grid-cols-2 gap-4 italic text-center"> <input required type="number" placeholder="Target" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" value={newReport.target} onChange={e => setNewReport({...newReport, target: e.target.value})} /> <input required type="number" placeholder="Realisasi" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" value={newReport.realisasi} onChange={e => setNewReport({...newReport, realisasi: e.target.value})} /> </div>
                <input list="satuan-list" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" placeholder="Satuan" value={newReport.satuan} onChange={e => setNewReport({...newReport, satuan: e.target.value})} />
