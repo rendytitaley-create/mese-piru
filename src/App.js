@@ -1056,7 +1056,7 @@ const PIRUApp = () => {
                   {user.role === 'admin' && (
                     <div className="bg-slate-800/40 rounded-[2.5rem] p-8 border border-slate-700/50 italic">
                       <div className="flex items-center gap-4 mb-8 italic">
-                        <OpenIcon size={24} className="text-indigo-400" />
+                        <ClipboardCheck size={24} className="text-indigo-400" />
                         <h3 className="font-black uppercase text-sm tracking-tighter italic">Monitoring Partisipasi & Bukti Dukung</h3>
                       </div>
                       <div className="overflow-x-auto italic">
@@ -1675,3 +1675,4 @@ const PIRUApp = () => {
 };
 
 export default PIRUApp;
+
