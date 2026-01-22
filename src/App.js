@@ -81,7 +81,7 @@ const PIRUApp = () => {
   const [agendas, setAgendas] = useState([]);
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [newAgenda, setNewAgenda] = useState({ taskName: '', volume: '', satuan: '', date: new Date().toISOString().split('T')[0] });
+  const [newAgenda, setNewAgenda] = useState({ taskName: '', volume: '', satuan: '', date: new Date().toISOString().split('T')[0], isLembur: false });
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null); // Filter klik tanggal
 
@@ -151,10 +151,11 @@ const PIRUApp = () => {
         userId: user.username,
         userName: user.name,
         isImported: false,
+        isLembur: newAgenda.isLembur || false,
         createdAt: serverTimestamp()
       });
       setShowAgendaModal(false);
-      setNewAgenda({ taskName: '', volume: '', satuan: '', date: new Date().toISOString().split('T')[0] });
+      setNewAgenda({ taskName: '', volume: '', satuan: '', date: new Date().toISOString().split('T')[0], isLembur: false });
     } catch (err) { alert("Gagal menyimpan agenda."); }
   };
 
@@ -885,6 +886,11 @@ const PIRUApp = () => {
                             <h4 className="font-black text-slate-800 uppercase text-[10px] leading-normal break-words whitespace-pre-wrap italic">
                               {a.taskName}
                             </h4>
+                            {a.isLembur && (
+                              <span className="inline-block mt-2 px-2 py-0.5 bg-amber-500 text-white text-[7px] font-black rounded-lg uppercase tracking-widest italic shadow-sm">
+                                LEMBUR
+                              </span>
+                            )}
                             <p className="text-[9px] text-slate-400 font-bold italic mt-2 bg-slate-50 inline-block px-2 py-1 rounded-lg">
                               {a.volume} {a.satuan}
                             </p>
@@ -1500,6 +1506,18 @@ const PIRUApp = () => {
             <h3 className="text-xl font-black uppercase italic mb-8">Catat Agenda: {newAgenda.date}</h3>
             <div className="space-y-4 italic">
               <textarea required placeholder="Apa yang Anda kerjakan?" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic h-32 resize-none" value={newAgenda.taskName} onChange={e => setNewAgenda({...newAgenda, taskName: e.target.value})} />
+              <div 
+                className={`flex items-center justify-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer ${newAgenda.isLembur ? 'bg-amber-500 border-amber-600 text-white shadow-md' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
+                onClick={() => setNewAgenda({...newAgenda, isLembur: !newAgenda.isLembur})}
+              >
+                <input 
+                  type="checkbox" 
+                  className="w-5 h-5 accent-indigo-600 cursor-pointer" 
+                  checked={newAgenda.isLembur} 
+                  onChange={(e) => setNewAgenda({...newAgenda, isLembur: e.target.checked})} 
+                />
+                <span className={`text-[10px] font-black uppercase italic tracking-widest ${newAgenda.isLembur ? 'text-white' : 'text-slate-500'}`}>Kategori Lembur / Hari Libur</span>
+              </div>
               <div className="grid grid-cols-2 gap-4 italic text-center">
                 <input required type="number" placeholder="Volume" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic" value={newAgenda.volume} onChange={e => setNewAgenda({...newAgenda, volume: e.target.value})} />
                 <input required type="text" placeholder="Satuan" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic" value={newAgenda.satuan} onChange={e => setNewAgenda({...newAgenda, satuan: e.target.value})} />
@@ -1675,4 +1693,3 @@ const PIRUApp = () => {
 };
 
 export default PIRUApp;
-
