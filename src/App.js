@@ -618,25 +618,37 @@ const PIRUApp = () => {
 
   const currentFilteredReports = useMemo(() => {
     let res = reports.filter(r => r.month === selectedMonth && r.year === selectedYear);
+    
+    // FILTER TAB LAPORAN: Hanya milik user yang sedang login
     if (activeTab === 'laporan') {
       res = res.filter(r => r.userId === user.username);
     }
+    
+    // FILTER TAB BUKTI DUKUNG: Tetap menggunakan logika asli Anda
     if (activeTab === 'bukti_dukung') {
        if (user.role === 'pegawai') {
           res = res.filter(r => r.userId === user.username);
        } else {
-          if (filterStaffName === 'Semua') {
-             res = res.filter(r => r.userId === user.username);
-          } else {
-             res = res.filter(r => r.userName === filterStaffName);
-          }
+          if (filterStaffName === 'Semua') res = res.filter(r => r.userId === user.username);
+          else res = res.filter(r => r.userName === filterStaffName);
        }
     }
-    if (activeTab === 'penilaian' && filterStaffName !== 'Semua') { 
-      res = res.filter(r => r.userName === filterStaffName); 
+
+    // FILTER TAB PENILAIAN: Perbaikan agar tidak bocor ke semua ketua
+    if (activeTab === 'penilaian') {
+      if (user.role === 'ketua') {
+        // HANYA muncul jika Ketua tersebut DIPILIH (targetReviewers) dan status sudah DIKIRIM (sent_to_review)
+        res = res.filter(r => r.submissionStatus === 'sent_to_review' && r.targetReviewers?.includes(user.name));
+      } else if (user.role === 'pimpinan' || user.role === 'admin') {
+        // Pimpinan/Admin melihat data yang sudah dikirim ke pimpinan atau sudah final
+        if (filterStaffName !== 'Semua') res = res.filter(r => r.userName === filterStaffName);
+        res = res.filter(r => r.submissionStatus === 'sent_to_pimpinan' || r.submissionStatus === 'final');
+      } else if (filterStaffName !== 'Semua') {
+        res = res.filter(r => r.userName === filterStaffName);
+      }
     }
     return res;
-  }, [reports, user, selectedMonth, selectedYear, filterStaffName, activeTab]);
+  }, [reports, user, selectedMonth, selectedYear, activeTab, filterStaffName]);
 
   const dashboardStats = useMemo(() => {
     let monthsToInclude = [selectedMonth];
@@ -806,7 +818,25 @@ const PIRUApp = () => {
                  {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <option key={y} value={y}>{y}</option>)}
                </select>
                <button onClick={exportToExcel} className="bg-green-600 text-white px-4 py-2.5 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-md italic"><Download size={14}/> Cetak</button>
-               {user.role !== 'admin' && activeTab !== 'agenda' && <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-black uppercase text-[10px] shadow-lg flex items-center gap-2 italic"><Plus size={14}/> Entri</button>}
+               {/* TOMBOL BARU: KIRIM CKP */}
+                {user.role !== 'admin' && activeTab === 'laporan' && reports.some(r => r.userId === user.username && r.month === selectedMonth && r.year === selectedYear && r.submissionStatus === 'draft') && (
+                  <button 
+                    onClick={handleKirimCKP} 
+                    className="bg-amber-500 text-white px-4 py-2.5 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-lg animate-pulse italic"
+                  >
+                    <Send size={14}/> Kirim CKP
+                  </button>
+                )}
+
+                {/* TOMBOL ENTRI (MODIFIKASI SEDIKIT AGAR TIDAK MUNCUL DI ADMIN) */}
+                {user.role !== 'admin' && activeTab !== 'agenda' && (
+                  <button 
+                    onClick={() => { resetReportForm(); setShowReportModal(true); }} 
+                    className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-black uppercase text-[10px] shadow-lg flex items-center gap-2 italic"
+                  >
+                    <Plus size={14}/> Entri
+                  </button>
+                )}
              </div>
           </div>
         </header>
@@ -1733,3 +1763,4 @@ const PIRUApp = () => {
 };
 
 export default PIRUApp;
+
