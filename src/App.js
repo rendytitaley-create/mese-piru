@@ -453,6 +453,23 @@ const PIRUApp = () => {
     } catch (err) { alert("Gagal mengirim."); }
   };
 
+  const handleAdminForward = async (staffName) => {
+    // Cari semua laporan staf tersebut di bulan terpilih yang sudah dikirim ke review
+    const toForward = reports.filter(r => r.userName === staffName && r.month === selectedMonth && r.year === selectedYear && r.submissionStatus === 'sent_to_review');
+    
+    if (toForward.length === 0) return;
+    if (!window.confirm(`Teruskan semua laporan ${staffName} yang sudah dinilai Ketua ke Pimpinan?`)) return;
+    
+    try {
+      const batch = writeBatch(db);
+      toForward.forEach(r => {
+        batch.update(doc(db, "reports", r.id), { submissionStatus: 'sent_to_pimpinan' });
+      });
+      await batch.commit();
+      alert(`Berhasil meneruskan laporan ${staffName} ke Pimpinan.`);
+    } catch (err) { alert("Gagal meneruskan laporan."); }
+  };
+
   const clearGrade = async (reportId, field) => {
     if (!window.confirm(`Hapus nilai ${field === 'nilaiKetua' ? 'Ketua' : 'Pimpinan'} ini?`)) return;
     try {
@@ -1499,10 +1516,49 @@ const PIRUApp = () => {
                         <div className="text-center"><p className="text-[8px] text-slate-400 uppercase font-black italic">Ketua/Pimp</p><p className="font-black text-[10px] italic text-indigo-600">{r.nilaiKetua} / {r.nilaiPimpinan}</p></div>
                       </div>
                       {activeTab === 'penilaian' && (
-                        <div className="flex gap-2 mt-4 italic">
-                          {['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="flex-1 py-3 bg-amber-400 text-white rounded-xl text-[9px] font-black uppercase shadow-sm italic">Nilai Ketua</button>}
-                          {['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase shadow-sm italic">Nilai Pimp</button>}
-                        </div>
+  <div className="flex gap-2 justify-center italic">
+    {/* FITUR EDIT: Agar Pimpinan/Admin bisa memperbaiki typo/volume anggota */}
+    {['pimpinan', 'admin'].includes(user.role) && (
+      <button 
+        onClick={() => { 
+          setIsEditing(true); 
+          setCurrentReportId(r.id); 
+          setNewReport({
+            title: r.title, target: r.target, realisasi: r.realisasi, 
+            satuan: r.satuan, keterangan: r.keterangan || '', 
+            targetUser: r.userName, targetReviewers: r.targetReviewers || []
+          }); 
+          setShowReportModal(true); 
+        }} 
+        className="p-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm"
+        title="Edit Data Anggota"
+      >
+        <Edit3 size={14}/>
+      </button>
+    )}
+
+    {/* TOMBOL NILAI KETUA: Muncul jika Ketua dipilih sebagai penilai */}
+    {user.role === 'ketua' && r.submissionStatus === 'sent_to_review' && (
+      <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">
+        Nilai Ketua
+      </button>
+    )}
+    
+    {/* TOMBOL TERUSKAN: Admin memverifikasi untuk dikirim ke pimpinan */}
+    {user.role === 'admin' && r.submissionStatus === 'sent_to_review' && r.status === 'dinilai_ketua' && (
+      <button onClick={() => handleAdminForward(r.userName)} className="bg-green-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm flex items-center gap-1">
+        <Send size={10}/> Teruskan
+      </button>
+    )}
+
+    {/* TOMBOL NILAI PIMPINAN: Muncul hanya jika sudah diteruskan oleh Admin */}
+    {user.role === 'pimpinan' && r.submissionStatus === 'sent_to_pimpinan' && (
+      <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">
+        Nilai Pimp
+      </button>
+    )}
+  </div>
+)}
                       )}
                     </div>
                   ))
@@ -1763,5 +1819,6 @@ const PIRUApp = () => {
 };
 
 export default PIRUApp;
+
 
 
