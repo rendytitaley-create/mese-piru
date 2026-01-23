@@ -10,7 +10,7 @@ import {
   ShieldCheck, Loader2, Plus, X, BarChart3, FileText, 
   LogOut, Trash2, Edit3, TrendingUp, Clock, Zap, UserPlus, Users, Download, ClipboardCheck, CheckCircle2,
   LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, ImageIcon, Link, Copy, ExternalLink, Search, FileSpreadsheet, Award, Trophy, Star, Heart, Megaphone, Play,
-  Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckSquare, Send
+  Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckSquare
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -61,10 +61,7 @@ const PIRUApp = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [currentReportId, setCurrentReportId] = useState(null);
-  const [newReport, setNewReport] = useState({ 
-    title: '', target: '', realisasi: '', satuan: '', keterangan: '', 
-    targetUser: '', originalAgendaId: '', targetReviewers: [] 
-  });
+  const [newReport, setNewReport] = useState({ title: '', target: '', realisasi: '', satuan: '', keterangan: '', targetUser: '', originalAgendaId: '' });
   
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -412,62 +409,27 @@ const PIRUApp = () => {
   const handleSubmitReport = async (e) => {
     e.preventDefault();
     try {
-      // Pimpinan atau Admin sekarang punya hak edit data yang sudah ada kapan saja
-      if ((isEditing || user.role === 'pimpinan' || user.role === 'admin') && currentReportId) {
-        await updateDoc(doc(db, "reports", currentReportId), { 
-          ...newReport, 
-          target: Number(newReport.target), 
-          realisasi: Number(newReport.realisasi) 
-        });
+      if (isEditing && currentReportId) {
+        await updateDoc(doc(db, "reports", currentReportId), { ...newReport, target: Number(newReport.target), realisasi: Number(newReport.realisasi) });
       } else {
-        let fUid = user.username; let fUn = user.name; let fUr = user.role;
+        let finalUserId = user.username; let finalUserName = user.name; let finalUserRole = user.role;
         if (activeTab === 'penilaian' && newReport.targetUser) {
-            const target = users.find(u => u.name === newReport.targetUser);
-            if (target) { fUid = target.username; fUn = target.name; fUr = target.role; }
+            const targetStaff = users.find(u => u.name === newReport.targetUser);
+            if (targetStaff) { finalUserId = targetStaff.username; finalUserName = targetStaff.name; finalUserRole = targetStaff.role; }
         }
         await addDoc(collection(db, "reports"), {
           ...newReport, target: Number(newReport.target), realisasi: Number(newReport.realisasi),
-          userId: fUid, userName: fUn, userRole: fUr, month: selectedMonth, year: selectedYear,
-          status: 'pending', 
-          submissionStatus: 'draft', // Ini fitur baru agar laporan tidak langsung muncul di penilai
-          targetReviewers: newReport.targetReviewers || [], // Menyimpan siapa saja Ketua Tim yang dipilih
-          nilaiKetua: 0, nilaiPimpinan: 0, createdAt: serverTimestamp()
+          userId: finalUserId, userName: finalUserName, userRole: finalUserRole,
+          month: selectedMonth, year: selectedYear, status: 'pending', nilaiKetua: 0, nilaiPimpinan: 0, createdAt: serverTimestamp()
         });
         
-        if (newReport.originalAgendaId) { 
-          await updateDoc(doc(db, "agendas", newReport.originalAgendaId), { isImported: true }); 
+        // PERBAIKAN: Update status agenda HANYA saat laporan berhasil disimpan
+        if (newReport.originalAgendaId) {
+          await updateDoc(doc(db, "agendas", newReport.originalAgendaId), { isImported: true });
         }
       }
       setShowReportModal(false); resetReportForm();
-    } catch (err) { alert("Gagal menyimpan."); }
-  };
-  
-  const handleKirimCKP = async () => {
-    const drafts = reports.filter(r => r.userId === user.username && r.month === selectedMonth && r.year === selectedYear && r.submissionStatus === 'draft');
-    if (drafts.length === 0) return;
-    if (!window.confirm(`Kirim ${drafts.length} laporan untuk dinilai? Data akan dikunci.`)) return;
-    try {
-      const batch = writeBatch(db);
-      drafts.forEach(r => batch.update(doc(db, "reports", r.id), { submissionStatus: 'sent_to_review' }));
-      await batch.commit(); alert("Laporan berhasil dikirim ke penilai!");
-    } catch (err) { alert("Gagal mengirim."); }
-  };
-
-  const handleAdminForward = async (staffName) => {
-    // Cari semua laporan staf tersebut di bulan terpilih yang sudah dikirim ke review
-    const toForward = reports.filter(r => r.userName === staffName && r.month === selectedMonth && r.year === selectedYear && r.submissionStatus === 'sent_to_review');
-    
-    if (toForward.length === 0) return;
-    if (!window.confirm(`Teruskan semua laporan ${staffName} yang sudah dinilai Ketua ke Pimpinan?`)) return;
-    
-    try {
-      const batch = writeBatch(db);
-      toForward.forEach(r => {
-        batch.update(doc(db, "reports", r.id), { submissionStatus: 'sent_to_pimpinan' });
-      });
-      await batch.commit();
-      alert(`Berhasil meneruskan laporan ${staffName} ke Pimpinan.`);
-    } catch (err) { alert("Gagal meneruskan laporan."); }
+    } catch (err) { alert("Data berhasil disimpan."); }
   };
 
   const clearGrade = async (reportId, field) => {
@@ -635,37 +597,25 @@ const PIRUApp = () => {
 
   const currentFilteredReports = useMemo(() => {
     let res = reports.filter(r => r.month === selectedMonth && r.year === selectedYear);
-    
-    // FILTER TAB LAPORAN: Hanya milik user yang sedang login
     if (activeTab === 'laporan') {
       res = res.filter(r => r.userId === user.username);
     }
-    
-    // FILTER TAB BUKTI DUKUNG: Tetap menggunakan logika asli Anda
     if (activeTab === 'bukti_dukung') {
        if (user.role === 'pegawai') {
           res = res.filter(r => r.userId === user.username);
        } else {
-          if (filterStaffName === 'Semua') res = res.filter(r => r.userId === user.username);
-          else res = res.filter(r => r.userName === filterStaffName);
+          if (filterStaffName === 'Semua') {
+             res = res.filter(r => r.userId === user.username);
+          } else {
+             res = res.filter(r => r.userName === filterStaffName);
+          }
        }
     }
-
-    // FILTER TAB PENILAIAN: Perbaikan agar tidak bocor ke semua ketua
-    if (activeTab === 'penilaian') {
-      if (user.role === 'ketua') {
-        // HANYA muncul jika Ketua tersebut DIPILIH (targetReviewers) dan status sudah DIKIRIM (sent_to_review)
-        res = res.filter(r => r.submissionStatus === 'sent_to_review' && r.targetReviewers?.includes(user.name));
-      } else if (user.role === 'pimpinan' || user.role === 'admin') {
-        // Pimpinan/Admin melihat data yang sudah dikirim ke pimpinan atau sudah final
-        if (filterStaffName !== 'Semua') res = res.filter(r => r.userName === filterStaffName);
-        res = res.filter(r => r.submissionStatus === 'sent_to_pimpinan' || r.submissionStatus === 'final');
-      } else if (filterStaffName !== 'Semua') {
-        res = res.filter(r => r.userName === filterStaffName);
-      }
+    if (activeTab === 'penilaian' && filterStaffName !== 'Semua') { 
+      res = res.filter(r => r.userName === filterStaffName); 
     }
     return res;
-  }, [reports, user, selectedMonth, selectedYear, activeTab, filterStaffName]);
+  }, [reports, user, selectedMonth, selectedYear, filterStaffName, activeTab]);
 
   const dashboardStats = useMemo(() => {
     let monthsToInclude = [selectedMonth];
@@ -835,25 +785,7 @@ const PIRUApp = () => {
                  {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <option key={y} value={y}>{y}</option>)}
                </select>
                <button onClick={exportToExcel} className="bg-green-600 text-white px-4 py-2.5 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-md italic"><Download size={14}/> Cetak</button>
-               {/* TOMBOL BARU: KIRIM CKP */}
-                {user.role !== 'admin' && activeTab === 'laporan' && reports.some(r => r.userId === user.username && r.month === selectedMonth && r.year === selectedYear && r.submissionStatus === 'draft') && (
-                  <button 
-                    onClick={handleKirimCKP} 
-                    className="bg-amber-500 text-white px-4 py-2.5 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-lg animate-pulse italic"
-                  >
-                    <Send size={14}/> Kirim CKP
-                  </button>
-                )}
-
-                {/* TOMBOL ENTRI (MODIFIKASI SEDIKIT AGAR TIDAK MUNCUL DI ADMIN) */}
-                {user.role !== 'admin' && activeTab !== 'agenda' && (
-                  <button 
-                    onClick={() => { resetReportForm(); setShowReportModal(true); }} 
-                    className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-black uppercase text-[10px] shadow-lg flex items-center gap-2 italic"
-                  >
-                    <Plus size={14}/> Entri
-                  </button>
-                )}
+               {user.role !== 'admin' && activeTab !== 'agenda' && <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-black uppercase text-[10px] shadow-lg flex items-center gap-2 italic"><Plus size={14}/> Entri</button>}
              </div>
           </div>
         </header>
@@ -1467,50 +1399,8 @@ const PIRUApp = () => {
                                 }} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button>
                               </>
                             )}
-                            {activeTab === 'penilaian' && (
-  <div className="flex gap-2 justify-center italic">
-    {/* FITUR EDIT: Agar Pimpinan/Admin bisa memperbaiki typo/volume anggota */}
-    {['pimpinan', 'admin'].includes(user.role) && (
-      <button 
-        onClick={() => { 
-          setIsEditing(true); 
-          setCurrentReportId(r.id); 
-          setNewReport({
-            title: r.title, target: r.target, realisasi: r.realisasi, 
-            satuan: r.satuan, keterangan: r.keterangan || '', 
-            targetUser: r.userName, targetReviewers: r.targetReviewers || []
-          }); 
-          setShowReportModal(true); 
-        }} 
-        className="p-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm"
-        title="Edit Data Anggota"
-      >
-        <Edit3 size={14}/>
-      </button>
-    )}
-
-    {/* TOMBOL NILAI KETUA: Muncul jika Ketua dipilih sebagai penilai */}
-    {user.role === 'ketua' && r.submissionStatus === 'sent_to_review' && (
-      <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">
-        Nilai Ketua
-      </button>
-    )}
-    
-    {/* TOMBOL TERUSKAN: Admin memverifikasi untuk dikirim ke pimpinan */}
-    {user.role === 'admin' && r.submissionStatus === 'sent_to_review' && r.status === 'dinilai_ketua' && (
-      <button onClick={() => handleAdminForward(r.userName)} className="bg-green-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm flex items-center gap-1">
-        <Send size={10}/> Teruskan
-      </button>
-    )}
-
-    {/* TOMBOL NILAI PIMPINAN: Muncul hanya jika sudah diteruskan oleh Admin */}
-    {user.role === 'pimpinan' && r.submissionStatus === 'sent_to_pimpinan' && (
-      <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">
-        Nilai Pimp
-      </button>
-    )}
-  </div>
-)}
+                            {activeTab === 'penilaian' && (<>{['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Ketua</button>}{['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Pimp</button>}</>)}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1558,49 +1448,10 @@ const PIRUApp = () => {
                         <div className="text-center"><p className="text-[8px] text-slate-400 uppercase font-black italic">Ketua/Pimp</p><p className="font-black text-[10px] italic text-indigo-600">{r.nilaiKetua} / {r.nilaiPimpinan}</p></div>
                       </div>
                       {activeTab === 'penilaian' && (
-  <div className="flex gap-2 justify-center italic">
-    {/* FITUR EDIT: Agar Pimpinan/Admin bisa memperbaiki typo/volume anggota */}
-    {['pimpinan', 'admin'].includes(user.role) && (
-      <button 
-        onClick={() => { 
-          setIsEditing(true); 
-          setCurrentReportId(r.id); 
-          setNewReport({
-            title: r.title, target: r.target, realisasi: r.realisasi, 
-            satuan: r.satuan, keterangan: r.keterangan || '', 
-            targetUser: r.userName, targetReviewers: r.targetReviewers || []
-          }); 
-          setShowReportModal(true); 
-        }} 
-        className="p-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm"
-        title="Edit Data Anggota"
-      >
-        <Edit3 size={14}/>
-      </button>
-    )}
-
-    {/* TOMBOL NILAI KETUA: Muncul jika Ketua dipilih sebagai penilai */}
-    {user.role === 'ketua' && r.submissionStatus === 'sent_to_review' && (
-      <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">
-        Nilai Ketua
-      </button>
-    )}
-    
-    {/* TOMBOL TERUSKAN: Admin memverifikasi untuk dikirim ke pimpinan */}
-    {user.role === 'admin' && r.submissionStatus === 'sent_to_review' && r.status === 'dinilai_ketua' && (
-      <button onClick={() => handleAdminForward(r.userName)} className="bg-green-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm flex items-center gap-1">
-        <Send size={10}/> Teruskan
-      </button>
-    )}
-
-    {/* TOMBOL NILAI PIMPINAN: Muncul hanya jika sudah diteruskan oleh Admin */}
-    {user.role === 'pimpinan' && r.submissionStatus === 'sent_to_pimpinan' && (
-      <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">
-        Nilai Pimp
-      </button>
-    )}
-  </div>
-)}
+                        <div className="flex gap-2 mt-4 italic">
+                          {['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="flex-1 py-3 bg-amber-400 text-white rounded-xl text-[9px] font-black uppercase shadow-sm italic">Nilai Ketua</button>}
+                          {['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase shadow-sm italic">Nilai Pimp</button>}
+                        </div>
                       )}
                     </div>
                   ))
@@ -1831,26 +1682,7 @@ const PIRUApp = () => {
                <div className="grid grid-cols-2 gap-4 italic text-center"> <input required type="number" placeholder="Target" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" value={newReport.target} onChange={e => setNewReport({...newReport, target: e.target.value})} /> <input required type="number" placeholder="Realisasi" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" value={newReport.realisasi} onChange={e => setNewReport({...newReport, realisasi: e.target.value})} /> </div>
                <input list="satuan-list" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" placeholder="Satuan" value={newReport.satuan} onChange={e => setNewReport({...newReport, satuan: e.target.value})} />
                <datalist id="satuan-list"><option value="Dokumen"/><option value="Kegiatan"/><option value="Laporan"/><option value="Paket"/></datalist>
-               {/* --- SEKSI PILIH PENILAI --- */}
-                <div className="p-4 border rounded-2xl bg-slate-50 mb-4">
-                  <p className="text-[10px] font-black uppercase text-indigo-600 mb-4 text-center italic">Pilih Ketua Tim Penilai:</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {users.filter(u => u.role === 'ketua').map(kt => (
-                      <label key={kt.firestoreId} className="flex items-center gap-3 cursor-pointer group">
-                        <input type="checkbox" className="w-4 h-4 accent-indigo-600"
-                          checked={newReport.targetReviewers?.includes(kt.name)} 
-                          onChange={(e) => {
-                            const cur = newReport.targetReviewers || [];
-                            if (e.target.checked) setNewReport({...newReport, targetReviewers: [...cur, kt.name]});
-                            else setNewReport({...newReport, targetReviewers: cur.filter(n => n !== kt.name)});
-                          }} 
-                        />
-                        <span className="text-[10px] font-black uppercase text-slate-600 group-hover:text-indigo-600 italic">{kt.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              <textarea className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold h-24 resize-none text-slate-600 border border-slate-100 italic text-center" placeholder="Keterangan..." value={newReport.keterangan} onChange={e => setNewReport({...newReport, keterangan: e.target.value})} />
+               <textarea className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold h-24 resize-none text-slate-600 border border-slate-100 italic text-center" placeholder="Keterangan..." value={newReport.keterangan} onChange={e => setNewReport({...newReport, keterangan: e.target.value})} />
             </div>
             <button type="submit" className="w-full bg-indigo-600 text-white font-black py-6 rounded-2xl shadow-xl uppercase tracking-widest text-xs mt-8 italic transition-all active:scale-95 text-center">Simpan Data</button>
           </form>
@@ -1861,7 +1693,3 @@ const PIRUApp = () => {
 };
 
 export default PIRUApp;
-
-
-
-
