@@ -61,7 +61,10 @@ const PIRUApp = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [currentReportId, setCurrentReportId] = useState(null);
-  const [newReport, setNewReport] = useState({ title: '', target: '', realisasi: '', satuan: '', keterangan: '', targetUser: '', originalAgendaId: '' });
+  const [newReport, setNewReport] = useState({ 
+    title: '', target: '', realisasi: '', satuan: '', keterangan: '', 
+    targetUser: '', originalAgendaId: '', targetReviewers: [] // Tambahkan targetReviewers
+  });
   
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -410,7 +413,10 @@ const PIRUApp = () => {
     e.preventDefault();
     try {
       if (isEditing && currentReportId) {
-        await updateDoc(doc(db, "reports", currentReportId), { ...newReport, target: Number(newReport.target), realisasi: Number(newReport.realisasi) });
+        // Pimpinan/User bisa edit
+        await updateDoc(doc(db, "reports", currentReportId), { 
+          ...newReport, target: Number(newReport.target), realisasi: Number(newReport.realisasi) 
+        });
       } else {
         let finalUserId = user.username; let finalUserName = user.name; let finalUserRole = user.role;
         if (activeTab === 'penilaian' && newReport.targetUser) {
@@ -420,9 +426,29 @@ const PIRUApp = () => {
         await addDoc(collection(db, "reports"), {
           ...newReport, target: Number(newReport.target), realisasi: Number(newReport.realisasi),
           userId: finalUserId, userName: finalUserName, userRole: finalUserRole,
-          month: selectedMonth, year: selectedYear, status: 'pending', nilaiKetua: 0, nilaiPimpinan: 0, createdAt: serverTimestamp()
+          month: selectedMonth, year: selectedYear, status: 'pending', 
+          submissionStatus: 'draft', // Status Awal Draft
+          targetReviewers: newReport.targetReviewers || [],
+          nilaiKetua: 0, nilaiPimpinan: 0, createdAt: serverTimestamp()
         });
-        
+        if (newReport.originalAgendaId) {
+          await updateDoc(doc(db, "agendas", newReport.originalAgendaId), { isImported: true });
+        }
+      }
+      setShowReportModal(false); resetReportForm();
+    } catch (err) { alert("Gagal menyimpan."); }
+  };
+      const handleKirimCKP = async () => {
+    const draftReports = currentFilteredReports.filter(r => r.submissionStatus === 'draft');
+    if (draftReports.length === 0) return;
+    if (!window.confirm(`Kirim ${draftReports.length} laporan untuk dinilai? Data akan dikunci.`)) return;
+    try {
+      const batch = writeBatch(db);
+      draftReports.forEach(r => { batch.update(doc(db, "reports", r.id), { submissionStatus: 'sent_to_review' }); });
+      await batch.commit();
+      alert("Laporan berhasil dikirim!");
+    } catch (err) { alert("Gagal mengirim."); }
+  };  
         // PERBAIKAN: Update status agenda HANYA saat laporan berhasil disimpan
         if (newReport.originalAgendaId) {
           await updateDoc(doc(db, "agendas", newReport.originalAgendaId), { isImported: true });
@@ -1682,7 +1708,29 @@ const PIRUApp = () => {
                <div className="grid grid-cols-2 gap-4 italic text-center"> <input required type="number" placeholder="Target" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" value={newReport.target} onChange={e => setNewReport({...newReport, target: e.target.value})} /> <input required type="number" placeholder="Realisasi" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" value={newReport.realisasi} onChange={e => setNewReport({...newReport, realisasi: e.target.value})} /> </div>
                <input list="satuan-list" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" placeholder="Satuan" value={newReport.satuan} onChange={e => setNewReport({...newReport, satuan: e.target.value})} />
                <datalist id="satuan-list"><option value="Dokumen"/><option value="Kegiatan"/><option value="Laporan"/><option value="Paket"/></datalist>
-               <textarea className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold h-24 resize-none text-slate-600 border border-slate-100 italic text-center" placeholder="Keterangan..." value={newReport.keterangan} onChange={e => setNewReport({...newReport, keterangan: e.target.value})} />
+               {/* --- AWAL KODE BARU: PILIHAN KETUA TIM --- */}
+<div className="pt-4 border-t mt-4 text-left italic">
+  <p className="text-[10px] font-black text-indigo-600 uppercase mb-4 text-center">Pilih Ketua Tim Penilai:</p>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+    {users.filter(u => u.role === 'ketua').map(kt => (
+      <label key={kt.firestoreId} className={`flex items-center gap-3 p-4 rounded-2xl border cursor-pointer transition-all ${newReport.targetReviewers?.includes(kt.name) ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-50 border-slate-100'}`}>
+        <input 
+          type="checkbox" 
+          className="w-4 h-4 accent-indigo-600" 
+          checked={newReport.targetReviewers?.includes(kt.name)} 
+          onChange={(e) => {
+            const current = newReport.targetReviewers || [];
+            if (e.target.checked) setNewReport({...newReport, targetReviewers: [...current, kt.name]});
+            else setNewReport({...newReport, targetReviewers: current.filter(n => n !== kt.name)});
+          }} 
+        />
+        <span className="text-[10px] font-black uppercase text-slate-600 truncate">{kt.name}</span>
+      </label>
+    ))}
+  </div>
+</div>
+{/* --- AKHIR KODE BARU --- */}
+              <textarea className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold h-24 resize-none text-slate-600 border border-slate-100 italic text-center" placeholder="Keterangan..." value={newReport.keterangan} onChange={e => setNewReport({...newReport, keterangan: e.target.value})} />
             </div>
             <button type="submit" className="w-full bg-indigo-600 text-white font-black py-6 rounded-2xl shadow-xl uppercase tracking-widest text-xs mt-8 italic transition-all active:scale-95 text-center">Simpan Data</button>
           </form>
