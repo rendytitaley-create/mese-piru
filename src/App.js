@@ -1467,8 +1467,50 @@ const PIRUApp = () => {
                                 }} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button>
                               </>
                             )}
-                            {activeTab === 'penilaian' && (<>{['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Ketua</button>}{['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Pimp</button>}</>)}
-                          </div>
+                            {activeTab === 'penilaian' && (
+  <div className="flex gap-2 justify-center italic">
+    {/* FITUR EDIT: Agar Pimpinan/Admin bisa memperbaiki typo/volume anggota */}
+    {['pimpinan', 'admin'].includes(user.role) && (
+      <button 
+        onClick={() => { 
+          setIsEditing(true); 
+          setCurrentReportId(r.id); 
+          setNewReport({
+            title: r.title, target: r.target, realisasi: r.realisasi, 
+            satuan: r.satuan, keterangan: r.keterangan || '', 
+            targetUser: r.userName, targetReviewers: r.targetReviewers || []
+          }); 
+          setShowReportModal(true); 
+        }} 
+        className="p-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm"
+        title="Edit Data Anggota"
+      >
+        <Edit3 size={14}/>
+      </button>
+    )}
+
+    {/* TOMBOL NILAI KETUA: Muncul jika Ketua dipilih sebagai penilai */}
+    {user.role === 'ketua' && r.submissionStatus === 'sent_to_review' && (
+      <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">
+        Nilai Ketua
+      </button>
+    )}
+    
+    {/* TOMBOL TERUSKAN: Admin memverifikasi untuk dikirim ke pimpinan */}
+    {user.role === 'admin' && r.submissionStatus === 'sent_to_review' && r.status === 'dinilai_ketua' && (
+      <button onClick={() => handleAdminForward(r.userName)} className="bg-green-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm flex items-center gap-1">
+        <Send size={10}/> Teruskan
+      </button>
+    )}
+
+    {/* TOMBOL NILAI PIMPINAN: Muncul hanya jika sudah diteruskan oleh Admin */}
+    {user.role === 'pimpinan' && r.submissionStatus === 'sent_to_pimpinan' && (
+      <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">
+        Nilai Pimp
+      </button>
+    )}
+  </div>
+)}
                         </td>
                       </tr>
                     ))}
@@ -1819,6 +1861,7 @@ const PIRUApp = () => {
 };
 
 export default PIRUApp;
+
 
 
 
