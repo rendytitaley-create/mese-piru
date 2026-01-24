@@ -440,17 +440,35 @@ const PIRUApp = () => {
     } catch (err) { alert("Gagal membersihkan nilai."); }
   };
 
-  // === BARU: FUNGSI KEMBALIKAN PEKERJAAN (ADMIN/PIMPINAN) ===
-  const handleReturnReport = async (reportId) => {
-    if (!window.confirm("Kembalikan pekerjaan ini ke pegawai untuk diperbaiki? Status akan menjadi pending dan nilai dihapus.")) return;
+  // === BARU: FUNGSI KEMBALIKAN SELURUH CKP (BATCH UPDATE) ===
+  const handleReturnAllReports = async () => {
+    if (filterStaffName === 'Semua') return;
+    if (!window.confirm(`Kembalikan SELURUH pekerjaan ${filterStaffName} bulan ini ke pegawai untuk diperbaiki? Status akan menjadi pending dan semua nilai akan direset.`)) return;
+    
     try {
-      await updateDoc(doc(db, "reports", reportId), { 
-        status: 'pending', 
-        nilaiKetua: 0, 
-        nilaiPimpinan: 0 
+      const batch = writeBatch(db);
+      let count = 0;
+      currentFilteredReports.forEach((r) => {
+        const ref = doc(db, "reports", r.id);
+        batch.update(ref, { 
+          status: 'pending', 
+          nilaiKetua: 0, 
+          nilaiPimpinan: 0 
+        });
+        count++;
       });
-      alert("Pekerjaan telah dikembalikan ke pegawai.");
-    } catch (err) { alert("Gagal mengembalikan pekerjaan."); }
+      
+      if (count === 0) {
+        alert("Tidak ada data untuk dikembalikan.");
+        return;
+      }
+      
+      await batch.commit();
+      alert(`Berhasil mengembalikan ${count} pekerjaan ${filterStaffName}.`);
+    } catch (err) {
+      console.error(err);
+      alert("Gagal mengembalikan pekerjaan.");
+    }
   };
 
   const submitGrade = async (reportId, roleName) => {
@@ -1450,6 +1468,26 @@ const PIRUApp = () => {
 
           {(activeTab === 'laporan' || activeTab === 'penilaian') && (
             <div className="italic">
+              {/* MODIFIKASI: Penempatan Tombol Kontrol Penilaian di Mode Desktop */}
+              {activeTab === 'penilaian' && filterStaffName !== 'Semua' && (
+                <div className="hidden md:flex items-center gap-4 mb-6 bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 animate-in fade-in italic">
+                   <div className="flex-1 italic">
+                      <p className="text-[10px] font-black text-slate-400 uppercase italic mb-1">Manajemen Penilaian</p>
+                      <h4 className="font-black text-slate-800 uppercase text-xs italic">Kontrol CKP: {filterStaffName}</h4>
+                   </div>
+                   <div className="flex items-center gap-3">
+                      <button onClick={handleNilaiSemua} className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-md transition-all active:scale-95 italic">
+                        <CheckCircle2 size={16}/> Nilai Semua
+                      </button>
+                      {['admin', 'pimpinan'].includes(user.role) && (
+                        <button onClick={handleReturnAllReports} className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 px-6 py-3 rounded-2xl font-black uppercase text-[10px] transition-all active:scale-95 italic border border-slate-200">
+                          <RotateCcw size={16}/> Kembalikan Seluruh CKP
+                        </button>
+                      )}
+                   </div>
+                </div>
+              )}
+
               <div className="hidden md:block bg-white rounded-[2.5rem] shadow-sm border p-0 overflow-hidden italic mb-10">
                 <table className="w-full text-left italic text-xs border-collapse">
                   <thead className="bg-slate-100 border-b text-[9px] font-black text-slate-500 uppercase tracking-widest italic sticky top-0 z-20">
@@ -1467,7 +1505,7 @@ const PIRUApp = () => {
                         <td className="p-4 text-center font-black text-indigo-600 text-lg italic"><div className="relative group inline-block">{r.nilaiPimpinan || '-'}{user.role === 'admin' && activeTab === 'penilaian' && r.nilaiPimpinan > 0 && (<button onClick={() => clearGrade(r.id, 'nilaiPimpinan')} className="absolute -top-1 -right-3 text-red-400 opacity-0 group-hover:opacity-100 italic"><Trash2 size={10}/></button>)}</div></td>
                         <td className="p-4 text-center italic">
                           <div className="flex justify-center gap-1 italic">
-                            {/* MODIFIKASI: Akses Edit untuk Pimpinan */}
+                            {/* MODIFIKASI: Pimpinan bisa edit isian pegawai */}
                             {(activeTab === 'laporan' && r.status === 'pending') || (activeTab === 'penilaian' && user.role === 'pimpinan') ? (
                               <button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button>
                             ) : null}
@@ -1487,11 +1525,6 @@ const PIRUApp = () => {
                               <div className="flex gap-1 items-center italic">
                                 {['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Ketua</button>}
                                 {['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Pimp</button>}
-                                
-                                {/* BARU: Tombol Kembalikan (Reject) */}
-                                {['admin', 'pimpinan'].includes(user.role) && (
-                                   <button onClick={() => handleReturnReport(r.id)} className="p-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 italic" title="Kembalikan Pekerjaan"><RotateCcw size={14}/></button>
-                                )}
                               </div>
                             )}
                           </div>
@@ -1501,16 +1534,27 @@ const PIRUApp = () => {
                   </tbody>
                 </table>
               </div>
+
+              {/* VIEW MOBILE */}
               <div className="md:hidden space-y-4 pb-12">
                 {activeTab === 'penilaian' && (
                   <div className="flex flex-col gap-3 mb-4 not-italic">
                     <select className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-black text-[10px] text-slate-600 shadow-sm italic outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
-                      <option value="Semua">Semua Pegawai</option>
+                      <option value="Semua">Pilih Pegawai</option>
                       {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                     </select>
-                    {filterStaffName !== 'Semua' && ( <button onClick={handleNilaiSemua} className="w-full bg-amber-500 text-white p-4 rounded-2xl font-black uppercase text-[10px] shadow-md italic">Nilai Semua {filterStaffName}</button> )}
+                    
+                    {filterStaffName !== 'Semua' && (
+                      <div className="grid grid-cols-2 gap-3 italic">
+                        <button onClick={handleNilaiSemua} className="bg-amber-500 text-white p-4 rounded-2xl font-black uppercase text-[9px] shadow-md italic">Nilai Semua</button>
+                        {['admin', 'pimpinan'].includes(user.role) && (
+                          <button onClick={handleReturnAllReports} className="bg-slate-100 text-slate-600 p-4 rounded-2xl font-black uppercase text-[9px] shadow-sm italic border">Kembalikan Semua</button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
+
                 {currentFilteredReports.length === 0 ? (
                   <div className="bg-white p-10 rounded-[2.5rem] border border-dashed border-slate-200 text-center italic">
                     <AlertCircle className="mx-auto text-slate-300 mb-2" size={32} />
@@ -1543,14 +1587,9 @@ const PIRUApp = () => {
                         <div className="text-center"><p className="text-[8px] text-slate-400 uppercase font-black italic">Ketua/Pimp</p><p className="font-black text-[10px] italic text-indigo-600">{r.nilaiKetua} / {r.nilaiPimpinan}</p></div>
                       </div>
                       {activeTab === 'penilaian' && (r.status === 'dikirim' || r.status === 'dinilai_ketua' || r.status === 'selesai' || user.role === 'admin') && (
-                        <div className="flex flex-col gap-2 mt-4 italic">
-                          <div className="flex gap-2 italic">
-                            {['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="flex-1 py-3 bg-amber-400 text-white rounded-xl text-[9px] font-black uppercase shadow-sm italic">Nilai Ketua</button>}
-                            {['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase shadow-sm italic">Nilai Pimp</button>}
-                          </div>
-                          {['admin', 'pimpinan'].includes(user.role) && (
-                            <button onClick={() => handleReturnReport(r.id)} className="w-full py-3 bg-slate-100 text-slate-600 rounded-xl text-[9px] font-black uppercase italic shadow-sm">Kembalikan Pekerjaan</button>
-                          )}
+                        <div className="flex gap-2 mt-4 italic">
+                          {['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="flex-1 py-3 bg-amber-400 text-white rounded-xl text-[9px] font-black uppercase shadow-sm italic">Nilai Ketua</button>}
+                          {['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase shadow-sm italic">Nilai Pimp</button>}
                         </div>
                       )}
                     </div>
@@ -1600,7 +1639,7 @@ const PIRUApp = () => {
       {/* MODAL BARU: INPUT AGENDA */}
       {showAgendaModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[130] font-sans italic text-center">
-          <form onSubmit={handleAddAgenda} className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl relative italic">
+          <form onSubmit={handleAddAgenda} className="bg-white w-full max-md:max-w-md rounded-[3rem] p-10 shadow-2xl relative italic">
             <button type="button" onClick={() => setShowAgendaModal(false)} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400"><X size={20}/></button>
             <CalendarIcon size={40} className="text-indigo-600 mb-6 mx-auto" />
             <h3 className="text-xl font-black uppercase italic mb-8">Catat Agenda: {newAgenda.date}</h3>
