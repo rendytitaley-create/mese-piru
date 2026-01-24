@@ -10,7 +10,7 @@ import {
   ShieldCheck, Loader2, Plus, X, BarChart3, FileText, 
   LogOut, Trash2, Edit3, TrendingUp, Clock, Zap, UserPlus, Users, Download, ClipboardCheck, CheckCircle2,
   LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, ImageIcon, Link, Copy, ExternalLink, Search, FileSpreadsheet, Award, Trophy, Star, Heart, Megaphone, Play,
-  Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckSquare
+  Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckSquare, Send
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -459,6 +459,26 @@ const PIRUApp = () => {
     } catch (err) { alert("Gagal memperbarui link."); }
   };
 
+  // === BARU: FUNGSI SIGNAL SELESAI ===
+  const handleSignalSelesai = async () => {
+    if (!window.confirm("Kirim signal selesai entri ke Pimpinan? Data Anda akan ditandai siap dinilai.")) return;
+    try {
+      const batch = writeBatch(db);
+      const myPendingReports = reports.filter(r => r.userId === user.username && r.month === selectedMonth && r.year === selectedYear && r.status === 'pending');
+      
+      if (myPendingReports.length === 0) {
+        alert("Tidak ada entri pekerjaan baru yang perlu dikirim.");
+        return;
+      }
+
+      myPendingReports.forEach(r => {
+        batch.update(doc(db, "reports", r.id), { status: 'dikirim' });
+      });
+      await batch.commit();
+      alert("Signal berhasil dikirim. Menunggu penilaian pimpinan.");
+    } catch (err) { alert("Gagal mengirim signal."); }
+  };
+
   const exportToExcel = async () => {
     if (filterStaffName === 'Semua' && user.role !== 'pegawai') { alert("Pilih satu nama pegawai terlebih dahulu untuk mencetak CKP."); return; }
     const targetStaff = user.role === 'pegawai' ? user : users.find(u => u.name === filterStaffName);
@@ -630,8 +650,12 @@ const PIRUApp = () => {
 
     const staffSummary = users.filter(u => u.role !== 'admin' && u.role !== 'pimpinan').map(s => {
       const sReports = periodReports.filter(r => r.userId === s.username);
-      const total = sReports.length; const selesai = sReports.filter(r => r.status === 'selesai').length; const progress = sReports.filter(r => r.status === 'dinilai_ketua').length;
-      let statusText = total === 0 ? "Belum Lapor" : (selesai === total ? "Selesai" : (progress > 0 || selesai > 0 ? "Menunggu Penilaian" : "Belum Dinilai"));
+      const total = sReports.length; 
+      const selesai = sReports.filter(r => r.status === 'selesai').length; 
+      const progress = sReports.filter(r => r.status === 'dinilai_ketua').length;
+      const dikirim = sReports.filter(r => r.status === 'dikirim').length;
+      
+      let statusText = total === 0 ? "Belum Lapor" : (selesai === total ? "Selesai" : (dikirim > 0 || progress > 0 || selesai > 0 ? "Menunggu Penilaian" : "Belum Dikirim"));
       const avgCap = total > 0 ? (sReports.reduce((acc, curr) => acc + Math.min((curr.realisasi / curr.target) * 100, 100), 0) / total) : 0;
       const avgPimp = total > 0 ? (sReports.reduce((acc, curr) => acc + (Number(curr.nilaiPimpinan) || 0), 0) / total) : 0;
       const score = (avgCap + avgPimp) / 2;
@@ -640,6 +664,10 @@ const PIRUApp = () => {
       const userKJKs = currentKJK.filter(k => getFirstWord(k.nama) === sFirstWord);
       const totalMins = userKJKs.reduce((acc, curr) => acc + timeToMinutes(curr.kjkValue), 0);
 
+      // Hitung persentase penilaian untuk progress bar
+      const penilaianSelesaiCount = sReports.filter(r => r.nilaiPimpinan > 0).length;
+      const progressPercent = total > 0 ? (penilaianSelesaiCount / total) * 100 : 0;
+
       return { 
         name: s.name, 
         total, 
@@ -647,7 +675,8 @@ const PIRUApp = () => {
         status: statusText, 
         photoURL: s.photoURL,
         kjkValue: minutesToTimeStr(totalMins),
-        kjkMins: totalMins
+        kjkMins: totalMins,
+        progressPercent: progressPercent.toFixed(0)
       };
     });
 
@@ -659,7 +688,9 @@ const PIRUApp = () => {
     });
 
     const myReports = periodReports.filter(r => r.userId === user?.username);
-    const myTotal = myReports.length; const mySelesai = myReports.filter(r => r.status === 'selesai').length;
+    const myTotal = myReports.length; 
+    const mySelesai = myReports.filter(r => r.status === 'selesai').length;
+    const myDikirim = myReports.filter(r => r.status === 'dikirim' || r.status === 'dinilai_ketua' || r.status === 'selesai').length;
     
     const myFirstWord = getFirstWord(user?.name);
     const myKJKs = currentKJK.filter(k => getFirstWord(k.nama) === myFirstWord);
@@ -679,8 +710,9 @@ const PIRUApp = () => {
       myYearly: (yReports.length > 0 ? ( (yAvgCap + yAvgPimp) / 2 ) : 0).toFixed(2), 
       myYearlyKJK: minutesToTimeStr(yTotalKJKMins),
       staffSummary: sortedSummary, 
-      myStatus: myTotal === 0 ? "Belum Ada Laporan" : (mySelesai === myTotal ? "Selesai" : "Menunggu Penilaian"),
-      myKJK
+      myStatus: myTotal === 0 ? "Belum Ada Laporan" : (mySelesai === myTotal ? "Selesai" : (myDikirim === myTotal ? "Menunggu Penilaian" : "Belum Dikirim")),
+      myKJK,
+      isAnyPending: myReports.some(r => r.status === 'pending')
     };
   }, [reports, users, user, selectedMonth, selectedYear, kjkData, periodType]);
 
@@ -947,7 +979,22 @@ const PIRUApp = () => {
                         ) : ( <div className="w-full h-full flex items-center justify-center bg-indigo-500/10 text-indigo-400"><User size={40} /></div> )}
                       </div>
                       <p className="font-black text-xl text-white uppercase italic mb-1 tracking-tighter text-center">{s.name}</p>
-                      <span className={`text-[9px] font-black uppercase px-4 py-1.5 rounded-full mb-6 ${s.status === 'Selesai' ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-400'}`}>{s.status}</span>
+                      <span className={`text-[9px] font-black uppercase px-4 py-1.5 rounded-full mb-4 ${s.status === 'Selesai' ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-400'}`}>{s.status}</span>
+                      
+                      {/* BARU: PROGRESS BAR PENILAIAN */}
+                      <div className="w-full px-4 mb-6">
+                         <div className="flex justify-between items-center mb-2">
+                           <p className="text-[8px] font-black text-slate-500 uppercase italic">Progres Penilaian</p>
+                           <p className="text-[8px] font-black text-indigo-400 italic">{s.progressPercent}%</p>
+                         </div>
+                         <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                           <div 
+                            className="h-full bg-indigo-500 transition-all duration-1000" 
+                            style={{ width: `${s.progressPercent}%` }}
+                           ></div>
+                         </div>
+                      </div>
+
                       <div className="w-full grid grid-cols-2 gap-4 border-t border-slate-800 pt-6 mt-auto">
                         <div className="text-center">
                             <p className="text-[9px] font-black text-slate-500 uppercase italic mb-1">CKP ({periodType})</p>
@@ -972,6 +1019,16 @@ const PIRUApp = () => {
                       <p className="text-6xl md:text-7xl font-black text-amber-500 tracking-tighter italic mb-8 text-center">{dashboardStats.myNilaiAkhir}</p>
                       <div className="w-full border-t border-slate-800 pt-8 mt-auto flex flex-col items-center italic text-center text-slate-500">
                          <p className="text-[9px] font-black uppercase italic tracking-widest">{dashboardStats.myStatus}</p>
+                         
+                         {/* BARU: TOMBOL SIGNAL SELESAI PEGAWAI */}
+                         {dashboardStats.isAnyPending && (
+                           <button 
+                            onClick={handleSignalSelesai}
+                            className="mt-4 flex items-center gap-3 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg transition-all active:scale-95 italic"
+                           >
+                            <Send size={14}/> Kirim Sinyal Selesai Ke Pimpinan
+                           </button>
+                         )}
                       </div>
                     </div>
                     <div className="bg-slate-900 p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl border border-slate-800 flex flex-col items-center text-center">
@@ -1399,7 +1456,12 @@ const PIRUApp = () => {
                                 }} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button>
                               </>
                             )}
-                            {activeTab === 'penilaian' && (<>{['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Ketua</button>}{['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Pimp</button>}</>)}
+                            {activeTab === 'penilaian' && (<>{['ketua', 'admin', 'pimpinan'].includes(user.role) && (r.status === 'dikirim' || r.status === 'dinilai_ketua' || r.status === 'selesai' || user.role === 'admin') && (
+                              <>
+                                {['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Ketua</button>}
+                                {['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Pimp</button>}
+                              </>
+                            )}</>)}
                           </div>
                         </td>
                       </tr>
@@ -1447,7 +1509,7 @@ const PIRUApp = () => {
                         <div className="text-center"><p className="text-[8px] text-slate-400 uppercase font-black italic">Target/Real</p><p className="font-black text-[10px] italic">{r.realisasi} / {r.target}</p></div>
                         <div className="text-center"><p className="text-[8px] text-slate-400 uppercase font-black italic">Ketua/Pimp</p><p className="font-black text-[10px] italic text-indigo-600">{r.nilaiKetua} / {r.nilaiPimpinan}</p></div>
                       </div>
-                      {activeTab === 'penilaian' && (
+                      {activeTab === 'penilaian' && (r.status === 'dikirim' || r.status === 'dinilai_ketua' || r.status === 'selesai' || user.role === 'admin') && (
                         <div className="flex gap-2 mt-4 italic">
                           {['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="flex-1 py-3 bg-amber-400 text-white rounded-xl text-[9px] font-black uppercase shadow-sm italic">Nilai Ketua</button>}
                           {['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase shadow-sm italic">Nilai Pimp</button>}
