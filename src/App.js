@@ -391,13 +391,18 @@ const PIRUApp = () => {
 
   const handleNilaiSemua = async () => {
     if (filterStaffName === 'Semua') return;
-    const val = prompt(`Masukkan nilai untuk SEMUA pekerjaan ${filterStaffName} bulan ini:`);
+    const canBeGraded = currentFilteredReports.filter(r => r.status !== 'pending');
+    if (canBeGraded.length === 0) {
+      alert("Pegawai belum mengirimkan entri pekerjaan. Tidak ada data yang bisa dinilai.");
+      return;
+    }
+    const val = prompt(`Masukkan nilai untuk ${canBeGraded.length} pekerjaan ${filterStaffName}:`);
     if (!val || isNaN(val)) return;
     const grade = parseFloat(val);
-    if (!window.confirm(`Berikan nilai ${grade} ke seluruh pekerjaan ${filterStaffName}?`)) return;
+    if (!window.confirm(`Berikan nilai ${grade} ke ${canBeGraded.length} pekerjaan?`)) return;
     try {
       const batch = writeBatch(db);
-      currentFilteredReports.forEach((r) => {
+      canBeGraded.forEach((r) => {
         const ref = doc(db, "reports", r.id);
         if (user.role === 'ketua') batch.update(ref, { nilaiKetua: grade, status: 'dinilai_ketua' });
         else if (user.role === 'pimpinan' || user.role === 'admin') batch.update(ref, { nilaiPimpinan: grade, status: 'selesai' });
@@ -1523,8 +1528,24 @@ const PIRUApp = () => {
 
                             {activeTab === 'penilaian' && (
                               <div className="flex gap-1 items-center italic">
-                                {['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Ketua</button>}
-                                {['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Pimp</button>}
+                                {r.status === 'pending' ? (
+                                  <div className="bg-red-50 text-red-500 px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic border border-red-100 animate-pulse">
+                                    Belum Kirim
+                                  </div>
+                                ) : (
+                                  <>
+                                    {['ketua', 'admin'].includes(user.role) && (
+                                      <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">
+                                        Ketua
+                                      </button>
+                                    )}
+                                    {['pimpinan', 'admin'].includes(user.role) && (
+                                      <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">
+                                        Pimp
+                                      </button>
+                                    )}
+                                  </>
+                                )}
                               </div>
                             )}
                           </div>
