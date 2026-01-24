@@ -10,7 +10,7 @@ import {
   ShieldCheck, Loader2, Plus, X, BarChart3, FileText, 
   LogOut, Trash2, Edit3, TrendingUp, Clock, Zap, UserPlus, Users, Download, ClipboardCheck, CheckCircle2,
   LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, ImageIcon, Link, Copy, ExternalLink, Search, FileSpreadsheet, Award, Trophy, Star, Heart, Megaphone, Play,
-  Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckSquare, Send
+  Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckSquare, Send, RotateCcw
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -440,6 +440,19 @@ const PIRUApp = () => {
     } catch (err) { alert("Gagal membersihkan nilai."); }
   };
 
+  // === BARU: FUNGSI KEMBALIKAN PEKERJAAN (ADMIN/PIMPINAN) ===
+  const handleReturnReport = async (reportId) => {
+    if (!window.confirm("Kembalikan pekerjaan ini ke pegawai untuk diperbaiki? Status akan menjadi pending dan nilai dihapus.")) return;
+    try {
+      await updateDoc(doc(db, "reports", reportId), { 
+        status: 'pending', 
+        nilaiKetua: 0, 
+        nilaiPimpinan: 0 
+      });
+      alert("Pekerjaan telah dikembalikan ke pegawai.");
+    } catch (err) { alert("Gagal mengembalikan pekerjaan."); }
+  };
+
   const submitGrade = async (reportId, roleName) => {
     const val = prompt(`Masukkan Nilai ${roleName === 'ketua' ? 'Ketua Tim' : 'Pimpinan'}:`);
     if (val && !isNaN(val)) {
@@ -461,7 +474,7 @@ const PIRUApp = () => {
 
   // === BARU: FUNGSI SIGNAL SELESAI ===
   const handleSignalSelesai = async () => {
-    if (!window.confirm("Kirim signal selesai entri ke Pimpinan? Data Anda akan ditandai siap dinilai.")) return;
+    if (!window.confirm("Kirim CKP Anda untuk dinilai oleh Ketua Tim dan Pimpinan?")) return;
     try {
       const batch = writeBatch(db);
       const myPendingReports = reports.filter(r => r.userId === user.username && r.month === selectedMonth && r.year === selectedYear && r.status === 'pending');
@@ -475,8 +488,8 @@ const PIRUApp = () => {
         batch.update(doc(db, "reports", r.id), { status: 'dikirim' });
       });
       await batch.commit();
-      alert("Signal berhasil dikirim. Menunggu penilaian pimpinan.");
-    } catch (err) { alert("Gagal mengirim signal."); }
+      alert("CKP berhasil dikirim. Menunggu penilaian.");
+    } catch (err) { alert("Gagal mengirim CKP."); }
   };
 
   const exportToExcel = async () => {
@@ -664,9 +677,12 @@ const PIRUApp = () => {
       const userKJKs = currentKJK.filter(k => getFirstWord(k.nama) === sFirstWord);
       const totalMins = userKJKs.reduce((acc, curr) => acc + timeToMinutes(curr.kjkValue), 0);
 
-      // Hitung persentase penilaian untuk progress bar
-      const penilaianSelesaiCount = sReports.filter(r => r.nilaiPimpinan > 0).length;
-      const progressPercent = total > 0 ? (penilaianSelesaiCount / total) * 100 : 0;
+      // === MODIFIKASI: Progress Bar Khusus Penilaian Ketua Tim ===
+      const penilaianKetuaSelesai = sReports.filter(r => r.nilaiKetua > 0).length;
+      const progressPercent = total > 0 ? (penilaianKetuaSelesai / total) * 100 : 0;
+      
+      // === BARU: Status Final Pimpinan ===
+      const pimpinanSelesai = total > 0 && sReports.every(r => r.nilaiPimpinan > 0);
 
       return { 
         name: s.name, 
@@ -676,7 +692,8 @@ const PIRUApp = () => {
         photoURL: s.photoURL,
         kjkValue: minutesToTimeStr(totalMins),
         kjkMins: totalMins,
-        progressPercent: progressPercent.toFixed(0)
+        progressPercent: progressPercent.toFixed(0),
+        pimpinanSelesai
       };
     });
 
@@ -979,12 +996,19 @@ const PIRUApp = () => {
                         ) : ( <div className="w-full h-full flex items-center justify-center bg-indigo-500/10 text-indigo-400"><User size={40} /></div> )}
                       </div>
                       <p className="font-black text-xl text-white uppercase italic mb-1 tracking-tighter text-center">{s.name}</p>
-                      <span className={`text-[9px] font-black uppercase px-4 py-1.5 rounded-full mb-4 ${s.status === 'Selesai' ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-400'}`}>{s.status}</span>
                       
-                      {/* BARU: PROGRESS BAR PENILAIAN */}
+                      {/* MODIFIKASI: Keterangan Status Penilaian */}
+                      <div className="flex flex-col gap-2 items-center mb-4">
+                        <span className={`text-[9px] font-black uppercase px-4 py-1.5 rounded-full ${s.status === 'Selesai' ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-400'}`}>{s.status}</span>
+                        {s.pimpinanSelesai && (
+                           <span className="text-[7px] font-black uppercase px-3 py-1 bg-indigo-500 text-white rounded-full animate-pulse">PENILAIAN PIMPINAN SELESAI</span>
+                        )}
+                      </div>
+                      
+                      {/* MODIFIKASI: PROGRESS BAR (KHUSUS KETUA TIM) */}
                       <div className="w-full px-4 mb-6">
                          <div className="flex justify-between items-center mb-2">
-                           <p className="text-[8px] font-black text-slate-500 uppercase italic">Progres Penilaian</p>
+                           <p className="text-[8px] font-black text-slate-500 uppercase italic">Progres Ketua Tim</p>
                            <p className="text-[8px] font-black text-indigo-400 italic">{s.progressPercent}%</p>
                          </div>
                          <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
@@ -1020,13 +1044,13 @@ const PIRUApp = () => {
                       <div className="w-full border-t border-slate-800 pt-8 mt-auto flex flex-col items-center italic text-center text-slate-500">
                          <p className="text-[9px] font-black uppercase italic tracking-widest">{dashboardStats.myStatus}</p>
                          
-                         {/* BARU: TOMBOL SIGNAL SELESAI PEGAWAI */}
+                         {/* MODIFIKASI: LABEL KIRIM CKP UNTUK DINILAI */}
                          {dashboardStats.isAnyPending && (
                            <button 
                             onClick={handleSignalSelesai}
                             className="mt-4 flex items-center gap-3 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg transition-all active:scale-95 italic"
                            >
-                            <Send size={14}/> Kirim Sinyal Selesai Ke Pimpinan
+                            <Send size={14}/> KIRIM CKP UNTUK DINILAI
                            </button>
                          )}
                       </div>
@@ -1443,9 +1467,12 @@ const PIRUApp = () => {
                         <td className="p-4 text-center font-black text-indigo-600 text-lg italic"><div className="relative group inline-block">{r.nilaiPimpinan || '-'}{user.role === 'admin' && activeTab === 'penilaian' && r.nilaiPimpinan > 0 && (<button onClick={() => clearGrade(r.id, 'nilaiPimpinan')} className="absolute -top-1 -right-3 text-red-400 opacity-0 group-hover:opacity-100 italic"><Trash2 size={10}/></button>)}</div></td>
                         <td className="p-4 text-center italic">
                           <div className="flex justify-center gap-1 italic">
+                            {/* MODIFIKASI: Akses Edit untuk Pimpinan */}
+                            {(activeTab === 'laporan' && r.status === 'pending') || (activeTab === 'penilaian' && user.role === 'pimpinan') ? (
+                              <button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button>
+                            ) : null}
+
                             {activeTab === 'laporan' && r.status === 'pending' && (
-                              <>
-                                <button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button>
                                 <button onClick={async () => {
                                   if (window.confirm("Hapus laporan ini?")) {
                                     if (r.originalAgendaId) {
@@ -1454,14 +1481,19 @@ const PIRUApp = () => {
                                     await deleteDoc(doc(db, "reports", r.id));
                                   }
                                 }} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button>
-                              </>
                             )}
-                            {activeTab === 'penilaian' && (<>{['ketua', 'admin', 'pimpinan'].includes(user.role) && (r.status === 'dikirim' || r.status === 'dinilai_ketua' || r.status === 'selesai' || user.role === 'admin') && (
-                              <>
+
+                            {activeTab === 'penilaian' && (
+                              <div className="flex gap-1 items-center italic">
                                 {['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Ketua</button>}
                                 {['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">Pimp</button>}
-                              </>
-                            )}</>)}
+                                
+                                {/* BARU: Tombol Kembalikan (Reject) */}
+                                {['admin', 'pimpinan'].includes(user.role) && (
+                                   <button onClick={() => handleReturnReport(r.id)} className="p-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 italic" title="Kembalikan Pekerjaan"><RotateCcw size={14}/></button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1490,16 +1522,17 @@ const PIRUApp = () => {
                       <div className="flex justify-between items-start mb-2 italic">
                         <span className="text-[10px] font-black text-indigo-600 uppercase italic">#{idx + 1} - {r.satuan}</span>
                         <div className="flex gap-2">
-                          {activeTab === 'laporan' && r.status === 'pending' && (
-                            <>
+                          {(activeTab === 'laporan' && r.status === 'pending') || (activeTab === 'penilaian' && user.role === 'pimpinan') ? (
                               <button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="text-indigo-400"><Edit3 size={18}/></button>
+                          ) : null}
+
+                          {activeTab === 'laporan' && r.status === 'pending' && (
                               <button onClick={async () => {
                                 if (window.confirm("Hapus laporan ini?")) {
                                   if (r.originalAgendaId) await updateDoc(doc(db, "agendas", r.originalAgendaId), { isImported: false });
                                   await deleteDoc(doc(db, "reports", r.id));
                                 }
                               }} className="text-red-400"><Trash2 size={18}/></button>
-                            </>
                           )}
                         </div>
                       </div>
@@ -1510,9 +1543,14 @@ const PIRUApp = () => {
                         <div className="text-center"><p className="text-[8px] text-slate-400 uppercase font-black italic">Ketua/Pimp</p><p className="font-black text-[10px] italic text-indigo-600">{r.nilaiKetua} / {r.nilaiPimpinan}</p></div>
                       </div>
                       {activeTab === 'penilaian' && (r.status === 'dikirim' || r.status === 'dinilai_ketua' || r.status === 'selesai' || user.role === 'admin') && (
-                        <div className="flex gap-2 mt-4 italic">
-                          {['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="flex-1 py-3 bg-amber-400 text-white rounded-xl text-[9px] font-black uppercase shadow-sm italic">Nilai Ketua</button>}
-                          {['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase shadow-sm italic">Nilai Pimp</button>}
+                        <div className="flex flex-col gap-2 mt-4 italic">
+                          <div className="flex gap-2 italic">
+                            {['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="flex-1 py-3 bg-amber-400 text-white rounded-xl text-[9px] font-black uppercase shadow-sm italic">Nilai Ketua</button>}
+                            {['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase shadow-sm italic">Nilai Pimp</button>}
+                          </div>
+                          {['admin', 'pimpinan'].includes(user.role) && (
+                            <button onClick={() => handleReturnReport(r.id)} className="w-full py-3 bg-slate-100 text-slate-600 rounded-xl text-[9px] font-black uppercase italic shadow-sm">Kembalikan Pekerjaan</button>
+                          )}
                         </div>
                       )}
                     </div>
