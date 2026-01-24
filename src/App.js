@@ -529,29 +529,12 @@ const PIRUApp = () => {
     sheet.mergeCells('A9:A10'); sheet.getCell('A9').value = 'No'; sheet.mergeCells('B9:B10'); sheet.getCell('B9').value = 'Uraian Kegiatan'; sheet.mergeCells('C9:C10'); sheet.getCell('C9').value = 'Satuan'; sheet.mergeCells('D9:F9'); sheet.getCell('D9').value = 'Kuantitas'; sheet.getCell('D10').value = 'Target'; sheet.getCell('E10').value = 'Realisasi'; sheet.getCell('F10').value = '%'; sheet.mergeCells('G9:G10'); sheet.getCell('G9').value = 'Tingkat Kualitas (%)'; sheet.mergeCells('H9:H10'); sheet.getCell('H9').value = 'Keterangan';
     const headerCells = ['A9','B9','C9','D9','G9','H9','D10','E10','F10']; headerCells.forEach(c => { const cell = sheet.getCell(c); cell.fill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFE0E0E0'} }; cell.font = { bold: true }; cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; });
     sheet.getColumn(1).width = 8.2; sheet.getColumn(2).width = 60; sheet.getColumn(3).width = 15; sheet.getColumn(4).width = 7.07; sheet.getColumn(5).width = 7.07; sheet.getColumn(6).width = 7.07; sheet.getColumn(7).width = 10; sheet.getColumn(8).width = 45;
-    let curRow = 11; 
-    let sumKuan = 0; 
-    let sumKual = 0; 
-    const dataCount = currentFilteredReports.length;
-
+    let curRow = 11; let sumKuan = 0; let sumKual = 0; const dataCount = currentFilteredReports.length;
     currentFilteredReports.forEach((r, i) => {
-        const row = sheet.getRow(curRow); 
-        const kP = (r.realisasi / r.target) * 100; 
-        const qP = r.nilaiPimpinan || 0;
-        row.values = [i+1, r.title, r.satuan, r.target, r.realisasi, kP, qP, r.keterangan || '']; 
-        row.height = 35;
-        row.eachCell({ includeEmpty: true }, (cell, colNum) => { 
-            cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; 
-            cell.alignment = { vertical: 'middle', wrapText: true, horizontal: (colNum === 2 || colNum === 8) ? 'left' : 'center' }; 
-        });
-        sumKuan += Math.min(kP, 100); 
-        sumKual += qP; 
-        curRow++;
-    });
-
-    // TAMBAHAN: Memberi satu baris kosong setelah data terakhir sebelum baris Rata-Rata
-    curRow++; 
-    const avgKuan = dataCount > 0 ? sumKuan / dataCount : 0;
+        const row = sheet.getRow(curRow); const kP = (r.realisasi / r.target) * 100; const qP = r.nilaiPimpinan || 0;
+        row.values = [i+1, r.title, r.satuan, r.target, r.realisasi, kP, qP, r.keterangan || '']; row.height = 35;
+        row.eachCell({ includeEmpty: true }, (cell, colNum) => { cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; cell.alignment = { vertical: 'middle', wrapText: true, horizontal: (colNum === 2 || colNum === 8) ? 'left' : 'center' }; });
+        sumKuan += Math.min(kP, 100); sumKual += qP; curRow++;
     });
     const avgKuan = dataCount > 0 ? sumKuan / dataCount : 0; const avgKual = dataCount > 0 ? sumKual / dataCount : 0;
     sheet.mergeCells(`A${curRow}:E${curRow}`); const avgLabel = sheet.getCell(`A${curRow}`); avgLabel.value = 'Rata-Rata'; avgLabel.font = { bold: true }; avgLabel.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -1869,6 +1852,5 @@ const PIRUApp = () => {
 };
 
 export default PIRUApp;
-
 
 
