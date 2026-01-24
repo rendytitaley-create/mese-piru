@@ -551,7 +551,6 @@ const PIRUApp = () => {
 
     // TAMBAHAN: Memberi satu baris kosong setelah data terakhir sebelum baris Rata-Rata
     curRow++; 
-
     const avgKuan = dataCount > 0 ? sumKuan / dataCount : 0;
     });
     const avgKuan = dataCount > 0 ? sumKuan / dataCount : 0; const avgKual = dataCount > 0 ? sumKual / dataCount : 0;
@@ -1870,5 +1869,6 @@ const PIRUApp = () => {
 };
 
 export default PIRUApp;
+
 
 
