@@ -971,7 +971,7 @@ const PIRUApp = () => {
                             // === KODE BARU: TOMBOL EDIT & HAPUS DENGAN PENGUNCIAN ===
 {(user.role === 'pegawai' || filterStaffName === 'Semua') && !a.isImported && (
   <div className="flex gap-2 italic">
-    {/* TOMBOL EDIT BARU */}
+    {/* Tombol Edit Baru */}
     <button 
       onClick={() => {
         setNewAgenda({
@@ -980,7 +980,7 @@ const PIRUApp = () => {
           satuan: a.satuan,
           date: a.date,
           isLembur: a.isLembur || false,
-          id: a.id // Simpan ID untuk keperluan update
+          id: a.id 
         });
         setShowAgendaModal(true);
       }} 
@@ -989,7 +989,7 @@ const PIRUApp = () => {
       <Edit3 size={14}/>
     </button>
 
-    {/* TOMBOL HAPUS */}
+    {/* Tombol Hapus */}
     <button 
       onClick={(e) => { 
         e.stopPropagation(); 
@@ -1002,7 +1002,7 @@ const PIRUApp = () => {
   </div>
 )}
 
-{/* JIKA SUDAH DI-IMPORT, TAMPILKAN INFO SAJA */}
+{/* Tampilan Jika Sudah Di-Import */}
 {a.isImported && (
   <span className="text-[7px] font-black text-green-500 uppercase italic bg-green-50 px-2 py-1 rounded">
     Sudah Dilaporkan
@@ -1890,6 +1890,7 @@ await deleteDoc(doc(db, "reports", r.id));
 };
 
 export default PIRUApp;
+
 
 
 
