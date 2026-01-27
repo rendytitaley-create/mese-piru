@@ -1557,11 +1557,15 @@ const PIRUApp = () => {
                             {activeTab === 'laporan' && r.status === 'pending' && (
                                 <button onClick={async () => {
                                   if (window.confirm("Hapus laporan ini?")) {
-                                    if (r.originalAgendaId) {
-                                      await updateDoc(doc(db, "agendas", r.originalAgendaId), { isImported: false });
-                                    }
-                                    await deleteDoc(doc(db, "reports", r.id));
-                                  }
+  if (r.originalAgendaId) {
+    try {
+      await updateDoc(doc(db, "agendas", r.originalAgendaId), { isImported: false });
+    } catch (error) {
+      console.warn("Agenda tidak ditemukan");
+    }
+  }
+  await deleteDoc(doc(db, "reports", r.id));
+}
                                 }} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button>
                             )}
 
@@ -1633,18 +1637,15 @@ const PIRUApp = () => {
                           {activeTab === 'laporan' && r.status === 'pending' && (
                               <button onClick={async () => {
                                 if (window.confirm("Hapus laporan ini?")) {
-                                  if (r.originalAgendaId) {
-  try {
-    // Mencoba mengembalikan status agenda menjadi belum di-import
-    await updateDoc(doc(db, "agendas", r.originalAgendaId), { isImported: false });
-  } catch (error) {
-    // Jika agendanya sudah dihapus, kodingan tidak akan macet/eror lagi
-    console.warn("Agenda asli tidak ditemukan, lanjut menghapus laporan.");
+  if (r.originalAgendaId) {
+    try {
+      await updateDoc(doc(db, "agendas", r.originalAgendaId), { isImported: false });
+    } catch (error) {
+      console.warn("Agenda tidak ditemukan");
+    }
   }
+  await deleteDoc(doc(db, "reports", r.id));
 }
-// Baris ini sekarang akan selalu jalan meskipun agenda aslinya sudah tidak ada
-await deleteDoc(doc(db, "reports", r.id));
-                                }
                               }} className="text-red-400"><Trash2 size={18}/></button>
                           )}
                         </div>
@@ -1901,6 +1902,7 @@ await deleteDoc(doc(db, "reports", r.id));
 };
 
 export default PIRUApp;
+
 
 
 
