@@ -968,7 +968,6 @@ const PIRUApp = () => {
                           </div>
                           <div className="flex flex-col gap-2 shrink-0 italic">
                             {a.isImported && <CheckSquare size={14} className="text-green-500"/>}
-                            // === KODE BARU: TOMBOL EDIT & HAPUS DENGAN PENGUNCIAN ===
 {(user.role === 'pegawai' || filterStaffName === 'Semua') && !a.isImported && (
   <div className="flex gap-2 italic">
     <button 
@@ -987,7 +986,6 @@ const PIRUApp = () => {
     >
       <Edit3 size={14}/>
     </button>
-
     <button 
       onClick={(e) => { 
         e.stopPropagation(); 
@@ -999,7 +997,6 @@ const PIRUApp = () => {
     </button>
   </div>
 )}
-
 {a.isImported && (
   <span className="text-[7px] font-black text-green-500 uppercase italic bg-green-50 px-2 py-1 rounded">
     Sudah Dilaporkan
@@ -1887,6 +1884,7 @@ await deleteDoc(doc(db, "reports", r.id));
 };
 
 export default PIRUApp;
+
 
 
 
