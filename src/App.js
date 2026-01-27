@@ -968,17 +968,46 @@ const PIRUApp = () => {
                           </div>
                           <div className="flex flex-col gap-2 shrink-0 italic">
                             {a.isImported && <CheckSquare size={14} className="text-green-500"/>}
-                            {(user.role === 'pegawai' || filterStaffName === 'Semua') && (
-                               <button 
-                                 onClick={(e) => { 
-                                   e.stopPropagation(); 
-                                   deleteAgenda(a.id); 
-                                 }} 
-                                 className="text-red-400 hover:text-red-600 p-1"
-                               >
-                                 <Trash2 size={14}/>
-                               </button>
-                            )}
+                            // === KODE BARU: TOMBOL EDIT & HAPUS DENGAN PENGUNCIAN ===
+{(user.role === 'pegawai' || filterStaffName === 'Semua') && !a.isImported && (
+  <div className="flex gap-2 italic">
+    {/* TOMBOL EDIT BARU */}
+    <button 
+      onClick={() => {
+        setNewAgenda({
+          taskName: a.taskName,
+          volume: a.volume,
+          satuan: a.satuan,
+          date: a.date,
+          isLembur: a.isLembur || false,
+          id: a.id // Simpan ID untuk keperluan update
+        });
+        setShowAgendaModal(true);
+      }} 
+      className="text-indigo-400 hover:text-indigo-600 p-1"
+    >
+      <Edit3 size={14}/>
+    </button>
+
+    {/* TOMBOL HAPUS */}
+    <button 
+      onClick={(e) => { 
+        e.stopPropagation(); 
+        deleteAgenda(a.id); 
+      }} 
+      className="text-red-400 hover:text-red-600 p-1"
+    >
+      <Trash2 size={14}/>
+    </button>
+  </div>
+)}
+
+{/* JIKA SUDAH DI-IMPORT, TAMPILKAN INFO SAJA */}
+{a.isImported && (
+  <span className="text-[7px] font-black text-green-500 uppercase italic bg-green-50 px-2 py-1 rounded">
+    Sudah Dilaporkan
+  </span>
+)}
                           </div>
                         </div>
                       ))
@@ -1593,8 +1622,17 @@ const PIRUApp = () => {
                           {activeTab === 'laporan' && r.status === 'pending' && (
                               <button onClick={async () => {
                                 if (window.confirm("Hapus laporan ini?")) {
-                                  if (r.originalAgendaId) await updateDoc(doc(db, "agendas", r.originalAgendaId), { isImported: false });
-                                  await deleteDoc(doc(db, "reports", r.id));
+                                  if (r.originalAgendaId) {
+  try {
+    // Mencoba mengembalikan status agenda menjadi belum di-import
+    await updateDoc(doc(db, "agendas", r.originalAgendaId), { isImported: false });
+  } catch (error) {
+    // Jika agendanya sudah dihapus, kodingan tidak akan macet/eror lagi
+    console.warn("Agenda asli tidak ditemukan, lanjut menghapus laporan.");
+  }
+}
+// Baris ini sekarang akan selalu jalan meskipun agenda aslinya sudah tidak ada
+await deleteDoc(doc(db, "reports", r.id));
                                 }
                               }} className="text-red-400"><Trash2 size={18}/></button>
                           )}
@@ -1852,5 +1890,6 @@ const PIRUApp = () => {
 };
 
 export default PIRUApp;
+
 
 
