@@ -146,17 +146,34 @@ const PIRUApp = () => {
   const handleAddAgenda = async (e) => {
     e.preventDefault();
     try {
-      await addDoc(collection(db, "agendas"), {
-        ...newAgenda,
-        userId: user.username,
-        userName: user.name,
-        isImported: false,
-        isLembur: newAgenda.isLembur || false,
-        createdAt: serverTimestamp()
-      });
+      if (newAgenda.id) {
+        const agendaRef = doc(db, "agendas", newAgenda.id);
+        await updateDoc(agendaRef, {
+          taskName: newAgenda.taskName,
+          volume: newAgenda.volume,
+          satuan: newAgenda.satuan,
+          date: newAgenda.date,
+          isLembur: newAgenda.isLembur || false,
+          updatedAt: serverTimestamp()
+        });
+        alert("Agenda berhasil diperbarui.");
+      } else {
+        await addDoc(collection(db, "agendas"), {
+          ...newAgenda,
+          userId: user.username,
+          userName: user.name,
+          isImported: false,
+          isLembur: newAgenda.isLembur || false,
+          createdAt: serverTimestamp()
+        });
+        alert("Agenda berhasil ditambahkan.");
+      }
       setShowAgendaModal(false);
       setNewAgenda({ taskName: '', volume: '', satuan: '', date: new Date().toISOString().split('T')[0], isLembur: false });
-    } catch (err) { alert("Gagal menyimpan agenda."); }
+    } catch (err) { 
+      console.error(err);
+      alert("Gagal memproses agenda."); 
+    }
   };
 
   const deleteAgenda = async (id) => {
@@ -1884,6 +1901,7 @@ await deleteDoc(doc(db, "reports", r.id));
 };
 
 export default PIRUApp;
+
 
 
 
