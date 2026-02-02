@@ -4,7 +4,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { 
   getFirestore, collection, addDoc, updateDoc, doc, onSnapshot, 
-  serverTimestamp, query, orderBy, deleteDoc, enableIndexedDbPersistence, writeBatch, setDoc, where
+  serverTimestamp, query, orderBy, deleteDoc, enableIndexedDbPersistence, writeBatch, setDoc, where, setPersistence, browserSessionPersistence
 } from 'firebase/firestore';
 import { 
   ShieldCheck, Loader2, Plus, X, BarChart3, FileText, 
@@ -366,6 +366,11 @@ const PIRUApp = () => {
   const handleLogin = (e) => {
     e.preventDefault();
     setAuthError('');
+
+    // TAMBAHAN KEAMANAN: Login hangus saat browser ditutup
+const auth = getAuth();
+setPersistence(auth, browserSessionPersistence);
+    
     const inputUsername = authForm.username.trim().toLowerCase();
     const found = users.find(u => u.username.toLowerCase() === inputUsername && u.password === authForm.password);
     if (found) {
@@ -1984,3 +1989,4 @@ const PIRUApp = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
