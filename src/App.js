@@ -602,6 +602,86 @@ const PIRUApp = () => {
     return results.sort((a, b) => b.finalScore - a.finalScore);
   }, [users, reports, kjkData, peerReviews, voteWindow, currentTW, selectedYear]);
 
+  // === FITUR BARU: CETAK KERTAS KERJA PEMILIHAN PEGAWAI TELADAN ===
+  const exportKertasKerjaTeladan = async () => {
+    const period = (voteWindow.period || currentTW).toUpperCase();
+    const year = voteWindow.evalYear || selectedYear;
+    const pimpinan = users.find(u => u.role === 'pimpinan') || { name: '..........................' };
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Kertas Kerja Teladan');
+
+    // Header Judul
+    sheet.mergeCells('A2:H2');
+    const titleCell = sheet.getCell('A2');
+    titleCell.value = `KERTAS KERJA PENILAIAN PEGAWAI TELADAN PERIODE ${period}`;
+    titleCell.font = { bold: true, size: 12 };
+    titleCell.alignment = { horizontal: 'center' };
+
+    sheet.mergeCells('A3:H3');
+    const subTitle = sheet.getCell('A3');
+    subTitle.value = `Tahun Anggaran ${year}`;
+    subTitle.font = { bold: true, size: 11 };
+    subTitle.alignment = { horizontal: 'center' };
+
+    // Header Tabel
+    const headerRow = ['No', 'Nama Pegawai', 'Rata-Rata CKP (40%)', 'Skor KJK (30%)', 'Peer Review (30%)', 'Total Skor', 'Peringkat', 'Keterangan'];
+    sheet.getRow(6).values = headerRow;
+
+    // Styling Header
+    sheet.getRow(6).eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+      cell.font = { bold: true };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    });
+
+    // Isi Data dari LeaderboardData
+    leaderboardData.forEach((staff, idx) => {
+      const row = sheet.getRow(7 + idx);
+      const ckpPortion = (staff.avgCKP * 0.4).toFixed(2);
+      const kjkPortion = (staff.kjkScore * 0.3).toFixed(2);
+      const votePortion = (staff.avgVote * 0.3).toFixed(2);
+
+      row.values = [
+        idx + 1,
+        staff.name,
+        `${staff.avgCKP.toFixed(2)} (${ckpPortion})`,
+        `${staff.kjkScore.toFixed(2)} (${kjkPortion})`,
+        `${staff.avgVote.toFixed(2)} (${votePortion})`,
+        staff.finalScore,
+        idx + 1,
+        idx === 0 ? 'KANDIDAT TERBAIK' : ''
+      ];
+
+      row.eachCell((cell) => {
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        cell.alignment = { horizontal: 'center' };
+      });
+      sheet.getCell(`B${7 + idx}`).alignment = { horizontal: 'left' };
+    });
+
+    // Kolom Width
+    sheet.getColumn(1).width = 5;
+    sheet.getColumn(2).width = 30;
+    sheet.getColumn(3).width = 20;
+    sheet.getColumn(4).width = 20;
+    sheet.getColumn(5).width = 20;
+    sheet.getColumn(6).width = 15;
+    sheet.getColumn(7).width = 15;
+    sheet.getColumn(8).width = 25;
+
+    // Tanda Tangan
+    let signRow = 7 + leaderboardData.length + 3;
+    sheet.getCell(`F${signRow}`).value = `Seram Bagian Barat, ${new Date().toLocaleDateString('id-ID')}`;
+    sheet.getCell(`F${signRow + 1}`).value = `Pejabat Penilai,`;
+    sheet.getCell(`F${signRow + 5}`).value = pimpinan.name;
+    sheet.getCell(`F${signRow + 5}`).font = { bold: true, underline: true };
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `Kertas_Kerja_Teladan_${period}_${year}.xlsx`);
+  };
+
   const handleSetWinner = async (staff) => {
     const period = voteWindow.period || currentTW;
     const year = voteWindow.evalYear || selectedYear;
@@ -1168,7 +1248,8 @@ const PIRUApp = () => {
                       <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-2 italic">{(voteWindow.period || currentTW).toUpperCase()} {voteWindow.evalYear || selectedYear}</p>
                     </div>
                     {user.role === 'admin' && (
-                      <div className="flex gap-3">
+                      <div className="flex flex-wrap justify-center gap-3">
+                         <button onClick={exportKertasKerjaTeladan} className="flex items-center gap-3 bg-green-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic"><FileSpreadsheet size={16}/> Kertas Kerja</button>
                          <button onClick={handlePublish} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic"><Megaphone size={16}/> Publish Pengumuman</button>
                          <button onClick={() => handleResetVotes()} className="flex items-center gap-3 bg-red-50/10 text-red-500 px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-red-500 hover:text-white transition-all italic border border-red-500/20"><Trash2 size={16}/> Reset Voting</button>
                       </div>
@@ -1515,11 +1596,11 @@ const PIRUApp = () => {
               {/* MODIFIKASI: Penempatan Tombol Kontrol Penilaian di Mode Desktop */}
               {activeTab === 'penilaian' && filterStaffName !== 'Semua' && (
                 <div className="hidden md:flex items-center gap-4 mb-6 bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 animate-in fade-in italic">
-                   <div className="flex-1 italic">
+                    <div className="flex-1 italic">
                       <p className="text-[10px] font-black text-slate-400 uppercase italic mb-1">Manajemen Penilaian</p>
                       <h4 className="font-black text-slate-800 uppercase text-xs italic">Kontrol CKP: {filterStaffName}</h4>
-                   </div>
-                   <div className="flex items-center gap-3">
+                    </div>
+                    <div className="flex items-center gap-3">
                       <button onClick={handleNilaiSemua} className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-md transition-all active:scale-95 italic">
                         <CheckCircle2 size={16}/> Nilai Semua
                       </button>
@@ -1528,7 +1609,7 @@ const PIRUApp = () => {
                           <RotateCcw size={16}/> Kembalikan Seluruh CKP
                         </button>
                       )}
-                   </div>
+                    </div>
                 </div>
               )}
 
@@ -1902,12 +1983,4 @@ const PIRUApp = () => {
 };
 
 export default PIRUApp;
-
-
-
-
-
-
-
-
-
+// === SELESAI: SELURUH KODE UTUH TERKIRIM ===
