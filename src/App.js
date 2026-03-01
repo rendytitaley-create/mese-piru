@@ -85,6 +85,15 @@ const PIRUApp = () => {
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null); // Filter klik tanggal
   const [pimpinanHistory, setPimpinanHistory] = useState([]);
+  const getPimpinanForPeriod = (month, year) => {
+    const targetDate = new Date(year, month - 1, 15);
+    const found = pimpinanHistory.find(p => {
+        const start = new Date(p.mulaiBerlaku);
+        const end = p.selesaiBerlaku ? new Date(p.selesaiBerlaku) : new Date(2030, 12, 31);
+        return targetDate >= start && targetDate <= end;
+    });
+    return found || { name: '..........................' };
+  };
 
   // SINKRONISASI OTOMATIS: KALENDER MENGIKUTI HEADER
   useEffect(() => {
@@ -2007,6 +2016,7 @@ const pimpinan = getPimpinanForPeriod(selectedMonth, selectedYear);
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
