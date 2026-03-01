@@ -539,8 +539,28 @@ setPersistence(auth, browserSessionPersistence);
 
   const exportToExcel = async () => {
     if (filterStaffName === 'Semua' && user.role !== 'pegawai') { alert("Pilih satu nama pegawai terlebih dahulu untuk mencetak CKP."); return; }
-    const targetStaff = user.role === 'pegawai' ? user : users.find(u => u.name === filterStaffName);
-    const pimpinan = users.find(u => u.role === 'pimpinan') || { name: '..........................' };
+    // Di dalam exportToExcel:
+const targetStaff = user.role === 'pegawai' ? user : users.find(u => u.name === filterStaffName);
+
+// 1. Ambil semua orang yang perannya 'pimpinan'
+const daftarPimpinan = users.filter(u => u.role === 'pimpinan');
+
+// 2. Buat teks pilihan untuk user
+let pilihanTeks = "Pilih nama pimpinan:\n";
+daftarPimpinan.forEach((p, i) => {
+    pilihanTeks += `${i + 1}. ${p.name}\n`;
+});
+
+// 3. Minta user memilih angka (1, 2, dst)
+const pilihan = prompt(pilihanTeks + "\nMasukkan angka sesuai urutan:");
+const pimpinanTerpilih = daftarPimpinan[parseInt(pilihan) - 1];
+
+// 4. Jika pilihan tidak valid, batalkan
+if (!pimpinanTerpilih) {
+    alert("Pilihan tidak valid, cetak dibatalkan.");
+    return;
+}
+const pimpinan = pimpinanTerpilih;
     const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
     const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
     const workbook = new ExcelJS.Workbook();
@@ -611,7 +631,21 @@ setPersistence(auth, browserSessionPersistence);
   const exportKertasKerjaTeladan = async () => {
     const period = (voteWindow.period || currentTW).toUpperCase();
     const year = voteWindow.evalYear || selectedYear;
-    const pimpinan = users.find(u => u.role === 'pimpinan') || { name: '..........................' };
+    // GANTI DENGAN BLOK INI:
+const daftarPimpinan = users.filter(u => u.role === 'pimpinan');
+let pilihanTeks = "Pilih nama pimpinan untuk Kertas Kerja Teladan:\n";
+daftarPimpinan.forEach((p, i) => {
+    pilihanTeks += `${i + 1}. ${p.name}\n`;
+});
+
+const pilihan = prompt(pilihanTeks + "\nMasukkan angka sesuai urutan:");
+const pimpinanTerpilih = daftarPimpinan[parseInt(pilihan) - 1];
+
+if (!pimpinanTerpilih) {
+    alert("Pilihan tidak valid, cetak dibatalkan.");
+    return;
+}
+const pimpinan = pimpinanTerpilih;
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Kertas Kerja Teladan');
@@ -1989,6 +2023,7 @@ setPersistence(auth, browserSessionPersistence);
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
