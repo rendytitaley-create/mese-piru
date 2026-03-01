@@ -84,16 +84,6 @@ const PIRUApp = () => {
   const [newAgenda, setNewAgenda] = useState({ taskName: '', volume: '', satuan: '', date: new Date().toISOString().split('T')[0], isLembur: false });
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null); // Filter klik tanggal
-  const [pimpinanHistory, setPimpinanHistory] = useState([]);
-  const getPimpinanForPeriod = (month, year) => {
-    const targetDate = new Date(year, month - 1, 15);
-    const found = pimpinanHistory.find(p => {
-        const start = new Date(p.mulaiBerlaku);
-        const end = p.selesaiBerlaku ? new Date(p.selesaiBerlaku) : new Date(2030, 12, 31);
-        return targetDate >= start && targetDate <= end;
-    });
-    return found || { name: '..........................' };
-  };
 
   // SINKRONISASI OTOMATIS: KALENDER MENGIKUTI HEADER
   useEffect(() => {
@@ -119,11 +109,8 @@ const PIRUApp = () => {
     const unsubKJK = onSnapshot(collection(db, "kjk"), (snap) => {
       setKjkData(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
-    const unsubPimp = onSnapshot(collection(db, "pimpinan_history"), (snap) => {
-      setPimpinanHistory(snap.docs.map(d => d.data()));
-    });
 
-    return () => { unsubAuth(); unsubUsers(); unsubSettings(); unsubKJK(); unsubPimp(); };
+    return () => { unsubAuth(); unsubUsers(); unsubSettings(); unsubKJK(); };
   }, []);
 
   useEffect(() => {
@@ -553,20 +540,7 @@ setPersistence(auth, browserSessionPersistence);
   const exportToExcel = async () => {
     if (filterStaffName === 'Semua' && user.role !== 'pegawai') { alert("Pilih satu nama pegawai terlebih dahulu untuk mencetak CKP."); return; }
     const targetStaff = user.role === 'pegawai' ? user : users.find(u => u.name === filterStaffName);
-    // GANTI DENGAN BLOK INI:
-const getPimpinanForPeriod = (month, year) => {
-    // Membuat tanggal acuan berdasarkan bulan/tahun yang dipilih
-    const targetDate = new Date(year, month - 1, 15); 
-    
-    const found = pimpinanHistory.find(p => {
-        const start = new Date(p.mulaiBerlaku);
-        const end = p.selesaiBerlaku ? new Date(p.selesaiBerlaku) : new Date(9999, 11, 31);
-        return targetDate >= start && targetDate <= end;
-    });
-    return found || { name: '..........................' };
-};
-
-const pimpinan = getPimpinanForPeriod(selectedMonth, selectedYear);
+    const pimpinan = users.find(u => u.role === 'pimpinan') || { name: '..........................' };
     const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
     const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
     const workbook = new ExcelJS.Workbook();
@@ -637,8 +611,7 @@ const pimpinan = getPimpinanForPeriod(selectedMonth, selectedYear);
   const exportKertasKerjaTeladan = async () => {
     const period = (voteWindow.period || currentTW).toUpperCase();
     const year = voteWindow.evalYear || selectedYear;
-    // GANTI DENGAN INI:
-const pimpinan = getPimpinanForPeriod(selectedMonth, selectedYear);
+    const pimpinan = users.find(u => u.role === 'pimpinan') || { name: '..........................' };
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Kertas Kerja Teladan');
@@ -2016,7 +1989,6 @@ const pimpinan = getPimpinanForPeriod(selectedMonth, selectedYear);
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
-
 
 
 
