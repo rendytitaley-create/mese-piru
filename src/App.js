@@ -71,6 +71,7 @@ const PIRUApp = () => {
 
   // STATE KHUSUS TELADAN
   const [peerReviews, setPeerReviews] = useState([]);
+  const [bakiraDailyLog, setBakiraDailyLog] = useState({});
   const [winners, setWinners] = useState([]);
   const [publishStatus, setPublishStatus] = useState({});
   const [showVotingModal, setShowVotingModal] = useState(false);
@@ -407,6 +408,21 @@ setPersistence(auth, browserSessionPersistence);
       setShowUserModal(false); resetUserForm();
     } catch (err) { alert("Gagal memproses data pegawai."); }
   };
+  const handleSaveBakira = async () => {
+  try {
+    const dateKey = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+    const docRef = doc(db, "bakira", dateKey);
+    await setDoc(docRef, {
+      date: dateKey,
+      absensi: bakiraDailyLog,
+      updatedAt: serverTimestamp()
+    });
+    alert("Data kehadiran BAKIRA hari ini berhasil disimpan.");
+  } catch (err) {
+    console.error(err);
+    alert("Gagal menyimpan data BAKIRA.");
+  }
+};
 
   const resetReportForm = () => { setIsEditing(false); setCurrentReportId(null); setNewReport({ title: '', target: '', realisasi: '', satuan: '', keterangan: '', targetUser: '', originalAgendaId: '' }); };
   const resetUserForm = () => { setIsEditingUser(false); setCurrentUserId(null); setNewUser({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '' }); };
@@ -2023,6 +2039,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
