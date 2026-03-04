@@ -953,6 +953,7 @@ const pimpinan = pimpinanTerpilih;
             <>
               {/* TAB BARU: AGENDA */}
               <button onClick={() => setActiveTab('agenda')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'agenda' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><CalendarIcon size={20}/> Agenda Kerja</button>
+            <button onClick={() => setActiveTab('bakira')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'bakira' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Camera size={20}/> BAKIRA</button>
               <button onClick={() => setActiveTab('laporan')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'laporan' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><FileText size={20}/> Entri Pekerjaan</button>
             </>
           )}
@@ -1163,6 +1164,39 @@ const pimpinan = pimpinanTerpilih;
             </div>
           </div>
         )}
+
+          {activeTab === 'bakira' && (
+  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 italic pb-28 md:pb-10 p-6 md:p-10">
+    <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 max-w-4xl mx-auto">
+      <h2 className="text-xl font-black uppercase italic mb-8 tracking-tighter">Absensi BAKIRA: {new Date().toLocaleDateString('id-ID')}</h2>
+      <table className="w-full text-left border-collapse">
+        <thead className="text-[9px] font-black text-slate-400 uppercase italic">
+          <tr><th className="p-4">Pegawai</th><th className="p-4 text-center">Status</th></tr>
+        </thead>
+        <tbody>
+          {users.filter(u => u.role !== 'admin' && u.role !== 'pimpinan').map(u => (
+            <tr key={u.firestoreId} className="border-b">
+              <td className="p-4 font-black uppercase text-xs italic">{u.name}</td>
+              <td className="p-4 text-center">
+                <select 
+                  className="bg-slate-50 p-2 rounded-xl text-[10px] font-black italic outline-none"
+                  onChange={(e) => setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value})}
+                >
+                  <option value="hadir">Hadir</option>
+                  <option value="izin">Izin</option>
+                  <option value="sakit">Sakit</option>
+                  <option value="tugas">Tugas Luar</option>
+                  <option value="cuti">Cuti</option>
+                </select>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <button onClick={handleSaveBakira} className="w-full mt-8 bg-indigo-600 text-white font-black py-4 rounded-2xl uppercase text-[10px] shadow-lg italic transition-all active:scale-95">Simpan Absensi</button>
+    </div>
+  </div>
+)}
 
         <div className="md:hidden px-6 py-4 bg-white border-b flex items-center justify-center gap-4 z-20">
             <span className="text-[10px] font-black uppercase text-slate-400 italic">Periode:</span>
@@ -2039,6 +2073,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
