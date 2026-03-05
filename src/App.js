@@ -1220,62 +1220,65 @@ const pimpinan = pimpinanTerpilih;
           </div>
         )}
 
-         {activeTab === 'bakira' && (
+        {activeTab === 'bakira' && (
   <div className="animate-in fade-in duration-500 italic pb-28 md:pb-10 p-6 md:p-10">
     <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 max-w-4xl mx-auto overflow-hidden">
       
-      {/* Header dengan Tombol Cetak */}
-      <div className="p-8 border-b border-slate-100 flex justify-between items-center" id="bakira-header">
+      {/* Header Halaman */}
+      <div className="p-8 border-b border-slate-100 flex justify-between items-center">
         <h2 className="text-lg font-black uppercase italic tracking-tighter">Absensi BAKIRA</h2>
         <div className="flex gap-3">
-          <button onClick={() => window.print()} className="bg-green-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all">Cetak Presensi</button>
-          <button onClick={handleSaveBakira} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all">Simpan</button>
+          <button 
+            onClick={exportPresensiToExcel} 
+            className="bg-green-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all"
+          >
+            Cetak Excel
+          </button>
+          <button 
+            onClick={handleSaveBakira} 
+            className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all"
+          >
+            Simpan Absensi
+          </button>
         </div>
       </div>
 
-      {/* Bagian untuk Cetak (Sembunyi di layar, muncul saat print) */}
-      <div className="hidden print:block p-8 font-serif">
-         <h1 className="text-center font-bold text-xl mb-6">DAFTAR HADIR</h1>
-         <div className="text-sm space-y-1 mb-6">
-            <p>Hari / Tanggal : {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-            <p>Waktu         : ...........................</p>
-            <p>Tempat        : ...........................</p>
-            <p>Agenda        : ...........................</p>
-         </div>
-      </div>
-
-      {/* Tabel dengan Penomoran */}
+      {/* Tabel Absensi */}
       <div className="max-h-[60vh] overflow-y-auto">
         <table className="w-full text-left border-collapse">
           <thead className="bg-slate-50 sticky top-0 z-10 text-[9px] font-black text-slate-400 uppercase italic">
-            <tr><th className="p-4 w-12 text-center">No</th><th className="p-4">Pegawai</th><th className="p-4 text-center">Status</th></tr>
+            <tr>
+              <th className="p-4 w-12 text-center">No</th>
+              <th className="p-4">Pegawai</th>
+              <th className="p-4 text-center">Status</th>
+            </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
             {users
-              .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.') // Ganti nama di sini
+              .filter(u => u.role !== 'admin' && u.name !== 'MASUKKAN_NAMA_PIMPINAN_LAMA') // Ganti nama ini dengan nama pimpinan lama
               .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
               .map((u, index) => (
                 <tr key={u.firestoreId} className="hover:bg-indigo-50/30 transition-colors">
                   <td className="p-4 text-[10px] font-bold text-slate-400 text-center">{index + 1}</td>
-                  <td className="p-4 font-black uppercase text-xs italic">{u.name} {u.role === 'pimpinan' && <span className="text-[8px] text-indigo-600 ml-2">(PIMPINAN)</span>}</td>
+                  <td className="p-4 font-black uppercase text-xs italic">
+                    {u.name} {u.role === 'pimpinan' && <span className="text-[8px] text-indigo-600 ml-2">(PIMPINAN)</span>}
+                  </td>
                   <td className="p-4 text-center">
-                    <select className="bg-slate-100 p-2 rounded-xl text-[10px] font-black italic outline-none cursor-pointer" onChange={(e) => setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value})}>
-                      <option value="hadir">Hadir</option><option value="izin">Izin</option><option value="sakit">Sakit</option><option value="tugas">Tugas Luar</option><option value="cuti">Cuti</option>
+                    <select 
+                      className="bg-slate-100 p-2 rounded-xl text-[10px] font-black italic outline-none cursor-pointer hover:bg-slate-200"
+                      onChange={(e) => setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value})}
+                    >
+                      <option value="hadir">Hadir</option>
+                      <option value="izin">Izin</option>
+                      <option value="sakit">Sakit</option>
+                      <option value="tugas">Tugas Luar</option>
+                      <option value="cuti">Cuti</option>
                     </select>
                   </td>
                 </tr>
             ))}
           </tbody>
         </table>
-      </div>
-      
-      {/* Tanda Tangan untuk Cetak */}
-      <div className="hidden print:block p-8 mt-10">
-        <div className="float-right text-center">
-            <p>......................, ......................</p>
-            <p className="mb-20">Pejabat Penilai,</p>
-            <p className="font-bold underline">Nama Pimpinan Baru</p>
-        </div>
       </div>
     </div>
   </div>
@@ -2159,6 +2162,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
