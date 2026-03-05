@@ -1263,12 +1263,19 @@ const pimpinan = pimpinanTerpilih;
           </div>
         )}
 
-    {activeTab === 'bakira' && (
+   {activeTab === 'bakira' && (
   <div className="flex flex-col h-[80vh] animate-in fade-in duration-500 italic p-4 md:p-10">
     <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 max-w-4xl mx-auto w-full flex flex-col flex-1 overflow-hidden">
       
       {/* Header Halaman */}
       <div className="p-6 border-b border-slate-100 flex-shrink-0">
+        {/* Pesan Read-Only untuk Pegawai */}
+        {!['admin', 'pimpinan'].includes(user.role) && (
+          <div className="bg-amber-50 text-amber-700 p-2 mb-4 rounded-xl text-[9px] font-black uppercase text-center italic">
+            Mode Lihat (Read-Only) - Tidak dapat melakukan perubahan data
+          </div>
+        )}
+
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-black uppercase italic tracking-tighter">Absensi BAKIRA</h2>
           <input 
@@ -1281,8 +1288,11 @@ const pimpinan = pimpinanTerpilih;
         
         <div className="flex flex-col gap-3">
           <button 
+            disabled={!['admin', 'pimpinan'].includes(user.role)}
             onClick={() => setIsKegiatanAda(!isKegiatanAda)}
-            className={`w-full py-2 rounded-xl font-black uppercase text-[10px] transition-all ${isKegiatanAda ? 'bg-indigo-600 text-white' : 'bg-red-500 text-white'}`}
+            className={`w-full py-2 rounded-xl font-black uppercase text-[10px] transition-all 
+              ${!['admin', 'pimpinan'].includes(user.role) ? 'opacity-50 cursor-not-allowed' : ''}
+              ${isKegiatanAda ? 'bg-indigo-600 text-white' : 'bg-red-500 text-white'}`}
           >
             {isKegiatanAda ? "Kegiatan Hari Ini: ADA" : "Kegiatan Hari Ini: TIDAK ADA"}
           </button>
@@ -2240,6 +2250,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
