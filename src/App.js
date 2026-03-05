@@ -746,7 +746,7 @@ const pimpinan = pimpinanTerpilih;
     const titleCell = sheet.getCell('A1');
     titleCell.value = 'DAFTAR HADIR';
     titleCell.font = { bold: true, size: 14 };
-    titleCell.alignment = { horizontal: 'left' };
+    titleCell.alignment = { horizontal: 'center' };
 
     // 2. Info Detail (Dikosongkan untuk diisi manual)
     sheet.getCell('A3').value = 'Hari / Tanggal'; sheet.getCell('B3').value = `: ${new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
@@ -777,7 +777,12 @@ const pimpinan = pimpinanTerpilih;
         row.eachCell(cell => { cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } }; });
         rowNum++;
     });
-
+    
+ sheet.getCell('A7').value = 'Link Dokumentasi'; 
+  const linkCell = sheet.getCell('B7');
+  linkCell.value = bakiraLinkDoc || '-'; 
+  linkCell.font = { color: { argb: 'FF0000FF' }, underline: true };
+    
     // 5. Tanda Tangan (Posisi di bawah tabel)
     rowNum += 3;
     sheet.mergeCells(`C${rowNum+2}:D${rowNum+2}`);
@@ -1256,12 +1261,13 @@ const pimpinan = pimpinanTerpilih;
             <tr>
               <th className="p-4 w-12 text-center">No</th>
               <th className="p-4">Pegawai</th>
+              <th className="p-4">Jabatan</th>
               <th className="p-4 text-center">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
             {users
-              .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.') // Ganti nama ini dengan nama pimpinan lama
+              .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.')
               .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
               .map((u, index) => (
                 <tr key={u.firestoreId} className="hover:bg-indigo-50/30 transition-colors">
@@ -1269,6 +1275,7 @@ const pimpinan = pimpinanTerpilih;
                   <td className="p-4 font-black uppercase text-xs italic">
                     {u.name} {u.role === 'pimpinan' && <span className="text-[8px] text-indigo-600 ml-2">(PIMPINAN)</span>}
                   </td>
+                  <td className="p-4 text-xs font-medium text-slate-600">{u.jabatan || '-'}</td>
                   <td className="p-4 text-center">
                     <select 
                       className="bg-slate-100 p-2 rounded-xl text-[10px] font-black italic outline-none cursor-pointer hover:bg-slate-200"
@@ -1286,6 +1293,20 @@ const pimpinan = pimpinanTerpilih;
           </tbody>
         </table>
       </div>
+
+      {/* Input Link Dokumentasi (Khusus Admin) */}
+      {user.role === 'admin' && (
+        <div className="p-8 border-t border-slate-100 bg-slate-50">
+          <label className="block text-[9px] font-black text-slate-400 uppercase italic mb-2">Link Dokumentasi Rapat (Google Drive)</label>
+          <input 
+            type="text"
+            placeholder="Tempel link Google Drive di sini..."
+            className="w-full bg-white p-4 rounded-2xl text-xs font-medium outline-none border border-slate-200"
+            value={bakiraLinkDoc || ''}
+            onChange={(e) => setBakiraLinkDoc(e.target.value)}
+          />
+        </div>
+      )}
     </div>
   </div>
 )}
@@ -2168,6 +2189,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
