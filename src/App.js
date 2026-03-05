@@ -1239,16 +1239,19 @@ const pimpinan = pimpinanTerpilih;
   <div className="p-4 md:p-10 animate-in fade-in duration-500 italic">
     <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 max-w-4xl mx-auto overflow-hidden">
       
-      {/* Header Halaman */}
+      {/* Header */}
       <div className="p-8 border-b border-slate-100 flex justify-between items-center">
         <h2 className="text-lg font-black uppercase italic tracking-tighter">Absensi BAKIRA</h2>
         <div className="flex gap-3">
           <button onClick={exportPresensiToExcel} className="bg-green-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all">Cetak Excel</button>
-          <button onClick={handleSaveBakira} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all">Simpan</button>
+          {/* Tombol Simpan hanya muncul untuk Admin/Pimpinan */}
+          {['admin', 'pimpinan'].includes(user.role) && (
+            <button onClick={handleSaveBakira} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all">Simpan</button>
+          )}
         </div>
       </div>
 
-      {/* Area Tabel - Dibatasi tingginya agar input di bawah selalu terlihat */}
+      {/* Tabel Absensi */}
       <div className="max-h-[40vh] overflow-y-auto">
         <table className="w-full text-left border-collapse">
           <thead className="bg-slate-50 sticky top-0 z-10 text-[9px] font-black text-slate-400 uppercase italic">
@@ -1272,7 +1275,10 @@ const pimpinan = pimpinanTerpilih;
                   <td className="p-4 text-xs font-medium text-slate-600">{u.jabatan || '-'}</td>
                   <td className="p-4 text-center">
                     <select 
-                      className="bg-slate-100 p-2 rounded-xl text-[10px] font-black italic outline-none cursor-pointer hover:bg-slate-200"
+                      className="bg-slate-100 p-2 rounded-xl text-[10px] font-black italic outline-none cursor-pointer hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      // KUNCI: Pegawai tidak bisa mengubah (disabled)
+                      disabled={!['admin', 'pimpinan'].includes(user.role)}
+                      value={bakiraDailyLog[u.username] || 'hadir'}
                       onChange={(e) => setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value})}
                     >
                       <option value="hadir">Hadir</option>
@@ -1288,14 +1294,16 @@ const pimpinan = pimpinanTerpilih;
         </table>
       </div>
 
-      {/* Input Link - Ditaruh tepat di bawah tabel tanpa pembungkus flex yang rumit */}
+      {/* Input Link (Read-only untuk Pegawai) */}
       <div className="p-8 border-t border-slate-100 bg-slate-50">
         <label className="block text-[9px] font-black text-slate-400 uppercase italic mb-2">Link Dokumentasi Rapat (Google Drive)</label>
         <input 
           type="text"
-          placeholder="Tempel link Google Drive di sini..."
-          className="w-full bg-white p-4 rounded-2xl text-xs font-medium outline-none border border-slate-200"
+          placeholder="Link belum tersedia..."
+          className="w-full bg-white p-4 rounded-2xl text-xs font-medium outline-none border border-slate-200 disabled:bg-slate-100"
           value={bakiraLinkDoc || ''}
+          // KUNCI: Pegawai tidak bisa mengetik (readOnly)
+          readOnly={!['admin', 'pimpinan'].includes(user.role)}
           onChange={(e) => setBakiraLinkDoc(e.target.value)}
         />
       </div>
@@ -2180,6 +2188,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
