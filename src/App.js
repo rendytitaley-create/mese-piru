@@ -954,8 +954,7 @@ const pimpinan = pimpinanTerpilih;
               {/* TAB BARU: AGENDA */}
               <button onClick={() => setActiveTab('agenda')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'agenda' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><CalendarIcon size={20}/> Agenda Kerja</button>
             {['admin', 'pimpinan', 'ketua'].includes(user.role) && (
-  <button onClick={() => setActiveTab('bakira')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'bakira' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Camera size={20}/> BAKIRA</button>
-)}
+  <button onClick={() => setActiveTab('bakira')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'bakira' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Camera size={20}/> BAKIRA</button>)}
               <button onClick={() => setActiveTab('laporan')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'laporan' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><FileText size={20}/> Entri Pekerjaan</button>
             </>
           )}
@@ -2075,6 +2074,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
