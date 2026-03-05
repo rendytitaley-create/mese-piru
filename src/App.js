@@ -41,7 +41,9 @@ const PIRUApp = () => {
   const [kjkData, setKjkData] = useState([]); 
   const [appSettings, setAppSettings] = useState({ logoURL: null });
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+const [bakiraDailyLog, setBakiraDailyLog] = useState({});
+const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [filterStaffName, setFilterStaffName] = useState('Semua');
@@ -72,7 +74,6 @@ const PIRUApp = () => {
 
   // STATE KHUSUS TELADAN
   const [peerReviews, setPeerReviews] = useState([]);
-  const [bakiraDailyLog, setBakiraDailyLog] = useState({});
   const [winners, setWinners] = useState([]);
   const [publishStatus, setPublishStatus] = useState({});
   const [showVotingModal, setShowVotingModal] = useState(false);
@@ -94,6 +95,22 @@ const PIRUApp = () => {
     // Reset pilihan tanggal jika bulan berganti agar tidak "nyangkut" di tanggal bulan lalu
     setSelectedCalendarDate(null);
   }, [selectedMonth, selectedYear]);
+
+  useEffect(() => {
+  if (activeTab === 'bakira') {
+    const unsub = onSnapshot(doc(db, "bakira", selectedDate), (docSnap) => {
+      if (docSnap.exists()) {
+        setBakiraDailyLog(docSnap.data().absensi || {});
+        setBakiraLinkDoc(docSnap.data().linkDoc || '');
+      } else {
+        // Jika tanggal baru, reset data
+        setBakiraDailyLog({});
+        setBakiraLinkDoc('');
+      }
+    });
+    return () => unsub();
+  }
+}, [selectedDate, activeTab]);
 
   useEffect(() => {
     signInAnonymously(auth);
@@ -411,18 +428,16 @@ setPersistence(auth, browserSessionPersistence);
   };
   const handleSaveBakira = async () => {
   try {
-    const dateKey = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
-    const docRef = doc(db, "bakira", dateKey);
+    const docRef = doc(db, "bakira", selectedDate);
     await setDoc(docRef, {
-      date: dateKey,
+      date: selectedDate,
       absensi: bakiraDailyLog,
       linkDoc: bakiraLinkDoc,
       updatedAt: serverTimestamp()
-    });
-    alert("Data kehadiran BAKIRA hari ini berhasil disimpan.");
+    }, { merge: true });
+    alert(`Data BAKIRA tanggal ${selectedDate} berhasil disimpan.`);
   } catch (err) {
-    console.error(err);
-    alert("Gagal menyimpan data BAKIRA.");
+    alert("Gagal menyimpan.");
   }
 };
 
@@ -1236,56 +1251,52 @@ const pimpinan = pimpinanTerpilih;
         )}
 
        {activeTab === 'bakira' && (
-  <div className="p-4 md:p-10 animate-in fade-in duration-500 italic">
+  <div className="animate-in fade-in duration-500 italic pb-28 md:pb-10 p-6 md:p-10">
     <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 max-w-4xl mx-auto overflow-hidden">
       
-      {/* Header */}
-      <div className="p-8 border-b border-slate-100 flex justify-between items-center">
-        <h2 className="text-lg font-black uppercase italic tracking-tighter">Absensi BAKIRA</h2>
-        <div className="flex gap-3">
-          <button onClick={exportPresensiToExcel} className="bg-green-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all">Cetak Excel</button>
-          {/* Tombol Simpan hanya muncul untuk Admin/Pimpinan */}
+      {/* Header & Tanggal */}
+      <div className="p-8 border-b border-slate-100">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-lg font-black uppercase italic tracking-tighter">Absensi BAKIRA</h2>
+          <input 
+            type="date" 
+            className="p-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-[10px] italic outline-none"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+          />
+        </div>
+        <div className="flex gap-3 justify-end">
+          <button onClick={exportPresensiToExcel} className="bg-green-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95">Cetak Excel</button>
           {['admin', 'pimpinan'].includes(user.role) && (
-            <button onClick={handleSaveBakira} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all">Simpan</button>
+            <button onClick={handleSaveBakira} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95">Simpan Tanggal {selectedDate}</button>
           )}
         </div>
       </div>
 
-      {/* Tabel Absensi */}
+      {/* Tabel */}
       <div className="max-h-[40vh] overflow-y-auto">
         <table className="w-full text-left border-collapse">
           <thead className="bg-slate-50 sticky top-0 z-10 text-[9px] font-black text-slate-400 uppercase italic">
-            <tr>
-              <th className="p-4 w-12 text-center">No</th>
-              <th className="p-4">Pegawai</th>
-              <th className="p-4">Jabatan</th>
-              <th className="p-4 text-center">Status</th>
-            </tr>
+            <tr><th className="p-4">No</th><th className="p-4">Pegawai</th><th className="p-4">Jabatan</th><th className="p-4 text-center">Status</th></tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
             {users
               .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.')
               .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
               .map((u, index) => (
-                <tr key={u.firestoreId} className="hover:bg-indigo-50/30 transition-colors">
-                  <td className="p-4 text-[10px] font-bold text-slate-400 text-center">{index + 1}</td>
-                  <td className="p-4 font-black uppercase text-xs italic">
-                    {u.name} {u.role === 'pimpinan' && <span className="text-[8px] text-indigo-600 ml-2">(PIMPINAN)</span>}
-                  </td>
+                <tr key={u.firestoreId}>
+                  <td className="p-4 text-[10px] font-bold text-slate-400">{index + 1}</td>
+                  <td className="p-4 font-black uppercase text-xs">{u.name}</td>
                   <td className="p-4 text-xs font-medium text-slate-600">{u.jabatan || '-'}</td>
                   <td className="p-4 text-center">
                     <select 
-                      className="bg-slate-100 p-2 rounded-xl text-[10px] font-black italic outline-none cursor-pointer hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                      // KUNCI: Pegawai tidak bisa mengubah (disabled)
                       disabled={!['admin', 'pimpinan'].includes(user.role)}
+                      className="bg-slate-100 p-2 rounded-xl text-[10px] font-black disabled:opacity-50"
                       value={bakiraDailyLog[u.username] || 'hadir'}
                       onChange={(e) => setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value})}
                     >
-                      <option value="hadir">Hadir</option>
-                      <option value="izin">Izin</option>
-                      <option value="sakit">Sakit</option>
-                      <option value="tugas">Tugas Luar</option>
-                      <option value="cuti">Cuti</option>
+                      <option value="hadir">Hadir</option><option value="izin">Izin</option><option value="sakit">Sakit</option>
+                      <option value="tugas">Tugas Luar</option><option value="cuti">Cuti</option>
                     </select>
                   </td>
                 </tr>
@@ -1294,16 +1305,14 @@ const pimpinan = pimpinanTerpilih;
         </table>
       </div>
 
-      {/* Input Link (Read-only untuk Pegawai) */}
+      {/* Input Link */}
       <div className="p-8 border-t border-slate-100 bg-slate-50">
         <label className="block text-[9px] font-black text-slate-400 uppercase italic mb-2">Link Dokumentasi Rapat (Google Drive)</label>
         <input 
-          type="text"
-          placeholder="Link belum tersedia..."
-          className="w-full bg-white p-4 rounded-2xl text-xs font-medium outline-none border border-slate-200 disabled:bg-slate-100"
-          value={bakiraLinkDoc || ''}
-          // KUNCI: Pegawai tidak bisa mengetik (readOnly)
           readOnly={!['admin', 'pimpinan'].includes(user.role)}
+          type="text"
+          className="w-full bg-white p-4 rounded-2xl text-xs border"
+          value={bakiraLinkDoc}
           onChange={(e) => setBakiraLinkDoc(e.target.value)}
         />
       </div>
@@ -2188,6 +2197,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
