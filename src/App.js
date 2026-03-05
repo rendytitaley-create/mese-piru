@@ -753,7 +753,12 @@ const pimpinan = pimpinanTerpilih;
     sheet.getCell('A4').value = 'Waktu'; sheet.getCell('B4').value = ': ';
     sheet.getCell('A5').value = 'Tempat'; sheet.getCell('B5').value = ': ';
     sheet.getCell('A6').value = 'Agenda'; sheet.getCell('B6').value = ': ';
-
+    
+    sheet.getCell('A7').value = 'Link Dokumentasi'; 
+  const linkCell = sheet.getCell('B7');
+  linkCell.value = bakiraLinkDoc || '-'; 
+  linkCell.font = { color: { argb: 'FF0000FF' }, underline: true };
+    
     // 3. Header Tabel (Ditambahkan kolom Jabatan)
     sheet.getRow(8).values = ['No', 'Nama Pegawai', 'Jabatan', 'Status'];
     sheet.getRow(8).eachCell(cell => {
@@ -777,11 +782,6 @@ const pimpinan = pimpinanTerpilih;
         row.eachCell(cell => { cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } }; });
         rowNum++;
     });
-    
- sheet.getCell('A7').value = 'Link Dokumentasi'; 
-  const linkCell = sheet.getCell('B7');
-  linkCell.value = bakiraLinkDoc || '-'; 
-  linkCell.font = { color: { argb: 'FF0000FF' }, underline: true };
     
     // 5. Tanda Tangan (Posisi di bawah tabel)
     rowNum += 3;
@@ -2189,6 +2189,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
