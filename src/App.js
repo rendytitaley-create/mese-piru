@@ -776,7 +776,7 @@ const pimpinan = pimpinanTerpilih;
     // Tanda Tangan
     rowNum += 2;
     sheet.mergeCells(`B${rowNum}:C${rowNum}`);
-    sheet.getCell(`B${rowNum}`).value = 'Pejabat Penilai,';
+    sheet.getCell(`B${rowNum}`).value = 'Mengetahui,';
     sheet.getCell(`B${rowNum}`).alignment = { horizontal: 'center' };
     
     rowNum += 4;
@@ -2162,6 +2162,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
