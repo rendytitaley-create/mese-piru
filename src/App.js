@@ -1252,44 +1252,43 @@ const pimpinan = pimpinanTerpilih;
           </div>
         )}
 
-      {activeTab === 'bakira' && (
-  <div className="animate-in fade-in duration-500 italic pb-28 md:pb-10 p-6 md:p-10">
-    <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 max-w-4xl mx-auto overflow-hidden">
+     {activeTab === 'bakira' && (
+  <div className="flex flex-col h-[80vh] animate-in fade-in duration-500 italic p-4 md:p-10">
+    <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 max-w-4xl mx-auto w-full flex flex-col flex-1 overflow-hidden">
       
-      {/* Header & Tanggal & Toggle (Semua dibungkus dalam satu div header) */}
-      <div className="p-8 border-b border-slate-100">
-        <div className="flex justify-between items-center mb-6">
+      {/* Header Halaman */}
+      <div className="p-6 border-b border-slate-100 flex-shrink-0">
+        <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-black uppercase italic tracking-tighter">Absensi BAKIRA</h2>
           <input 
             type="date" 
-            className="p-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-[10px] italic outline-none"
+            className="p-2 bg-slate-50 border border-slate-200 rounded-xl font-black text-[10px] italic outline-none"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
           />
         </div>
         
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
           <button 
             onClick={() => setIsKegiatanAda(!isKegiatanAda)}
-            className={`w-full py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg transition-all ${isKegiatanAda ? 'bg-indigo-600 text-white' : 'bg-red-500 text-white'}`}
+            className={`w-full py-2 rounded-xl font-black uppercase text-[10px] transition-all ${isKegiatanAda ? 'bg-indigo-600 text-white' : 'bg-red-500 text-white'}`}
           >
             {isKegiatanAda ? "Kegiatan Hari Ini: ADA" : "Kegiatan Hari Ini: TIDAK ADA"}
           </button>
-          
-          <div className="flex gap-3 justify-end">
-            <button onClick={exportPresensiToExcel} className="bg-green-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95">Cetak Excel</button>
+          <div className="flex gap-2 justify-end">
+            <button onClick={exportPresensiToExcel} className="bg-green-600 text-white px-4 py-2 rounded-xl font-black uppercase text-[10px]">Excel</button>
             {['admin', 'pimpinan'].includes(user.role) && (
-              <button onClick={handleSaveBakira} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95">Simpan Tanggal {selectedDate}</button>
+              <button onClick={handleSaveBakira} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-black uppercase text-[10px]">Simpan</button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Tabel */}
-      <div className="max-h-[40vh] overflow-y-auto">
+      {/* Tabel yang bisa di-scroll (flex-1 agar presisi) */}
+      <div className="flex-1 overflow-y-auto">
         <table className="w-full text-left border-collapse">
           <thead className="bg-slate-50 sticky top-0 z-10 text-[9px] font-black text-slate-400 uppercase italic">
-            <tr><th className="p-4">No</th><th className="p-4">Pegawai</th><th className="p-4">Jabatan</th><th className="p-4 text-center">Status</th></tr>
+            <tr><th className="p-4">No</th><th className="p-4">Pegawai</th><th className="p-4">Status</th></tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
             {users
@@ -1297,13 +1296,12 @@ const pimpinan = pimpinanTerpilih;
               .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
               .map((u, index) => (
                 <tr key={u.firestoreId}>
-                  <td className="p-4 text-[10px] font-bold text-slate-400">{index + 1}</td>
+                  <td className="p-4 text-[10px]">{index + 1}</td>
                   <td className="p-4 font-black uppercase text-xs">{u.name}</td>
-                  <td className="p-4 text-xs font-medium text-slate-600">{u.jabatan || '-'}</td>
-                  <td className="p-4 text-center">
+                  <td className="p-4">
                     <select 
                       disabled={!['admin', 'pimpinan'].includes(user.role)}
-                      className="bg-slate-100 p-2 rounded-xl text-[10px] font-black disabled:opacity-50"
+                      className="bg-slate-100 p-2 rounded-lg text-[10px] font-black"
                       value={bakiraDailyLog[u.username] || 'hadir'}
                       onChange={(e) => setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value})}
                     >
@@ -1317,13 +1315,13 @@ const pimpinan = pimpinanTerpilih;
         </table>
       </div>
 
-      {/* Input Link */}
-      <div className="p-8 border-t border-slate-100 bg-slate-50">
-        <label className="block text-[9px] font-black text-slate-400 uppercase italic mb-2">Link Dokumentasi Rapat (Google Drive)</label>
+      {/* Input Link (Selalu terlihat di bawah karena flex-shrink-0) */}
+      <div className="p-6 border-t border-slate-100 bg-slate-50 flex-shrink-0">
+        <label className="block text-[9px] font-black text-slate-400 uppercase italic mb-1">Link Dokumentasi</label>
         <input 
           readOnly={!['admin', 'pimpinan'].includes(user.role)}
           type="text"
-          className="w-full bg-white p-4 rounded-2xl text-xs border"
+          className="w-full bg-white p-3 rounded-xl text-xs border border-slate-200 outline-none"
           value={bakiraLinkDoc}
           onChange={(e) => setBakiraLinkDoc(e.target.value)}
         />
@@ -2209,6 +2207,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
