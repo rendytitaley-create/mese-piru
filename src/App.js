@@ -808,12 +808,16 @@ const exportPresensiToPDF = () => {
   });
 
   // 5. Tanda Tangan
+  // 5. Tanda Tangan (PDF)
   const finalY = doc.lastAutoTable.finalY || 100;
-  doc.text('Mengetahui,', 150, finalY + 15, { align: 'center' });
-  doc.text('Kepala BPS Kab. Seram Bagian Barat,', signX, finalY + 15, { align: 'center' });
-  doc.text('Herthy Diana Soumokil, SST', 150, finalY + 30, { align: 'center' });
-  doc.line(130, finalY + 31, 170, finalY + 31); // Garis bawah nama
+  const signX = 150; // Posisi horizontal (tengah kanan)
 
+  doc.text('Mengetahui,', signX, finalY + 10, { align: 'center' });
+  doc.text('Kepala BPS Kab. Seram Bagian Barat,', signX, finalY + 15, { align: 'center' });
+  
+  // Memberi jarak untuk tanda tangan (di sini tempatnya)
+  doc.text('Herthy Diana Soumokil, SST', signX, finalY + 35, { align: 'center' });
+  doc.line(130, finalY + 36, 170, finalY + 36); // Garis bawah nama
   doc.save(`Daftar_Hadir_${selectedDate}.pdf`);
 };
   
@@ -880,17 +884,22 @@ const exportPresensiToPDF = () => {
   
   // 5. Tanda Tangan (Posisi dinamis di bawah data terakhir)
   const signRow = rowNum + 3;
-  sheet.mergeCells(`C${signRow+2}:D${signRow+2}`);
+  sheet.mergeCells(`C${signRow}:D${signRow}`);
   sheet.getCell(`C${signRow}`).value = 'Mengetahui,';
   sheet.getCell(`C${signRow}`).alignment = { horizontal: 'center' };
+
+  // 2. Baris Jabatan (Baru)
   sheet.mergeCells(`C${signRow + 1}:D${signRow + 1}`);
   sheet.getCell(`C${signRow + 1}`).value = 'Kepala BPS Kab. Seram Bagian Barat,';
   sheet.getCell(`C${signRow + 1}`).alignment = { horizontal: 'center' };
 
-    
-  sheet.getCell(`C${signRow+4}`).value = 'Herthy Diana Soumokil,SST';
-  sheet.getCell(`C${signRow+4}`).font = { bold: true, underline: true };
-  sheet.getCell(`C${signRow+4}`).alignment = { horizontal: 'center' };
+  // 3. Spasi untuk Tanda Tangan (Baris kosong)
+  
+  // 4. Nama Pejabat (Baris ke-signRow + 4 agar pas untuk tanda tangan)
+  sheet.mergeCells(`C${signRow + 4}:D${signRow + 4}`);
+  sheet.getCell(`C${signRow + 4}`).value = 'Herthy Diana Soumokil, SST';
+  sheet.getCell(`C${signRow + 4}`).font = { bold: true, underline: true };
+  sheet.getCell(`C${signRow + 4}`).alignment = { horizontal: 'center' };
 
   // Atur Lebar Kolom
   sheet.getColumn(1).width = 15;
@@ -2330,6 +2339,7 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
