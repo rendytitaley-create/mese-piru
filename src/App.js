@@ -679,25 +679,40 @@ const pimpinan = pimpinanTerpilih;
 
     let monthsToInclude = targetPeriod === 'tw1' ? [1, 2, 3] : targetPeriod === 'tw2' ? [4, 5, 6] : targetPeriod === 'tw3' ? [7, 8, 9] : [10, 11, 12];
     
+    // Filter data BAKIRA 3 bulan untuk periode yang sedang dihitung
+    const bakira3Bulan = bakiraRecords.filter(b => {
+        const dateObj = new Date(b.date);
+        const month = dateObj.getMonth() + 1;
+        const year = dateObj.getFullYear();
+        return year === targetYear && monthsToInclude.includes(month);
+    });
+
     const results = staff.map(s => {
+      // 1. CKP (50% dari total nilai)
       const sReports = reports.filter(r => r.userId === s.username && r.year === targetYear && monthsToInclude.includes(r.month));
       const avgCKP = sReports.length > 0 ? (sReports.reduce((acc, curr) => acc + (Number(curr.nilaiPimpinan) || 0), 0) / sReports.length) : 0;
       
+      // 2. KJK (30% dari total nilai)
       const sFirstWord = getFirstWord(s.name);
       const sKJKs = kjkData.filter(k => getFirstWord(k.nama) === sFirstWord && k.year === targetYear && monthsToInclude.includes(k.month));
       const totalKJKMins = sKJKs.reduce((acc, curr) => acc + timeToMinutes(curr.kjkValue), 0);
       const kjkScore = Math.max(0, 100 - ((totalKJKMins / 60) * 5));
       
+      // 3. BAKIRA (10% dari total nilai)
+      const nilaiBakira = hitungRerataRiil(s.username, bakira3Bulan);
+      
+      // 4. Peer Review (10% dari total nilai)
       const sVotes = peerReviews.filter(v => v.targetUserId === s.username && v.period === targetPeriod && v.year === targetYear);
       const avgVote = sVotes.length > 0 ? (sVotes.reduce((acc, curr) => acc + (curr.kinerja + curr.perilaku + curr.inovasi) / 3, 0) / sVotes.length) * 10 : 0;
       
-      const finalScore = ((avgCKP * 0.4) + (kjkScore * 0.3) + (avgVote * 0.3)).toFixed(2);
+      // Rumus Akhir: 50% CKP, 30% KJK, 10% BAKIRA, 10% VOTE
+      const finalScore = ((avgCKP * 0.5) + (kjkScore * 0.3) + (nilaiBakira * 0.1) + (avgVote * 0.1)).toFixed(2);
       
-      return { ...s, finalScore, avgCKP, kjkScore, avgVote, totalVotesReceived: sVotes.length };
+      return { ...s, finalScore, avgCKP, kjkScore, nilaiBakira, avgVote, totalVotesReceived: sVotes.length };
     });
 
     return results.sort((a, b) => b.finalScore - a.finalScore);
-  }, [users, reports, kjkData, peerReviews, voteWindow, currentTW, selectedYear]);
+  }, [users, reports, kjkData, peerReviews, voteWindow, currentTW, selectedYear, bakiraRecords]); // Menambahkan bakiraRecords sebagai dependency
 
   // === FITUR BARU: CETAK KERTAS KERJA PEMILIHAN PEGAWAI TELADAN ===
   const exportKertasKerjaTeladan = async () => {
@@ -2371,6 +2386,7 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
