@@ -751,7 +751,7 @@ const pimpinan = pimpinanTerpilih;
     subTitle.alignment = { horizontal: 'center' };
 
     // Header Tabel
-    const headerRow = ['No', 'Nama Pegawai', 'Rata-Rata CKP (40%)', 'Skor KJK (30%)', 'BAKIRA (10%)', 'Nilai 360 (30%)', 'Total Skor', 'Peringkat', 'Keterangan'];
+    const headerRow = ['No', 'Nama Pegawai', 'Rata-Rata CKP (50%)', 'Skor KJK (30%)', 'BAKIRA (10%)', 'Nilai 360 (10%)', 'Total Skor', 'Peringkat', 'Keterangan'];
     sheet.getRow(6).values = headerRow;
 
     // Styling Header
@@ -2392,6 +2392,7 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
