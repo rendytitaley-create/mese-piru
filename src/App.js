@@ -2015,7 +2015,6 @@ const pimpinan = pimpinanTerpilih;
               <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button>
               <button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button>
   <button onClick={() => setActiveTab('bakira')} className={`flex flex-col items-center gap-1 ${activeTab === 'bakira' ? 'text-indigo-600' : 'text-slate-300'}`}><Camera size={24}/><span className="text-[8px] font-black uppercase">BAKIRA</span></button>
-)}
               <button onClick={() => setActiveTab('users')} className={`flex flex-col items-center gap-1 ${activeTab === 'users' ? 'text-indigo-600' : 'text-slate-300'}`}><Users size={24}/><span className="text-[8px] font-black uppercase">Pegawai</span></button>
             </>
           ) : user.role === 'pimpinan' ? (
@@ -2242,6 +2241,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
