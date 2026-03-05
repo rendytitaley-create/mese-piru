@@ -761,8 +761,6 @@ const pimpinan = pimpinanTerpilih;
 
 const exportPresensiToPDF = () => {
   const doc = new jsPDF('p', 'mm', 'a4');
-  
-  const signX = 150;
 
   const dateObj = new Date(selectedDate);
   const formattedDate = dateObj.toLocaleDateString('id-ID', { 
@@ -2339,6 +2337,7 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
