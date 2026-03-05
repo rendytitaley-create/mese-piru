@@ -46,6 +46,7 @@ const PIRUApp = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 const [bakiraDailyLog, setBakiraDailyLog] = useState({});
 const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
+  const [bakiraRecords, setBakiraRecords] = useState([]);
   const [exportFormat, setExportFormat] = useState('excel');
   const [isKegiatanAda, setIsKegiatanAda] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -134,7 +135,18 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
     });
 
     return () => { unsubAuth(); unsubUsers(); unsubSettings(); unsubKJK(); };
-  }, []);
+  
+    const unsubBakiraRecords = onSnapshot(collection(db, "bakira"), (snap) => {
+        // Mengubah snapshot menjadi array agar mudah diolah di useMemo
+        const records = snap.docs.map(d => ({ date: d.id, ...d.data() }));
+        setBakiraRecords(records);
+    });
+
+    return () => { 
+        // ... unsub lainnya ...
+        unsubBakiraRecords(); // Jangan lupa tambahkan ini di return
+    };
+}, []);
 
   useEffect(() => {
     if (!user) return;
@@ -243,6 +255,28 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
     return (hrs * 60) + mins;
   };
 
+  const hitungRerataRiil = (username, dataBakira3Bulan) => {
+  let totalSkor = 0;
+  let jumlahHariKegiatan = 0;
+
+  dataBakira3Bulan.forEach(hari => {
+    if (hari.isKegiatanAda && hari.absensi && hari.absensi[username]) {
+      const status = hari.absensi[username];
+      jumlahHariKegiatan++;
+
+      if (status === 'hadir' || status === 'tugas' || status === 'cuti') {
+        totalSkor += 100;
+      } else if (status === 'sakit') {
+        totalSkor += 75; // Sesuai koreksi Anda
+      } else if (status === 'izin') {
+        totalSkor += 50;
+      }
+    }
+  });
+
+  return jumlahHariKegiatan > 0 ? (totalSkor / jumlahHariKegiatan) : 100;
+};
+  
   const minutesToTimeStr = (totalMins) => {
     const h = Math.floor(totalMins / 60).toString().padStart(2, '0');
     const m = (totalMins % 60).toString().padStart(2, '0');
@@ -2337,6 +2371,7 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
