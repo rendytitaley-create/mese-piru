@@ -1252,11 +1252,11 @@ const pimpinan = pimpinanTerpilih;
           </div>
         )}
 
-       {activeTab === 'bakira' && (
+      {activeTab === 'bakira' && (
   <div className="animate-in fade-in duration-500 italic pb-28 md:pb-10 p-6 md:p-10">
     <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 max-w-4xl mx-auto overflow-hidden">
       
-      {/* Header & Tanggal */}
+      {/* Header & Tanggal & Toggle (Semua dibungkus dalam satu div header) */}
       <div className="p-8 border-b border-slate-100">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-black uppercase italic tracking-tighter">Absensi BAKIRA</h2>
@@ -1267,19 +1267,21 @@ const pimpinan = pimpinanTerpilih;
             onChange={(e) => setSelectedDate(e.target.value)}
           />
         </div>
-        {/* TOMBOL TOGGLE KEGIATAN */}
+        
+        <div className="flex flex-col gap-4">
           <button 
             onClick={() => setIsKegiatanAda(!isKegiatanAda)}
-            className={`px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg transition-all ${isKegiatanAda ? 'bg-indigo-600 text-white' : 'bg-red-500 text-white'}`}
+            className={`w-full py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg transition-all ${isKegiatanAda ? 'bg-indigo-600 text-white' : 'bg-red-500 text-white'}`}
           >
             {isKegiatanAda ? "Kegiatan Hari Ini: ADA" : "Kegiatan Hari Ini: TIDAK ADA"}
           </button>
-        </div>
-        <div className="flex gap-3 justify-end">
-          <button onClick={exportPresensiToExcel} className="bg-green-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95">Cetak Excel</button>
-          {['admin', 'pimpinan'].includes(user.role) && (
-            <button onClick={handleSaveBakira} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95">Simpan Tanggal {selectedDate}</button>
-          )}
+          
+          <div className="flex gap-3 justify-end">
+            <button onClick={exportPresensiToExcel} className="bg-green-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95">Cetak Excel</button>
+            {['admin', 'pimpinan'].includes(user.role) && (
+              <button onClick={handleSaveBakira} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95">Simpan Tanggal {selectedDate}</button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -2207,6 +2209,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
