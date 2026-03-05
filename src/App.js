@@ -1400,66 +1400,24 @@ const exportPresensiToPDF = () => {
         )}
 
    {activeTab === 'bakira' && (
-  <div className="flex flex-col h-[80vh] animate-in fade-in duration-500 italic p-4 md:p-10">
-    <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 max-w-4xl mx-auto w-full flex flex-col flex-1 overflow-hidden">
+  <div className="flex flex-col h-[85vh] animate-in fade-in duration-500 italic p-4 md:p-10">
+    {/* Container Utama: Menggunakan flex-row agar tabel dan panel terpisah secara presisi */}
+    <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 max-w-6xl mx-auto w-full flex flex-col md:flex-row flex-1 overflow-hidden">
       
-      {/* Header Halaman */}
-      <div className="p-6 border-b border-slate-100 flex-shrink-0">
-        {!['admin', 'pimpinan'].includes(user.role) && (
-          <div className="bg-amber-50 text-amber-700 p-2 mb-4 rounded-xl text-[9px] font-black uppercase text-center italic">
-          </div>
-        )}
-        
-        <div className="flex justify-between items-center mb-4">
+      {/* KIRI: TABEL ABSENSI (DIPADATKAN DAN DIBERI RUANG) */}
+      <div className="flex-[2] overflow-y-auto border-r border-slate-100 flex flex-col">
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
           <h2 className="text-lg font-black uppercase italic tracking-tighter">Absensi BAKIRA</h2>
           <input 
             type="date" 
-            className="p-2 bg-slate-50 border border-slate-200 rounded-xl font-black text-[10px] italic outline-none"
+            className="p-3 bg-slate-50 border border-slate-200 rounded-2xl font-black text-[10px] italic outline-none"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
           />
         </div>
-        
-        <div className="flex flex-col gap-3">
-          <button 
-            disabled={!['admin', 'pimpinan'].includes(user.role)}
-            onClick={() => setIsKegiatanAda(!isKegiatanAda)}
-            className={`w-full py-2 rounded-xl font-black uppercase text-[10px] transition-all 
-              ${!['admin', 'pimpinan'].includes(user.role) ? 'opacity-50 cursor-not-allowed' : ''}
-              ${isKegiatanAda ? 'bg-indigo-600 text-white' : 'bg-red-500 text-white'}`}
-          >
-            {isKegiatanAda ? "Kegiatan Hari Ini: ADA" : "Kegiatan Hari Ini: TIDAK ADA"}
-          </button>
-          
-          <div className="flex gap-2 justify-end">
-            {/* Dropdown Pilihan Format */}
-            <select 
-              value={exportFormat} 
-              onChange={(e) => setExportFormat(e.target.value)}
-              className="bg-slate-100 px-3 rounded-xl font-black text-[10px] uppercase outline-none"
-            >
-              <option value="excel">Excel (.xlsx)</option>
-              <option value="pdf">PDF (.pdf)</option>
-            </select>
 
-            <button 
-              onClick={() => exportFormat === 'excel' ? exportPresensiToExcel() : exportPresensiToPDF()} 
-              className="bg-green-600 text-white px-4 py-2 rounded-xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all"
-            >
-              Cetak {exportFormat === 'excel' ? 'Excel' : 'PDF'}
-            </button>
-            
-            {['admin', 'pimpinan'].includes(user.role) && (
-              <button onClick={handleSaveBakira} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-black uppercase text-[10px]">Simpan</button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Tabel Absensi */}
-      <div className="flex-1 overflow-y-auto">
         <table className="w-full text-left border-collapse">
-          <thead className="bg-slate-50 sticky top-0 z-10 text-[9px] font-black text-slate-400 uppercase italic">
+          <thead className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase italic">
             <tr><th className="p-4">No</th><th className="p-4">Pegawai</th><th className="p-4">Status</th></tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -1467,20 +1425,14 @@ const exportPresensiToPDF = () => {
               .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.')
               .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
               .map((u, index) => (
-                <tr key={u.firestoreId}>
+                <tr key={u.firestoreId} className="hover:bg-slate-50 transition-colors">
                   <td className="p-4 text-[10px] font-bold text-slate-400">{index + 1}</td>
                   <td className="p-4 font-black uppercase text-xs">{u.name}</td>
-                  <td className="p-4">
+                  <td className="p-4 w-40">
                     <select 
                       disabled={!['admin', 'pimpinan'].includes(user.role)}
-                      className={`p-2 rounded-lg text-[10px] font-black w-full outline-none transition-colors
-                        ${bakiraDailyLog[u.username] === 'hadir' ? 'bg-green-100 text-green-700' : ''}
-                        ${bakiraDailyLog[u.username] === 'izin' ? 'bg-yellow-100 text-yellow-700' : ''}
-                        ${bakiraDailyLog[u.username] === 'sakit' ? 'bg-blue-100 text-blue-700' : ''}
-                        ${bakiraDailyLog[u.username] === 'tugas' ? 'bg-purple-100 text-purple-700' : ''}
-                        ${bakiraDailyLog[u.username] === 'cuti' ? 'bg-orange-100 text-orange-700' : ''}
-                        ${!bakiraDailyLog[u.username] ? 'bg-slate-100' : ''}
-                      `}
+                      className={`p-2 rounded-xl text-[10px] font-black w-full outline-none border border-slate-100
+                        ${bakiraDailyLog[u.username] === 'hadir' ? 'bg-green-50 text-green-700' : 'bg-slate-50'}`}
                       value={bakiraDailyLog[u.username] || 'hadir'}
                       onChange={(e) => setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value})}
                     >
@@ -1497,53 +1449,37 @@ const exportPresensiToPDF = () => {
         </table>
       </div>
 
-    {/* Input Link & Tombol Akses */}
-      <div className="p-6 border-t border-slate-100 bg-slate-50 flex-shrink-0">
-        
-        {/* 1. Link Dokumentasi */}
-        <label className="block text-[9px] font-black text-slate-400 uppercase italic mb-1">Link Dokumentasi Rapat</label>
-        <div className="flex gap-3">
-          <input 
-            readOnly={!['admin', 'pimpinan'].includes(user.role)}
-            type="text"
-            placeholder="Tempel link Google Drive di sini..."
-            className="flex-1 bg-white p-3 rounded-xl text-xs border border-slate-200 outline-none"
-            value={bakiraLinkDoc}
-            onChange={(e) => setBakiraLinkDoc(e.target.value)}
-          />
+      {/* KANAN: PANEL KONTROL & LINK (PROFESIONAL) */}
+      <div className="flex-1 bg-slate-50 p-8 flex flex-col gap-6">
+        <button 
+          disabled={!['admin', 'pimpinan'].includes(user.role)}
+          onClick={() => setIsKegiatanAda(!isKegiatanAda)}
+          className={`w-full py-4 rounded-2xl font-black uppercase text-[10px] transition-all shadow-md ${isKegiatanAda ? 'bg-indigo-600 text-white' : 'bg-red-500 text-white'}`}
+        >
+          {isKegiatanAda ? "Kegiatan Hari Ini: ADA" : "Kegiatan Hari Ini: TIDAK ADA"}
+        </button>
+
+        <div className="space-y-4">
+          <label className="block text-[9px] font-black text-slate-400 uppercase italic">Link Dokumentasi</label>
+          <input className="w-full p-4 text-xs rounded-xl border border-slate-200 outline-none" value={bakiraLinkDoc} onChange={e => setBakiraLinkDoc(e.target.value)} />
           {bakiraLinkDoc && (
-            <a 
-              href={bakiraLinkDoc.startsWith('http') ? bakiraLinkDoc : `https://${bakiraLinkDoc}`} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="bg-indigo-600 text-white px-4 rounded-xl flex items-center font-black text-[10px] uppercase shadow-lg"
-            >
-              Buka Link
-            </a>
+            <a href={bakiraLinkDoc.startsWith('http') ? bakiraLinkDoc : `https://${bakiraLinkDoc}`} target="_blank" rel="noopener noreferrer" className="block text-center bg-indigo-600 text-white p-3 rounded-xl font-black text-[10px] uppercase">Buka Link</a>
           )}
         </div>
 
-        {/* 2. Link Notulen */}
-        <label className="block text-[9px] font-black text-slate-400 uppercase italic mb-1 mt-4">Link Notulen Rapat</label>
-        <div className="flex gap-3">
-          <input 
-            readOnly={!['admin', 'pimpinan'].includes(user.role)}
-            type="text"
-            placeholder="Tempel link notulen di sini..."
-            className="flex-1 bg-white p-3 rounded-xl text-xs border border-slate-200 outline-none"
-            value={bakiraNotulenLink}
-            onChange={(e) => setBakiraNotulenLink(e.target.value)}
-          />
+        <div className="space-y-4">
+          <label className="block text-[9px] font-black text-slate-400 uppercase italic">Link Notulen</label>
+          <input className="w-full p-4 text-xs rounded-xl border border-slate-200 outline-none" value={bakiraNotulenLink} onChange={e => setBakiraNotulenLink(e.target.value)} />
           {bakiraNotulenLink && (
-            <a 
-              href={bakiraNotulenLink.startsWith('http') ? bakiraNotulenLink : `https://${bakiraNotulenLink}`} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="bg-amber-600 text-white px-4 rounded-xl flex items-center font-black text-[10px] uppercase shadow-lg transition-all active:scale-95"
-            >
-              Buka Notulen
-            </a>
+            <a href={bakiraNotulenLink.startsWith('http') ? bakiraNotulenLink : `https://${bakiraNotulenLink}`} target="_blank" rel="noopener noreferrer" className="block text-center bg-amber-600 text-white p-3 rounded-xl font-black text-[10px] uppercase">Buka Notulen</a>
           )}
+        </div>
+
+        <div className="mt-auto space-y-3">
+          <button onClick={handleSaveBakira} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px]">Simpan Data</button>
+          <div className="flex gap-2">
+            <button onClick={() => exportFormat === 'excel' ? exportPresensiToExcel() : exportPresensiToPDF()} className="flex-1 bg-green-600 text-white py-3 rounded-xl font-black text-[9px] uppercase">Cetak {exportFormat === 'excel' ? 'Excel' : 'PDF'}</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2425,6 +2361,7 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
