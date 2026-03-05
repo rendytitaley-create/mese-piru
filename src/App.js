@@ -14,8 +14,8 @@ import {
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 // === CONFIG FIREBASE ANDA ===
 const firebaseConfig = {
@@ -762,28 +762,22 @@ const pimpinan = pimpinanTerpilih;
 const exportPresensiToPDF = () => {
   const doc = new jsPDF();
   
-  // Judul Dokumen
   doc.setFontSize(14);
   doc.text("DAFTAR HADIR - " + selectedDate, 14, 15);
   
-  // Filter Data (Hanya yang statusnya 'hadir')
   const tableData = users
     .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.')
     .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
-    .filter(u => (bakiraDailyLog[u.username] || 'hadir') === 'hadir') // Filter logika yang hadir saja
+    .filter(u => (bakiraDailyLog[u.username] || 'hadir') === 'hadir')
     .map((u, idx) => [idx + 1, u.name, u.jabatan || '-']);
 
-  // Membuat tabel PDF
-  doc.autoTable({
+  // CARA PEMANGGILAN YANG BENAR:
+  autoTable(doc, { // Kita memanggil autoTable langsung, bukan doc.autoTable
     head: [['No', 'Nama Pegawai', 'Jabatan']],
     body: tableData,
     startY: 25,
-    theme: 'grid',
-    styles: { fontSize: 10 },
-    headStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0] }
   });
   
-  // Menyimpan file
   doc.save(`Daftar_Hadir_${selectedDate}.pdf`);
 };
   
@@ -2296,6 +2290,7 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
