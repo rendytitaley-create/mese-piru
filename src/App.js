@@ -1272,7 +1272,6 @@ const pimpinan = pimpinanTerpilih;
         {/* Pesan Read-Only untuk Pegawai */}
         {!['admin', 'pimpinan'].includes(user.role) && (
           <div className="bg-amber-50 text-amber-700 p-2 mb-4 rounded-xl text-[9px] font-black uppercase text-center italic">
-            Mode Lihat (Read-Only) - Tidak dapat melakukan perubahan data
           </div>
         )}
 
@@ -2250,6 +2249,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
