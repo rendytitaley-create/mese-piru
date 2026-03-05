@@ -767,7 +767,7 @@ const pimpinan = pimpinanTerpilih;
 
   sheet.mergeCells('A3:H3');
   const subTitle = sheet.getCell('A3');
-  subTitle.value = `Tahun Anggaran ${year}`;
+  subTitle.value = `BPS KABUPATEN SERAM BAGIAN BARAT TAHUN ${year}`;
   subTitle.font = { bold: true, size: 11 };
   subTitle.alignment = { horizontal: 'center' };
 
@@ -2399,6 +2399,7 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
