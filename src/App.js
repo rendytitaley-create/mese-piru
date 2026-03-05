@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 // === CONFIG FIREBASE ANDA ===
 const firebaseConfig = {
@@ -44,6 +46,7 @@ const PIRUApp = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 const [bakiraDailyLog, setBakiraDailyLog] = useState({});
 const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
+  const [exportFormat, setExportFormat] = useState('excel');
   const [isKegiatanAda, setIsKegiatanAda] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -756,6 +759,34 @@ const pimpinan = pimpinanTerpilih;
     saveAs(new Blob([buffer]), `Kertas_Kerja_Teladan_${period}_${year}.xlsx`);
   };
 
+const exportPresensiToPDF = () => {
+  const doc = new jsPDF();
+  
+  // Judul Dokumen
+  doc.setFontSize(14);
+  doc.text("DAFTAR HADIR - " + selectedDate, 14, 15);
+  
+  // Filter Data (Hanya yang statusnya 'hadir')
+  const tableData = users
+    .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.')
+    .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
+    .filter(u => (bakiraDailyLog[u.username] || 'hadir') === 'hadir') // Filter logika yang hadir saja
+    .map((u, idx) => [idx + 1, u.name, u.jabatan || '-']);
+
+  // Membuat tabel PDF
+  doc.autoTable({
+    head: [['No', 'Nama Pegawai', 'Jabatan']],
+    body: tableData,
+    startY: 25,
+    theme: 'grid',
+    styles: { fontSize: 10 },
+    headStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0] }
+  });
+  
+  // Menyimpan file
+  doc.save(`Daftar_Hadir_${selectedDate}.pdf`);
+};
+  
   const exportPresensiToExcel = async () => {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Daftar Hadir');
@@ -1269,12 +1300,12 @@ const pimpinan = pimpinanTerpilih;
       
       {/* Header Halaman */}
       <div className="p-6 border-b border-slate-100 flex-shrink-0">
-        {/* Pesan Read-Only untuk Pegawai */}
         {!['admin', 'pimpinan'].includes(user.role) && (
           <div className="bg-amber-50 text-amber-700 p-2 mb-4 rounded-xl text-[9px] font-black uppercase text-center italic">
+            Mode Lihat (Read-Only) - Tidak dapat melakukan perubahan data
           </div>
         )}
-
+        
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-black uppercase italic tracking-tighter">Absensi BAKIRA</h2>
           <input 
@@ -1297,7 +1328,23 @@ const pimpinan = pimpinanTerpilih;
           </button>
           
           <div className="flex gap-2 justify-end">
-            <button onClick={exportPresensiToExcel} className="bg-green-600 text-white px-4 py-2 rounded-xl font-black uppercase text-[10px]">Cetak Excel</button>
+            {/* Dropdown Pilihan Format */}
+            <select 
+              value={exportFormat} 
+              onChange={(e) => setExportFormat(e.target.value)}
+              className="bg-slate-100 px-3 rounded-xl font-black text-[10px] uppercase outline-none"
+            >
+              <option value="excel">Excel (.xlsx)</option>
+              <option value="pdf">PDF (.pdf)</option>
+            </select>
+
+            <button 
+              onClick={() => exportFormat === 'excel' ? exportPresensiToExcel() : exportPresensiToPDF()} 
+              className="bg-green-600 text-white px-4 py-2 rounded-xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all"
+            >
+              Cetak {exportFormat === 'excel' ? 'Excel' : 'PDF'}
+            </button>
+            
             {['admin', 'pimpinan'].includes(user.role) && (
               <button onClick={handleSaveBakira} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-black uppercase text-[10px]">Simpan</button>
             )}
@@ -2249,6 +2296,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
