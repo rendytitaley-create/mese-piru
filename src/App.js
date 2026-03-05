@@ -1061,11 +1061,10 @@ const pimpinan = pimpinanTerpilih;
           {user.role === 'admin' && (<button onClick={() => setActiveTab('kjk_management')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'kjk_management' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><FileSpreadsheet size={20}/> Manajemen KJK</button>)}
           {user.role === 'admin' && (<button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'users' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Users size={20}/> Data Pegawai</button>)}
         </nav>
-  <button onClick={() => setActiveTab('bakira')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'bakira' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Camera size={20}/> BAKIRA</button>)}
+  <button onClick={() => setActiveTab('bakira')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'bakira' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Camera size={20}/> BAKIRA</button>
         <button onClick={() => setShowPasswordModal(true)} className="w-full flex items-center gap-4 px-5 py-3 rounded-2xl font-black text-[10px] uppercase text-slate-400 hover:text-indigo-600 transition-all italic mb-2"><KeyRound size={16}/> Ganti Password</button>
         <button onClick={() => {localStorage.clear(); window.location.reload();}} className="w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase text-red-500 transition-all italic"><LogOut size={20}/> Logout</button>
       </div>
-
       <main className="flex-1 flex flex-col h-screen overflow-hidden font-sans italic relative">
         <header className="px-6 md:px-10 py-6 md:py-10 pb-4 flex flex-row justify-between items-center italic sticky top-0 bg-blue-50/80 backdrop-blur-md border-b border-blue-100 z-30 shadow-sm">
           <div className="flex-1 flex items-center gap-4 italic">
@@ -2241,6 +2240,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
