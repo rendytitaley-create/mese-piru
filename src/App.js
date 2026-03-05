@@ -1399,11 +1399,11 @@ const exportPresensiToPDF = () => {
           </div>
         )}
 
-   {activeTab === 'bakira' && (
+ {activeTab === 'bakira' && (
   <div className="flex flex-col h-[85vh] animate-in fade-in duration-500 italic p-4 md:p-10">
     <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 max-w-6xl mx-auto w-full flex flex-col md:flex-row flex-1 overflow-hidden">
       
-      {/* KIRI: TABEL ABSENSI (HEADER STICKY) */}
+      {/* KIRI: TABEL ABSENSI */}
       <div className="flex-[2] flex flex-col overflow-hidden border-r border-slate-100">
         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
           <h2 className="text-lg font-black uppercase italic tracking-tighter">Absensi BAKIRA</h2>
@@ -1415,15 +1415,10 @@ const exportPresensiToPDF = () => {
           />
         </div>
 
-        {/* Wrapper Scroll Tabel dengan Header Sticky */}
         <div className="flex-1 overflow-y-auto">
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50 sticky top-0 z-10 text-[9px] font-black text-slate-400 uppercase italic">
-              <tr>
-                <th className="p-4">No</th>
-                <th className="p-4">Pegawai</th>
-                <th className="p-4">Status</th>
-              </tr>
+              <tr><th className="p-4">No</th><th className="p-4">Pegawai</th><th className="p-4">Status</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {users
@@ -1437,7 +1432,14 @@ const exportPresensiToPDF = () => {
                       <select 
                         disabled={!['admin', 'pimpinan'].includes(user.role)}
                         className={`p-2 rounded-xl text-[10px] font-black w-full outline-none border border-slate-100
-                          ${bakiraDailyLog[u.username] === 'hadir' ? 'bg-green-50 text-green-700' : 'bg-slate-50'}`}
+                          ${bakiraDailyLog[u.username] === 'hadir' ? 'bg-green-100 text-green-700' : ''}
+                          ${bakiraDailyLog[u.username] === 'izin' ? 'bg-yellow-100 text-yellow-700' : ''}
+                          ${bakiraDailyLog[u.username] === 'sakit' ? 'bg-blue-100 text-blue-700' : ''}
+                          ${bakiraDailyLog[u.username] === 'tugas' ? 'bg-purple-100 text-purple-700' : ''}
+                          ${bakiraDailyLog[u.username] === 'cuti' ? 'bg-orange-100 text-orange-700' : ''}
+                          ${bakiraDailyLog[u.username] === 'alpa' ? 'bg-red-100 text-red-700' : ''}
+                          ${!bakiraDailyLog[u.username] ? 'bg-slate-100' : ''}
+                        `}
                         value={bakiraDailyLog[u.username] || 'hadir'}
                         onChange={(e) => setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value})}
                       >
@@ -1446,6 +1448,7 @@ const exportPresensiToPDF = () => {
                         <option value="sakit">Sakit</option>
                         <option value="tugas">Tugas</option>
                         <option value="cuti">Cuti</option>
+                        <option value="alpa">Alpa</option>
                       </select>
                     </td>
                   </tr>
@@ -1455,7 +1458,7 @@ const exportPresensiToPDF = () => {
         </div>
       </div>
 
-      {/* KANAN: PANEL KONTROL (TETAP) */}
+      {/* KANAN: PANEL KONTROL */}
       <div className="flex-1 bg-slate-50 p-8 flex flex-col gap-6">
         <button 
           disabled={!['admin', 'pimpinan'].includes(user.role)}
@@ -1503,7 +1506,6 @@ const exportPresensiToPDF = () => {
           </div>
         </div>
       </div>
-      
     </div>
   </div>
 )}
@@ -2383,6 +2385,7 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
