@@ -1265,7 +1265,7 @@ const pimpinan = pimpinanTerpilih;
           </div>
         )}
 
-     {activeTab === 'bakira' && (
+    {activeTab === 'bakira' && (
   <div className="flex flex-col h-[80vh] animate-in fade-in duration-500 italic p-4 md:p-10">
     <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 max-w-4xl mx-auto w-full flex flex-col flex-1 overflow-hidden">
       
@@ -1288,8 +1288,9 @@ const pimpinan = pimpinanTerpilih;
           >
             {isKegiatanAda ? "Kegiatan Hari Ini: ADA" : "Kegiatan Hari Ini: TIDAK ADA"}
           </button>
+          
           <div className="flex gap-2 justify-end">
-            <button onClick={exportPresensiToExcel} className="bg-green-600 text-white px-4 py-2 rounded-xl font-black uppercase text-[10px]">Excel</button>
+            <button onClick={exportPresensiToExcel} className="bg-green-600 text-white px-4 py-2 rounded-xl font-black uppercase text-[10px]">Cetak Excel</button>
             {['admin', 'pimpinan'].includes(user.role) && (
               <button onClick={handleSaveBakira} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-black uppercase text-[10px]">Simpan</button>
             )}
@@ -1297,7 +1298,7 @@ const pimpinan = pimpinanTerpilih;
         </div>
       </div>
 
-      {/* Tabel yang bisa di-scroll (flex-1 agar presisi) */}
+      {/* Tabel Absensi */}
       <div className="flex-1 overflow-y-auto">
         <table className="w-full text-left border-collapse">
           <thead className="bg-slate-50 sticky top-0 z-10 text-[9px] font-black text-slate-400 uppercase italic">
@@ -1309,28 +1310,28 @@ const pimpinan = pimpinanTerpilih;
               .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
               .map((u, index) => (
                 <tr key={u.firestoreId}>
-                  <td className="p-4 text-[10px]">{index + 1}</td>
+                  <td className="p-4 text-[10px] font-bold text-slate-400">{index + 1}</td>
                   <td className="p-4 font-black uppercase text-xs">{u.name}</td>
                   <td className="p-4">
                     <select 
-  disabled={!['admin', 'pimpinan'].includes(user.role)}
-  className={`p-2 rounded-lg text-[10px] font-black w-full outline-none transition-colors
-    ${bakiraDailyLog[u.username] === 'hadir' ? 'bg-green-100 text-green-700' : ''}
-    ${bakiraDailyLog[u.username] === 'izin' ? 'bg-yellow-100 text-yellow-700' : ''}
-    ${bakiraDailyLog[u.username] === 'sakit' ? 'bg-blue-100 text-blue-700' : ''}
-    ${bakiraDailyLog[u.username] === 'tugas' ? 'bg-purple-100 text-purple-700' : ''}
-    ${bakiraDailyLog[u.username] === 'cuti' ? 'bg-orange-100 text-orange-700' : ''}
-    ${!bakiraDailyLog[u.username] ? 'bg-slate-100' : ''}
-  `}
-  value={bakiraDailyLog[u.username] || 'hadir'}
-  onChange={(e) => setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value})}
->
-  <option value="hadir">Hadir</option>
-  <option value="izin">Izin</option>
-  <option value="sakit">Sakit</option>
-  <option value="tugas">Tugas</option>
-  <option value="cuti">Cuti</option>
-</select>
+                      disabled={!['admin', 'pimpinan'].includes(user.role)}
+                      className={`p-2 rounded-lg text-[10px] font-black w-full outline-none transition-colors
+                        ${bakiraDailyLog[u.username] === 'hadir' ? 'bg-green-100 text-green-700' : ''}
+                        ${bakiraDailyLog[u.username] === 'izin' ? 'bg-yellow-100 text-yellow-700' : ''}
+                        ${bakiraDailyLog[u.username] === 'sakit' ? 'bg-blue-100 text-blue-700' : ''}
+                        ${bakiraDailyLog[u.username] === 'tugas' ? 'bg-purple-100 text-purple-700' : ''}
+                        ${bakiraDailyLog[u.username] === 'cuti' ? 'bg-orange-100 text-orange-700' : ''}
+                        ${!bakiraDailyLog[u.username] ? 'bg-slate-100' : ''}
+                      `}
+                      value={bakiraDailyLog[u.username] || 'hadir'}
+                      onChange={(e) => setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value})}
+                    >
+                      <option value="hadir">Hadir</option>
+                      <option value="izin">Izin</option>
+                      <option value="sakit">Sakit</option>
+                      <option value="tugas">Tugas</option>
+                      <option value="cuti">Cuti</option>
+                    </select>
                   </td>
                 </tr>
             ))}
@@ -1338,16 +1339,29 @@ const pimpinan = pimpinanTerpilih;
         </table>
       </div>
 
-      {/* Input Link (Selalu terlihat di bawah karena flex-shrink-0) */}
+      {/* Input Link & Tombol Akses */}
       <div className="p-6 border-t border-slate-100 bg-slate-50 flex-shrink-0">
-        <label className="block text-[9px] font-black text-slate-400 uppercase italic mb-1">Link Dokumentasi</label>
-        <input 
-          readOnly={!['admin', 'pimpinan'].includes(user.role)}
-          type="text"
-          className="w-full bg-white p-3 rounded-xl text-xs border border-slate-200 outline-none"
-          value={bakiraLinkDoc}
-          onChange={(e) => setBakiraLinkDoc(e.target.value)}
-        />
+        <label className="block text-[9px] font-black text-slate-400 uppercase italic mb-1">Link Dokumentasi Rapat</label>
+        <div className="flex gap-3">
+          <input 
+            readOnly={!['admin', 'pimpinan'].includes(user.role)}
+            type="text"
+            placeholder="Tempel link Google Drive di sini..."
+            className="flex-1 bg-white p-3 rounded-xl text-xs border border-slate-200 outline-none"
+            value={bakiraLinkDoc}
+            onChange={(e) => setBakiraLinkDoc(e.target.value)}
+          />
+          {bakiraLinkDoc && (
+            <a 
+              href={bakiraLinkDoc.startsWith('http') ? bakiraLinkDoc : `https://${bakiraLinkDoc}`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="bg-indigo-600 text-white px-4 rounded-xl flex items-center font-black text-[10px] uppercase shadow-lg"
+            >
+              Buka Link
+            </a>
+          )}
+        </div>
       </div>
     </div>
   </div>
@@ -2230,6 +2244,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
