@@ -416,6 +416,7 @@ setPersistence(auth, browserSessionPersistence);
     await setDoc(docRef, {
       date: dateKey,
       absensi: bakiraDailyLog,
+      linkDoc: bakiraLinkDoc,
       updatedAt: serverTimestamp()
     });
     alert("Data kehadiran BAKIRA hari ini berhasil disimpan.");
@@ -1234,7 +1235,7 @@ const pimpinan = pimpinanTerpilih;
           </div>
         )}
 
-        {activeTab === 'bakira' && (
+       {activeTab === 'bakira' && (
   <div className="animate-in fade-in duration-500 italic pb-28 md:pb-10 p-6 md:p-10">
     <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 max-w-4xl mx-auto overflow-hidden">
       
@@ -1242,18 +1243,8 @@ const pimpinan = pimpinanTerpilih;
       <div className="p-8 border-b border-slate-100 flex justify-between items-center">
         <h2 className="text-lg font-black uppercase italic tracking-tighter">Absensi BAKIRA</h2>
         <div className="flex gap-3">
-          <button 
-            onClick={exportPresensiToExcel} 
-            className="bg-green-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all"
-          >
-            Cetak Excel
-          </button>
-          <button 
-            onClick={handleSaveBakira} 
-            className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all"
-          >
-            Simpan Absensi
-          </button>
+          <button onClick={exportPresensiToExcel} className="bg-green-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all">Cetak Excel</button>
+          <button onClick={handleSaveBakira} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all">Simpan Absensi</button>
         </div>
       </div>
 
@@ -1297,23 +1288,20 @@ const pimpinan = pimpinanTerpilih;
         </table>
       </div>
 
-      {/* Input Link Dokumentasi (Khusus Admin) */}
-      {user.role === 'admin' && (
-        <div className="p-8 border-t border-slate-100 bg-slate-50">
-          <label className="block text-[9px] font-black text-slate-400 uppercase italic mb-2">Link Dokumentasi Rapat (Google Drive)</label>
-          <input 
-            type="text"
-            placeholder="Tempel link Google Drive di sini..."
-            className="w-full bg-white p-4 rounded-2xl text-xs font-medium outline-none border border-slate-200"
-            value={bakiraLinkDoc}
-            onChange={(e) => setBakiraLinkDoc(e.target.value)}
-          />
-        </div>
-      )}
+      {/* Input Link Dokumentasi (Admin & Pimpinan Bisa Mengisi) */}
+      <div className="p-8 border-t border-slate-100 bg-slate-50">
+        <label className="block text-[9px] font-black text-slate-400 uppercase italic mb-2">Link Dokumentasi Rapat (Google Drive)</label>
+        <input 
+          type="text"
+          placeholder="Tempel link Google Drive di sini..."
+          className="w-full bg-white p-4 rounded-2xl text-xs font-medium outline-none border border-slate-200"
+          value={bakiraLinkDoc}
+          onChange={(e) => setBakiraLinkDoc(e.target.value)}
+        />
+      </div>
     </div>
   </div>
 )}
-
         <div className="md:hidden px-6 py-4 bg-white border-b flex items-center justify-center gap-4 z-20">
             <span className="text-[10px] font-black uppercase text-slate-400 italic">Periode:</span>
             <select className="bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 font-black text-[11px] text-indigo-600 outline-none shadow-sm cursor-pointer italic" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
@@ -2192,6 +2180,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
