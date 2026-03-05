@@ -44,6 +44,7 @@ const PIRUApp = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 const [bakiraDailyLog, setBakiraDailyLog] = useState({});
 const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
+  const [isKegiatanAda, setIsKegiatanAda] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [filterStaffName, setFilterStaffName] = useState('Semua');
@@ -433,9 +434,10 @@ setPersistence(auth, browserSessionPersistence);
       date: selectedDate,
       absensi: bakiraDailyLog,
       linkDoc: bakiraLinkDoc,
+      isKegiatanAda: isKegiatanAda, // Simpan status kegiatan
       updatedAt: serverTimestamp()
     }, { merge: true });
-    alert(`Data BAKIRA tanggal ${selectedDate} berhasil disimpan.`);
+    alert(`Data BAKIRA tanggal ${selectedDate} disimpan (Kegiatan Ada: ${isKegiatanAda ? 'Ya' : 'Tidak'}).`);
   } catch (err) {
     alert("Gagal menyimpan.");
   }
@@ -812,7 +814,7 @@ const pimpinan = pimpinanTerpilih;
     sheet.getCell(`C${rowNum+4}`).alignment = { horizontal: 'center' };
 
     // Atur Lebar Kolom
-    sheet.getColumn(1).width = 5;  // No
+    sheet.getColumn(1).width = 15;  // No
     sheet.getColumn(2).width = 30; // Nama
     sheet.getColumn(3).width = 25; // Jabatan
     sheet.getColumn(4).width = 15; // Status
@@ -1264,6 +1266,14 @@ const pimpinan = pimpinanTerpilih;
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
           />
+        </div>
+        {/* TOMBOL TOGGLE KEGIATAN */}
+          <button 
+            onClick={() => setIsKegiatanAda(!isKegiatanAda)}
+            className={`px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg transition-all ${isKegiatanAda ? 'bg-indigo-600 text-white' : 'bg-red-500 text-white'}`}
+          >
+            {isKegiatanAda ? "Kegiatan Hari Ini: ADA" : "Kegiatan Hari Ini: TIDAK ADA"}
+          </button>
         </div>
         <div className="flex gap-3 justify-end">
           <button onClick={exportPresensiToExcel} className="bg-green-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95">Cetak Excel</button>
@@ -2197,6 +2207,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
