@@ -41,6 +41,7 @@ const PIRUApp = () => {
   const [kjkData, setKjkData] = useState([]); 
   const [appSettings, setAppSettings] = useState({ logoURL: null });
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [filterStaffName, setFilterStaffName] = useState('Semua');
@@ -2189,6 +2190,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
