@@ -262,25 +262,39 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
     return (hrs * 60) + mins;
   };
 
-  const hitungRerataRiil = (username, dataBakira3Bulan) => {
+ const hitungRerataRiil = (username, dataBakira3Bulan) => {
   let totalSkor = 0;
   let jumlahHariKegiatan = 0;
 
   dataBakira3Bulan.forEach(hari => {
+    // Pastikan kita hanya menghitung hari yang memiliki kegiatan
     if (hari.isKegiatanAda && hari.absensi && hari.absensi[username]) {
       const status = hari.absensi[username];
       jumlahHariKegiatan++;
 
-      if (status === 'hadir' || status === 'tugas' || status === 'cuti') {
-        totalSkor += 100;
-      } else if (status === 'sakit') {
-        totalSkor += 75; // Sesuai koreksi Anda
-      } else if (status === 'izin') {
-        totalSkor += 50;
+      // Logika pembobotan baru
+      switch (status) {
+        case 'hadir':
+        case 'tugas':
+        case 'cuti':
+          totalSkor += 100;
+          break;
+        case 'sakit':
+          totalSkor += 90;
+          break;
+        case 'izin':
+          totalSkor += 75;
+          break;
+        case 'alpa':
+          totalSkor += 0;
+          break;
+        default:
+          totalSkor += 100; // Default untuk status lain jika ada
       }
     }
   });
 
+  // Jika tidak ada hari kegiatan, kembalikan 100 agar tidak merusak rerata
   return jumlahHariKegiatan > 0 ? (totalSkor / jumlahHariKegiatan) : 100;
 };
   
@@ -2385,6 +2399,7 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
