@@ -760,9 +760,10 @@ const pimpinan = pimpinanTerpilih;
   };
 
 const exportPresensiToPDF = () => {
-  const doc = new jsPDF('p', 'mm', 'a4'); // Menggunakan ukuran kertas A4
+  const doc = new jsPDF('p', 'mm', 'a4');
+  
+  const signX = 150;
 
-  // Mengambil nama hari dari selectedDate
   const dateObj = new Date(selectedDate);
   const formattedDate = dateObj.toLocaleDateString('id-ID', { 
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
@@ -2329,6 +2330,7 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
