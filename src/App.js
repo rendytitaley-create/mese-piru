@@ -762,17 +762,28 @@ const pimpinan = pimpinanTerpilih;
 const exportPresensiToPDF = () => {
   const doc = new jsPDF('p', 'mm', 'a4'); // Menggunakan ukuran kertas A4
 
+  // Mengambil nama hari dari selectedDate
+  const dateObj = new Date(selectedDate);
+  const formattedDate = dateObj.toLocaleDateString('id-ID', { 
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+  });
+
   // 1. Judul Utama
   doc.setFontSize(16);
   doc.text("DAFTAR HADIR", 105, 15, { align: 'center' });
 
   // 2. Info Detail (Hari/Tanggal, Waktu, Tempat, Agenda)
+  // Kita gunakan x = 45 sebagai posisi titik dua agar sejajar
+  const labelX = 14;
+  const colonX = 40; 
+  const valueX = 43;
+
   doc.setFontSize(10);
-  doc.text(`Hari / Tanggal  : ${selectedDate}`, 14, 30);
-  doc.text(`Waktu           : `, 14, 35);
-  doc.text(`Tempat          : `, 14, 40);
-  doc.text(`Agenda          : `, 14, 45);
-  doc.text(`Link Dokumen    : ${bakiraLinkDoc || '-'}`, 14, 50);
+  doc.text("Hari / Tanggal", labelX, 30); doc.text(":", colonX, 30); doc.text(formattedDate, valueX, 30);
+  doc.text("Waktu", labelX, 35);           doc.text(":", colonX, 35);
+  doc.text("Tempat", labelX, 40);          doc.text(":", colonX, 40);
+  doc.text("Agenda", labelX, 45);          doc.text(":", colonX, 45);
+  doc.text("Link Dokumen", labelX, 50);    doc.text(":", colonX, 50); doc.text(bakiraLinkDoc || '-', valueX, 50);
 
   // 3. Filter Data (Hanya yang HADIR saja)
   const tableData = users
@@ -2312,6 +2323,7 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
