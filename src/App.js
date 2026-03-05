@@ -1175,7 +1175,7 @@ const pimpinan = pimpinanTerpilih;
           <tr><th className="p-4">Pegawai</th><th className="p-4 text-center">Status</th></tr>
         </thead>
         <tbody>
-          {users.filter(u => u.role !== 'admin' && u.role !== 'pimpinan').map(u => (
+          {users.filter(u => u.role !== 'admin').map(u => (
             <tr key={u.firestoreId} className="border-b">
               <td className="p-4 font-black uppercase text-xs italic">{u.name}</td>
               <td className="p-4 text-center">
@@ -2077,6 +2077,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
