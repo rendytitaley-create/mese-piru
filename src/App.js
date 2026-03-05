@@ -105,12 +105,16 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   if (activeTab === 'bakira') {
     const unsub = onSnapshot(doc(db, "bakira", selectedDate), (docSnap) => {
       if (docSnap.exists()) {
-        setBakiraDailyLog(docSnap.data().absensi || {});
-        setBakiraLinkDoc(docSnap.data().linkDoc || '');
+        const data = docSnap.data();
+        setBakiraDailyLog(data.absensi || {});
+        setBakiraLinkDoc(data.linkDoc || '');
+        // Perbaikan: Mengambil status kegiatan yang tersimpan, default ke true jika belum ada
+        setIsKegiatanAda(data.isKegiatanAda !== undefined ? data.isKegiatanAda : true);
       } else {
-        // Jika tanggal baru, reset data
+        // Jika dokumen tanggal baru belum ada, reset semua data ke nilai default
         setBakiraDailyLog({});
         setBakiraLinkDoc('');
+        setIsKegiatanAda(true);
       }
     });
     return () => unsub();
@@ -2392,6 +2396,7 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
