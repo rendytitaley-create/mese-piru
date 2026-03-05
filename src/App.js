@@ -737,6 +737,60 @@ const pimpinan = pimpinanTerpilih;
     saveAs(new Blob([buffer]), `Kertas_Kerja_Teladan_${period}_${year}.xlsx`);
   };
 
+  const exportPresensiToExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Daftar Hadir');
+
+    // Judul
+    sheet.mergeCells('A1:C1');
+    sheet.getCell('A1').value = 'DAFTAR HADIR';
+    sheet.getCell('A1').font = { bold: true, size: 14 };
+    sheet.getCell('A1').alignment = { horizontal: 'center' };
+
+    // Informasi Agenda
+    sheet.getCell('A3').value = 'Hari / Tanggal'; sheet.getCell('B3').value = `: ${new Date().toLocaleDateString('id-ID')}`;
+    sheet.getCell('A4').value = 'Waktu'; sheet.getCell('B4').value = ': ';
+    sheet.getCell('A5').value = 'Tempat'; sheet.getCell('B5').value = ': ';
+    sheet.getCell('A6').value = 'Agenda'; sheet.getCell('B6').value = ': ';
+
+    // Header Tabel
+    sheet.getRow(8).values = ['No', 'Nama Pegawai', 'Status'];
+    sheet.getRow(8).eachCell(cell => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+      cell.font = { bold: true };
+      cell.alignment = { horizontal: 'center' };
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    });
+
+    // Isi Data
+    let rowNum = 9;
+    users.filter(u => u.role !== 'admin' && u.name !== 'NAMA_PIMPINAN_LAMA')
+         .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
+         .forEach((u, idx) => {
+           const row = sheet.getRow(rowNum);
+           row.values = [idx + 1, u.name, bakiraDailyLog[u.username] || 'hadir'];
+           row.eachCell(cell => { cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } }; });
+           rowNum++;
+    });
+
+    // Tanda Tangan
+    rowNum += 2;
+    sheet.mergeCells(`B${rowNum}:C${rowNum}`);
+    sheet.getCell(`B${rowNum}`).value = 'Pejabat Penilai,';
+    sheet.getCell(`B${rowNum}`).alignment = { horizontal: 'center' };
+    
+    rowNum += 4;
+    sheet.mergeCells(`B${rowNum}:C${rowNum}`);
+    sheet.getCell(`B${rowNum}`).value = 'NAMA PIMPINAN BARU';
+    sheet.getCell(`B${rowNum}`).font = { bold: true, underline: true };
+    sheet.getCell(`B${rowNum}`).alignment = { horizontal: 'center' };
+
+    sheet.getColumn(2).width = 40;
+    
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `Daftar_Hadir_${new Date().toLocaleDateString('id-ID')}.xlsx`);
+  };
+
   const handleSetWinner = async (staff) => {
     const period = voteWindow.period || currentTW;
     const year = voteWindow.evalYear || selectedYear;
@@ -2105,6 +2159,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
