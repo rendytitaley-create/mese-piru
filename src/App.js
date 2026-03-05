@@ -46,9 +46,9 @@ const PIRUApp = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 const [bakiraDailyLog, setBakiraDailyLog] = useState({});
 const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
+  const [bakiraNotulenLink, setBakiraNotulenLink] = useState('');
   const [bakiraRecords, setBakiraRecords] = useState([]);
   const [exportFormat, setExportFormat] = useState('excel');
-  const [bakiraNotulenLink, setBakiraNotulenLink] = useState('');
   const [isKegiatanAda, setIsKegiatanAda] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -2425,6 +2425,7 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
