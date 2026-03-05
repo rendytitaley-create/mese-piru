@@ -741,20 +741,21 @@ const pimpinan = pimpinanTerpilih;
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Daftar Hadir');
 
-    // Judul
-    sheet.mergeCells('A1:C1');
-    sheet.getCell('A1').value = 'DAFTAR HADIR';
-    sheet.getCell('A1').font = { bold: true, size: 14 };
-    sheet.getCell('A1').alignment = { horizontal: 'center' };
+    // 1. Judul Utama (Rata Kiri)
+    sheet.mergeCells('A1:D1');
+    const titleCell = sheet.getCell('A1');
+    titleCell.value = 'DAFTAR HADIR';
+    titleCell.font = { bold: true, size: 14 };
+    titleCell.alignment = { horizontal: 'left' };
 
-    // Informasi Agenda
-    sheet.getCell('A3').value = 'Hari / Tanggal'; sheet.getCell('B3').value = `: ${new Date().toLocaleDateString('id-ID')}`;
+    // 2. Info Detail (Dikosongkan untuk diisi manual)
+    sheet.getCell('A3').value = 'Hari / Tanggal'; sheet.getCell('B3').value = `: ${new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
     sheet.getCell('A4').value = 'Waktu'; sheet.getCell('B4').value = ': ';
     sheet.getCell('A5').value = 'Tempat'; sheet.getCell('B5').value = ': ';
     sheet.getCell('A6').value = 'Agenda'; sheet.getCell('B6').value = ': ';
 
-    // Header Tabel
-    sheet.getRow(8).values = ['No', 'Nama Pegawai', 'Status'];
+    // 3. Header Tabel (Ditambahkan kolom Jabatan)
+    sheet.getRow(8).values = ['No', 'Nama Pegawai', 'Jabatan', 'Status'];
     sheet.getRow(8).eachCell(cell => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
       cell.font = { bold: true };
@@ -762,30 +763,35 @@ const pimpinan = pimpinanTerpilih;
       cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     });
 
-    // Isi Data
+    // 4. Isi Data
     let rowNum = 9;
-    users.filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.')
-         .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
-         .forEach((u, idx) => {
-           const row = sheet.getRow(rowNum);
-           row.values = [idx + 1, u.name, bakiraDailyLog[u.username] || 'hadir'];
-           row.eachCell(cell => { cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } }; });
-           rowNum++;
+    users
+      .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.') // Ganti sesuai nama pimpinan lama
+      .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
+      .forEach((u, idx) => {
+        const row = sheet.getRow(rowNum);
+        // u.jabatan adalah field yang kita ambil dari data pegawai
+        row.values = [idx + 1, u.name, u.jabatan || '-', bakiraDailyLog[u.username] || 'hadir'];
+        
+        row.getCell(1).alignment = { horizontal: 'center' };
+        row.eachCell(cell => { cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } }; });
+        rowNum++;
     });
 
-    // Tanda Tangan
-    rowNum += 2;
-    sheet.mergeCells(`B${rowNum}:C${rowNum}`);
-    sheet.getCell(`B${rowNum}`).value = 'Mengetahui,';
-    sheet.getCell(`B${rowNum}`).alignment = { horizontal: 'center' };
-    
-    rowNum += 4;
-    sheet.mergeCells(`B${rowNum}:C${rowNum}`);
-    sheet.getCell(`B${rowNum}`).value = 'Herthy Diana Soumokil,SST';
-    sheet.getCell(`B${rowNum}`).font = { bold: true, underline: true };
-    sheet.getCell(`B${rowNum}`).alignment = { horizontal: 'center' };
+    // 5. Tanda Tangan (Posisi di bawah tabel)
+    rowNum += 3;
+    sheet.mergeCells(`C${rowNum+2}:D${rowNum+2}`);
+    sheet.getCell(`C${rowNum}`).value = 'Mengetahui,';
+    sheet.getCell(`C${rowNum}`).alignment = { horizontal: 'center' };
+    sheet.getCell(`C${rowNum+4}`).value = 'Herthy Diana Soumokil,SST'; // Ganti nama pimpinan baru
+    sheet.getCell(`C${rowNum+4}`).font = { bold: true, underline: true };
+    sheet.getCell(`C${rowNum+4}`).alignment = { horizontal: 'center' };
 
-    sheet.getColumn(2).width = 40;
+    // Atur Lebar Kolom
+    sheet.getColumn(1).width = 5;  // No
+    sheet.getColumn(2).width = 30; // Nama
+    sheet.getColumn(3).width = 25; // Jabatan
+    sheet.getColumn(4).width = 15; // Status
     
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), `Daftar_Hadir_${new Date().toLocaleDateString('id-ID')}.xlsx`);
@@ -2162,6 +2168,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
