@@ -1296,7 +1296,7 @@ const pimpinan = pimpinanTerpilih;
                       onChange={(e) => setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value})}
                     >
                       <option value="hadir">Hadir</option><option value="izin">Izin</option><option value="sakit">Sakit</option>
-                      <option value="tugas">Tugas Luar</option><option value="cuti">Cuti</option>
+                      <option value="tugas">Tugas</option><option value="cuti">Cuti</option>
                     </select>
                   </td>
                 </tr>
@@ -2197,6 +2197,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
