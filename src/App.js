@@ -1497,8 +1497,10 @@ const exportPresensiToPDF = () => {
         </table>
       </div>
 
-      {/* Input Link & Tombol Akses */}
+    {/* Input Link & Tombol Akses */}
       <div className="p-6 border-t border-slate-100 bg-slate-50 flex-shrink-0">
+        
+        {/* 1. Link Dokumentasi */}
         <label className="block text-[9px] font-black text-slate-400 uppercase italic mb-1">Link Dokumentasi Rapat</label>
         <div className="flex gap-3">
           <input 
@@ -1520,48 +1522,29 @@ const exportPresensiToPDF = () => {
             </a>
           )}
         </div>
-         <label className="block text-[9px] font-black text-slate-400 uppercase italic mb-1">Link Dokumentasi Rapat</label>
-<div className="flex gap-3">
-  <input 
-    readOnly={!['admin', 'pimpinan'].includes(user.role)}
-    type="text"
-    placeholder="Tempel link Google Drive di sini..."
-    className="flex-1 bg-white p-3 rounded-xl text-xs border border-slate-200 outline-none"
-    value={bakiraLinkDoc}
-    onChange={(e) => setBakiraLinkDoc(e.target.value)}
-  />
-  {bakiraLinkDoc && (
-    <a 
-      href={bakiraLinkDoc.startsWith('http') ? bakiraLinkDoc : `https://${bakiraLinkDoc}`} 
-      target="_blank" 
-      rel="noopener noreferrer"
-      className="bg-indigo-600 text-white px-4 rounded-xl flex items-center font-black text-[10px] uppercase shadow-lg"
-    >
-      Buka Link
-    </a>
-  )}
-</div>
-<label className="block text-[9px] font-black text-slate-400 uppercase italic mb-1 mt-4">Link Notulen Rapat</label>
-<div className="flex gap-3">
-  <input 
-    readOnly={!['admin', 'pimpinan'].includes(user.role)}
-    type="text"
-    placeholder="Tempel link notulen di sini..."
-    className="flex-1 bg-white p-3 rounded-xl text-xs border border-slate-200 outline-none"
-    value={bakiraNotulenLink}
-    onChange={(e) => setBakiraNotulenLink(e.target.value)}
-  />
-  {bakiraNotulenLink && (
-    <a 
-      href={bakiraNotulenLink.startsWith('http') ? bakiraNotulenLink : `https://${bakiraNotulenLink}`} 
-      target="_blank" 
-      rel="noopener noreferrer"
-      className="bg-amber-600 text-white px-4 rounded-xl flex items-center font-black text-[10px] uppercase shadow-lg transition-all active:scale-95"
-    >
-      Buka Notulen
-    </a>
-  )}
-</div>
+
+        {/* 2. Link Notulen */}
+        <label className="block text-[9px] font-black text-slate-400 uppercase italic mb-1 mt-4">Link Notulen Rapat</label>
+        <div className="flex gap-3">
+          <input 
+            readOnly={!['admin', 'pimpinan'].includes(user.role)}
+            type="text"
+            placeholder="Tempel link notulen di sini..."
+            className="flex-1 bg-white p-3 rounded-xl text-xs border border-slate-200 outline-none"
+            value={bakiraNotulenLink}
+            onChange={(e) => setBakiraNotulenLink(e.target.value)}
+          />
+          {bakiraNotulenLink && (
+            <a 
+              href={bakiraNotulenLink.startsWith('http') ? bakiraNotulenLink : `https://${bakiraNotulenLink}`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="bg-amber-600 text-white px-4 rounded-xl flex items-center font-black text-[10px] uppercase shadow-lg transition-all active:scale-95"
+            >
+              Buka Notulen
+            </a>
+          )}
+        </div>
       </div>
     </div>
   </div>
@@ -2442,5 +2425,6 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
