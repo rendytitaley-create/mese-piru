@@ -736,127 +736,105 @@ const pimpinan = pimpinanTerpilih;
     return results.sort((a, b) => b.finalScore - a.finalScore);
   }, [users, reports, kjkData, nilai360, voteWindow, currentTW, selectedYear, bakiraRecords]); // Menambahkan bakiraRecords sebagai dependency
 
-  // === FITUR BARU: CETAK KERTAS KERJA PEMILIHAN PEGAWAI prima ===
   const exportKertasKerjaPrima = async () => {
-    const period = (voteWindow.period || currentTW).toUpperCase();
-    const year = voteWindow.evalYear || selectedYear;
-    // GANTI DENGAN BLOK INI:
-const daftarPimpinan = users.filter(u => u.role === 'pimpinan');
-let pilihanTeks = "Pilih nama pimpinan untuk Kertas Kerja Prima:\n";
-daftarPimpinan.forEach((p, i) => {
+  const period = (voteWindow.period || currentTW).toUpperCase();
+  const year = voteWindow.evalYear || selectedYear;
+
+  const daftarPimpinan = users.filter(u => u.role === 'pimpinan');
+  let pilihanTeks = "Pilih nama pimpinan untuk Kertas Kerja Prima:\n";
+  daftarPimpinan.forEach((p, i) => {
     pilihanTeks += `${i + 1}. ${p.name}\n`;
-});
+  });
 
-const pilihan = prompt(pilihanTeks + "\nMasukkan angka sesuai urutan:");
-const pimpinanTerpilih = daftarPimpinan[parseInt(pilihan) - 1];
+  const pilihan = prompt(pilihanTeks + "\nMasukkan angka sesuai urutan:");
+  const pimpinanTerpilih = daftarPimpinan[parseInt(pilihan) - 1];
 
-if (!pimpinanTerpilih) {
+  if (!pimpinanTerpilih) {
     alert("Pilihan tidak valid, cetak dibatalkan.");
     return;
-}
-const pimpinan = pimpinanTerpilih;
+  }
+  const pimpinan = pimpinanTerpilih;
 
-    const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('Kertas Kerja Prima');
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('Kertas Kerja Prima');
 
-    // Header Judul
-    sheet.mergeCells('A2:H2');
-    const titleCell = sheet.getCell('A2');
-    titleCell.value = `KERTAS KERJA PENILAIAN PEGAWAI PRIMA PERIODE ${period}`;
-    titleCell.font = { bold: true, size: 12 };
-    titleCell.alignment = { horizontal: 'center' };
+  // Header Judul
+  sheet.mergeCells('A2:H2');
+  const titleCell = sheet.getCell('A2');
+  titleCell.value = `KERTAS KERJA PENILAIAN PEGAWAI PRIMA PERIODE ${period}`;
+  titleCell.font = { bold: true, size: 12 };
+  titleCell.alignment = { horizontal: 'center' };
 
-    sheet.mergeCells('A3:H3');
-    const subTitle = sheet.getCell('A3');
-    subTitle.value = `Tahun Anggaran ${year}`;
-    subTitle.font = { bold: true, size: 11 };
-    subTitle.alignment = { horizontal: 'center' };
+  sheet.mergeCells('A3:H3');
+  const subTitle = sheet.getCell('A3');
+  subTitle.value = `Tahun Anggaran ${year}`;
+  subTitle.font = { bold: true, size: 11 };
+  subTitle.alignment = { horizontal: 'center' };
 
-    // Header Tabel
-    const headerRow = ['No', 'Nama Pegawai', 'Rata-Rata CKP (50%)', 'Skor KJK (30%)', 'BAKIRA (10%)', 'Nilai 360 (10%)', 'Total Skor', 'Peringkat', 'Keterangan'];
-    sheet.getRow(6).values = headerRow;
+  // Header Tabel
+  const headerRow = ['No', 'Nama Pegawai', 'Rata-Rata CKP (50%)', 'Skor KJK (30%)', 'BAKIRA (10%)', 'Nilai 360 (10%)', 'Total Skor', 'Peringkat', 'Keterangan'];
+  sheet.getRow(6).values = headerRow;
 
-    // Styling Header
-    sheet.getRow(6).eachCell((cell) => {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
-      cell.font = { bold: true };
-      cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-    });
-
-    // Isi Data dari LeaderboardData
-   leaderboardData.forEach((staff, idx) => {
-  const row = sheet.getRow(7 + idx);
-  
-  // Perhitungan porsi nilai sesuai pembobotan baru
-  const ckpPortion = (staff.avgCKP * 0.5).toFixed(2);     // 50%
-  const kjkPortion = (staff.kjkScore * 0.3).toFixed(2);   // 30%
-  const bakiraPortion = (staff.nilaiBakira * 0.1).toFixed(2); // 10%
-  const votePortion = (staff.avgVote * 0.1).toFixed(2);   // 10%
-
-  row.values = [
-    idx + 1,
-    staff.name,
-    `${staff.avgCKP.toFixed(2)} (${ckpPortion})`,      // CKP
-    `${staff.kjkScore.toFixed(2)} (${kjkPortion})`,    // KJK
-    `${staff.nilaiBakira.toFixed(2)} (${bakiraPortion})`, // BAKIRA (Baru)
-    `${staff.avgVote.toFixed(2)} (${votePortion})`,    // VOTE
-    staff.finalScore,                                  // Total Skor
-    idx + 1,                                           // Peringkat
-    idx === 0 ? 'KANDIDAT TERBAIK' : ''
-  ];
-
-  row.eachCell((cell) => {
-    cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: 'thin' };
+  sheet.getRow(6).eachCell((cell) => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+    cell.font = { bold: true };
     cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
   });
+
+  // Isi Data
+  leaderboardData.forEach((staff, idx) => {
+    const row = sheet.getRow(7 + idx);
+    const ckpPortion = (staff.avgCKP * 0.5).toFixed(2);
+    const kjkPortion = (staff.kjkScore * 0.3).toFixed(2);
+    const bakiraPortion = (staff.nilaiBakira * 0.1).toFixed(2);
+    const votePortion = (staff.avgVote * 0.1).toFixed(2);
+
+    row.values = [
+      idx + 1,
+      staff.name,
+      `${staff.avgCKP.toFixed(2)} (${ckpPortion})`,
+      `${staff.kjkScore.toFixed(2)} (${kjkPortion})`,
+      `${staff.nilaiBakira.toFixed(2)} (${bakiraPortion})`,
+      `${staff.avgVote.toFixed(2)} (${votePortion})`,
+      staff.finalScore,
+      idx + 1,
+      idx === 0 ? 'KANDIDAT TERBAIK' : ''
+    ];
+
+    row.eachCell((cell) => {
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: 'thin' };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+    sheet.getCell(`B${7 + idx}`).alignment = { horizontal: 'left', vertical: 'middle' };
+  });
+
+  // Kolom Width
+  sheet.getColumn(1).width = 5; sheet.getColumn(2).width = 30; sheet.getColumn(3).width = 20;
+  sheet.getColumn(4).width = 20; sheet.getColumn(5).width = 20; sheet.getColumn(6).width = 15;
+  sheet.getColumn(7).width = 15; sheet.getColumn(8).width = 25;
+
+  // --- BAGIAN TANDA TANGAN ---
+  let signRow = 7 + leaderboardData.length + 3;
+  const hariIni = new Date().toLocaleDateString('id-ID', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
+
+  sheet.getCell(`F${signRow}`).value = `Piru, ${hariIni}`;
+  sheet.getCell(`F${signRow}`).alignment = { horizontal: 'center' };
+  sheet.getCell(`F${signRow + 1}`).value = "Mengetahui,";
+  sheet.getCell(`F${signRow + 1}`).alignment = { horizontal: 'center' };
+  sheet.getCell(`F${signRow + 2}`).value = "Kepala BPS Kab. Seram Bagian Barat,";
+  sheet.getCell(`F${signRow + 2}`).alignment = { horizontal: 'center' };
+  sheet.getCell(`F${signRow + 5}`).value = pimpinan.name;
+  sheet.getCell(`F${signRow + 5}`).font = { bold: true, underline: true };
+  sheet.getCell(`F${signRow + 5}`).alignment = { horizontal: 'center' };
+  // --- AKHIR TANDA TANGAN ---
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  saveAs(new Blob([buffer]), `Kertas_Kerja_Prima_${period}_${year}.xlsx`);
+}; // <--- KURUNG KURAWAL PENUTUP INI SANGAT PENTING
   
-  // Rata kiri untuk nama pegawai
-  sheet.getCell(`B${7 + idx}`).alignment = { horizontal: 'left', vertical: 'middle' };
-});
-
-    // Kolom Width
-    sheet.getColumn(1).width = 5;
-    sheet.getColumn(2).width = 30;
-    sheet.getColumn(3).width = 20;
-    sheet.getColumn(4).width = 20;
-    sheet.getColumn(5).width = 20;
-    sheet.getColumn(6).width = 15;
-    sheet.getColumn(7).width = 15;
-    sheet.getColumn(8).width = 25;
-
-    // --- BAGIAN TANDA TANGAN YANG DIPERBARUI ---
-let signRow = 7 + leaderboardData.length + 3; // Menentukan baris mulai TTD
-const hariIni = new Date().toLocaleDateString('id-ID', {
-  weekday: 'long', 
-  year: 'numeric', 
-  month: 'long', 
-  day: 'numeric'
-});
-
-// Baris 1: Lokasi dan Tanggal
-sheet.getCell(`F${signRow}`).value = `Piru, ${hariIni}`;
-sheet.getCell(`F${signRow}`).alignment = { horizontal: 'center' };
-
-// Baris 2: "Mengetahui,"
-sheet.getCell(`F${signRow + 1}`).value = "Mengetahui,";
-sheet.getCell(`F${signRow + 1}`).alignment = { horizontal: 'center' };
-
-// Baris 3: Jabatan
-sheet.getCell(`F${signRow + 2}`).value = "Kepala BPS Kab. Seram Bagian Barat,";
-sheet.getCell(`F${signRow + 2}`).alignment = { horizontal: 'center' };
-
-// Baris 4-5: Dibiarkan kosong untuk ruang Tanda Tangan Basah
-
-// Baris 6: Nama Pimpinan
-sheet.getCell(`F${signRow + 5}`).value = pimpinan.name;
-sheet.getCell(`F${signRow + 5}`).font = { bold: true, underline: true };
-sheet.getCell(`F${signRow + 5}`).alignment = { horizontal: 'center' };
-
-// --- AKHIR PERUBAHAN ---
-
-const buffer = await workbook.xlsx.writeBuffer();
-saveAs(new Blob([buffer]), `Kertas_Kerja_Prima_${period}_${year}.xlsx`);
     
 const exportPresensiToPDF = () => {
   const doc = new jsPDF('p', 'mm', 'a4');
@@ -2421,6 +2399,7 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
