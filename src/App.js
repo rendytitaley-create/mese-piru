@@ -1166,35 +1166,46 @@ const pimpinan = pimpinanTerpilih;
           </div>
         )}
 
-          {activeTab === 'bakira' && (
-  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 italic pb-28 md:pb-10 p-6 md:p-10">
-    <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 max-w-4xl mx-auto">
-      <h2 className="text-xl font-black uppercase italic mb-8 tracking-tighter">Absensi BAKIRA: {new Date().toLocaleDateString('id-ID')}</h2>
-      <table className="w-full text-left border-collapse">
-        <thead className="text-[9px] font-black text-slate-400 uppercase italic">
-          <tr><th className="p-4">Pegawai</th><th className="p-4 text-center">Status</th></tr>
-        </thead>
-        <tbody>
-          {users.filter(u => u.role !== 'admin').map(u => (
-            <tr key={u.firestoreId} className="border-b">
-              <td className="p-4 font-black uppercase text-xs italic">{u.name}</td>
-              <td className="p-4 text-center">
-                <select 
-                  className="bg-slate-50 p-2 rounded-xl text-[10px] font-black italic outline-none"
-                  onChange={(e) => setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value})}
-                >
-                  <option value="hadir">Hadir</option>
-                  <option value="izin">Izin</option>
-                  <option value="sakit">Sakit</option>
-                  <option value="tugas">Tugas Luar</option>
-                  <option value="cuti">Cuti</option>
-                </select>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <button onClick={handleSaveBakira} className="w-full mt-8 bg-indigo-600 text-white font-black py-4 rounded-2xl uppercase text-[10px] shadow-lg italic transition-all active:scale-95">Simpan Absensi</button>
+         {activeTab === 'bakira' && (
+  <div className="animate-in fade-in duration-500 italic pb-28 md:pb-10 p-6 md:p-10">
+    <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 max-w-4xl mx-auto overflow-hidden">
+      {/* Header Tabel */}
+      <div className="p-8 border-b border-slate-100 flex justify-between items-center">
+        <h2 className="text-lg font-black uppercase italic tracking-tighter">Absensi BAKIRA: {new Date().toLocaleDateString('id-ID')}</h2>
+        <button onClick={handleSaveBakira} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all">Simpan Absensi</button>
+      </div>
+
+      {/* Area Tabel dengan Scroll */}
+      <div className="max-h-[60vh] overflow-y-auto">
+        <table className="w-full text-left border-collapse">
+          <thead className="bg-slate-50 sticky top-0 z-10 text-[9px] font-black text-slate-400 uppercase italic">
+            <tr><th className="p-4">Pegawai</th><th className="p-4 text-center">Status</th></tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {users
+              .filter(u => u.role !== 'admin')
+              // Mengurutkan Pimpinan ke paling atas
+              .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
+              .map(u => (
+                <tr key={u.firestoreId} className="hover:bg-indigo-50/30 transition-colors">
+                  <td className="p-4 font-black uppercase text-xs italic">{u.name} {u.role === 'pimpinan' && <span className="text-[8px] text-indigo-600 ml-2">(PIMPINAN)</span>}</td>
+                  <td className="p-4 text-center">
+                    <select 
+                      className="bg-slate-100 p-2 rounded-xl text-[10px] font-black italic outline-none cursor-pointer hover:bg-slate-200"
+                      onChange={(e) => setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value})}
+                    >
+                      <option value="hadir">Hadir</option>
+                      <option value="izin">Izin</option>
+                      <option value="sakit">Sakit</option>
+                      <option value="tugas">Tugas Luar</option>
+                      <option value="cuti">Cuti</option>
+                    </select>
+                  </td>
+                </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 )}
@@ -2077,6 +2088,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
