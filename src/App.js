@@ -755,7 +755,9 @@ const pimpinan = pimpinanTerpilih;
     sheet.getCell('A5').value = 'Tempat'; sheet.getCell('B5').value = ': ';
     sheet.getCell('A6').value = 'Agenda'; sheet.getCell('B6').value = ': ';
     
-    sheet.getCell('A7').value = 'Link Dokumentasi'; 
+   // Link Dokumentasi (Merge sel B7:D7 agar rapi)
+  sheet.getCell('A7').value = 'Link Dokumentasi';
+  sheet.mergeCells('B7:D7'); 
   const linkCell = sheet.getCell('B7');
   linkCell.value = bakiraLinkDoc || '-'; 
   linkCell.font = { color: { argb: 'FF0000FF' }, underline: true };
@@ -1303,7 +1305,7 @@ const pimpinan = pimpinanTerpilih;
             type="text"
             placeholder="Tempel link Google Drive di sini..."
             className="w-full bg-white p-4 rounded-2xl text-xs font-medium outline-none border border-slate-200"
-            value={bakiraLinkDoc || ''}
+            value={bakiraLinkDoc}
             onChange={(e) => setBakiraLinkDoc(e.target.value)}
           />
         </div>
@@ -2190,6 +2192,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
