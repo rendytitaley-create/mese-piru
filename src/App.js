@@ -757,71 +757,84 @@ const pimpinan = pimpinanTerpilih;
   };
 
   const exportPresensiToExcel = async () => {
-    const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('Daftar Hadir');
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('Daftar Hadir');
 
-    // 1. Judul Utama (Rata Kiri)
-    sheet.mergeCells('A1:D1');
-    const titleCell = sheet.getCell('A1');
-    titleCell.value = 'DAFTAR HADIR';
-    titleCell.font = { bold: true, size: 14 };
-    titleCell.alignment = { horizontal: 'center' };
+  // 1. Judul Utama (Center)
+  sheet.mergeCells('A1:D1');
+  const titleCell = sheet.getCell('A1');
+  titleCell.value = 'DAFTAR HADIR';
+  titleCell.font = { bold: true, size: 14 };
+  titleCell.alignment = { horizontal: 'center' };
 
-    // 2. Info Detail (Dikosongkan untuk diisi manual)
-    sheet.getCell('A3').value = 'Hari / Tanggal'; sheet.getCell('B3').value = `: ${new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
-    sheet.getCell('A4').value = 'Waktu'; sheet.getCell('B4').value = ': ';
-    sheet.getCell('A5').value = 'Tempat'; sheet.getCell('B5').value = ': ';
-    sheet.getCell('A6').value = 'Agenda'; sheet.getCell('B6').value = ': ';
-    
-   // Link Dokumentasi (Merge sel B7:D7 agar rapi)
+  // 2. Info Detail
+  sheet.getCell('A3').value = 'Hari / Tanggal'; sheet.getCell('B3').value = `: ${new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+  sheet.getCell('A4').value = 'Waktu'; sheet.getCell('B4').value = ': ';
+  sheet.getCell('A5').value = 'Tempat'; sheet.getCell('B5').value = ': ';
+  sheet.getCell('A6').value = 'Agenda'; sheet.getCell('B6').value = ': ';
+  
+  // Link Dokumentasi
   sheet.getCell('A7').value = 'Link Dokumentasi';
   sheet.mergeCells('B7:D7'); 
   const linkCell = sheet.getCell('B7');
   linkCell.value = bakiraLinkDoc || '-'; 
   linkCell.font = { color: { argb: 'FF0000FF' }, underline: true };
-    
-    // 3. Header Tabel (Ditambahkan kolom Jabatan)
-    sheet.getRow(8).values = ['No', 'Nama Pegawai', 'Jabatan', 'Status'];
-    sheet.getRow(8).eachCell(cell => {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
-      cell.font = { bold: true };
-      cell.alignment = { horizontal: 'center' };
-      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-    });
+  
+  // 3. Header Tabel
+  sheet.getRow(8).values = ['No', 'Nama Pegawai', 'Jabatan', 'Status'];
+  sheet.getRow(8).eachCell(cell => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+    cell.font = { bold: true };
+    cell.alignment = { horizontal: 'center' };
+    cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+  });
 
-    // 4. Isi Data
-    let rowNum = 9;
-    users
-      .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.') // Ganti sesuai nama pimpinan lama
-      .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
-      .forEach((u, idx) => {
+  // 4. Isi Data (DIFILTER: Hanya yang 'hadir')
+  let rowNum = 9;
+  let counter = 1;
+  
+  users
+    .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.')
+    .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
+    .forEach((u) => {
+      // AMBIL STATUS (default 'hadir' jika tidak ada pilihan)
+      const status = bakiraDailyLog[u.username] || 'hadir';
+      
+      // HANYA PROSES JIKA STATUS 'hadir'
+      if (status === 'hadir') {
         const row = sheet.getRow(rowNum);
-        // u.jabatan adalah field yang kita ambil dari data pegawai
-        row.values = [idx + 1, u.name, u.jabatan || '-', bakiraDailyLog[u.username] || 'hadir'];
+        row.values = [counter, u.name, u.jabatan || '-', 'Hadir'];
         
         row.getCell(1).alignment = { horizontal: 'center' };
-        row.eachCell(cell => { cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } }; });
+        row.getCell(4).alignment = { horizontal: 'center' };
+        
+        row.eachCell(cell => { 
+          cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } }; 
+        });
+        
         rowNum++;
+        counter++;
+      }
     });
-    
-    // 5. Tanda Tangan (Posisi di bawah tabel)
-    rowNum += 3;
-    sheet.mergeCells(`C${rowNum+2}:D${rowNum+2}`);
-    sheet.getCell(`C${rowNum}`).value = 'Mengetahui,';
-    sheet.getCell(`C${rowNum}`).alignment = { horizontal: 'center' };
-    sheet.getCell(`C${rowNum+4}`).value = 'Herthy Diana Soumokil,SST'; // Ganti nama pimpinan baru
-    sheet.getCell(`C${rowNum+4}`).font = { bold: true, underline: true };
-    sheet.getCell(`C${rowNum+4}`).alignment = { horizontal: 'center' };
+  
+  // 5. Tanda Tangan (Posisi dinamis di bawah data terakhir)
+  const signRow = rowNum + 3;
+  sheet.mergeCells(`C${signRow+2}:D${signRow+2}`);
+  sheet.getCell(`C${signRow}`).value = 'Mengetahui,';
+  sheet.getCell(`C${signRow}`).alignment = { horizontal: 'center' };
+  sheet.getCell(`C${signRow+4}`).value = 'Herthy Diana Soumokil,SST';
+  sheet.getCell(`C${signRow+4}`).font = { bold: true, underline: true };
+  sheet.getCell(`C${signRow+4}`).alignment = { horizontal: 'center' };
 
-    // Atur Lebar Kolom
-    sheet.getColumn(1).width = 15;  // No
-    sheet.getColumn(2).width = 30; // Nama
-    sheet.getColumn(3).width = 25; // Jabatan
-    sheet.getColumn(4).width = 15; // Status
-    
-    const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `Daftar_Hadir_${new Date().toLocaleDateString('id-ID')}.xlsx`);
-  };
+  // Atur Lebar Kolom
+  sheet.getColumn(1).width = 15;
+  sheet.getColumn(2).width = 30;
+  sheet.getColumn(3).width = 25;
+  sheet.getColumn(4).width = 15;
+  
+  const buffer = await workbook.xlsx.writeBuffer();
+  saveAs(new Blob([buffer]), `Daftar_Hadir_${new Date().toLocaleDateString('id-ID')}.xlsx`);
+};
 
   const handleSetWinner = async (staff) => {
     const period = voteWindow.period || currentTW;
@@ -1300,14 +1313,24 @@ const pimpinan = pimpinanTerpilih;
                   <td className="p-4 font-black uppercase text-xs">{u.name}</td>
                   <td className="p-4">
                     <select 
-                      disabled={!['admin', 'pimpinan'].includes(user.role)}
-                      className="bg-slate-100 p-2 rounded-lg text-[10px] font-black"
-                      value={bakiraDailyLog[u.username] || 'hadir'}
-                      onChange={(e) => setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value})}
-                    >
-                      <option value="hadir">Hadir</option><option value="izin">Izin</option><option value="sakit">Sakit</option>
-                      <option value="tugas">Tugas</option><option value="cuti">Cuti</option>
-                    </select>
+  disabled={!['admin', 'pimpinan'].includes(user.role)}
+  className={`p-2 rounded-lg text-[10px] font-black w-full outline-none transition-colors
+    ${bakiraDailyLog[u.username] === 'hadir' ? 'bg-green-100 text-green-700' : ''}
+    ${bakiraDailyLog[u.username] === 'izin' ? 'bg-yellow-100 text-yellow-700' : ''}
+    ${bakiraDailyLog[u.username] === 'sakit' ? 'bg-blue-100 text-blue-700' : ''}
+    ${bakiraDailyLog[u.username] === 'tugas' ? 'bg-purple-100 text-purple-700' : ''}
+    ${bakiraDailyLog[u.username] === 'cuti' ? 'bg-orange-100 text-orange-700' : ''}
+    ${!bakiraDailyLog[u.username] ? 'bg-slate-100' : ''}
+  `}
+  value={bakiraDailyLog[u.username] || 'hadir'}
+  onChange={(e) => setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value})}
+>
+  <option value="hadir">Hadir</option>
+  <option value="izin">Izin</option>
+  <option value="sakit">Sakit</option>
+  <option value="tugas">Tugas</option>
+  <option value="cuti">Cuti</option>
+</select>
                   </td>
                 </tr>
             ))}
@@ -2207,6 +2230,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
