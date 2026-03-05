@@ -133,20 +133,20 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
     const unsubKJK = onSnapshot(collection(db, "kjk"), (snap) => {
       setKjkData(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
-
-    return () => { unsubAuth(); unsubUsers(); unsubSettings(); unsubKJK(); };
-  
     const unsubBakiraRecords = onSnapshot(collection(db, "bakira"), (snap) => {
-        // Mengubah snapshot menjadi array agar mudah diolah di useMemo
-        const records = snap.docs.map(d => ({ date: d.id, ...d.data() }));
-        setBakiraRecords(records);
+      const records = snap.docs.map(d => ({ date: d.id, ...d.data() }));
+      setBakiraRecords(records);
     });
 
+    // Satu return untuk membersihkan semua listener sekaligus
     return () => { 
-        // ... unsub lainnya ...
-        unsubBakiraRecords(); // Jangan lupa tambahkan ini di return
+      unsubAuth(); 
+      unsubUsers(); 
+      unsubSettings(); 
+      unsubKJK(); 
+      unsubBakiraRecords(); 
     };
-}, []);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -2371,6 +2371,7 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
