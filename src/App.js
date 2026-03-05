@@ -760,24 +760,47 @@ const pimpinan = pimpinanTerpilih;
   };
 
 const exportPresensiToPDF = () => {
-  const doc = new jsPDF();
-  
-  doc.setFontSize(14);
-  doc.text("DAFTAR HADIR - " + selectedDate, 14, 15);
-  
+  const doc = new jsPDF('p', 'mm', 'a4'); // Menggunakan ukuran kertas A4
+
+  // 1. Judul Utama
+  doc.setFontSize(16);
+  doc.text("DAFTAR HADIR", 105, 15, { align: 'center' });
+
+  // 2. Info Detail (Hari/Tanggal, Waktu, Tempat, Agenda)
+  doc.setFontSize(10);
+  doc.text(`Hari / Tanggal  : ${selectedDate}`, 14, 30);
+  doc.text(`Waktu           : `, 14, 35);
+  doc.text(`Tempat          : `, 14, 40);
+  doc.text(`Agenda          : `, 14, 45);
+  doc.text(`Link Dokumen    : ${bakiraLinkDoc || '-'}`, 14, 50);
+
+  // 3. Filter Data (Hanya yang HADIR saja)
   const tableData = users
     .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.')
     .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
-    .filter(u => (bakiraDailyLog[u.username] || 'hadir') === 'hadir')
-    .map((u, idx) => [idx + 1, u.name, u.jabatan || '-']);
+    .filter(u => (bakiraDailyLog[u.username] || 'hadir') === 'hadir') // Hanya yang hadir
+    .map((u, idx) => [idx + 1, u.name, u.jabatan || '-', 'Hadir']);
 
-  // CARA PEMANGGILAN YANG BENAR:
-  autoTable(doc, { // Kita memanggil autoTable langsung, bukan doc.autoTable
-    head: [['No', 'Nama Pegawai', 'Jabatan']],
+  // 4. Membuat Tabel (autoTable)
+  autoTable(doc, {
+    startY: 60,
+    head: [['No', 'Nama Pegawai', 'Jabatan', 'Status']],
     body: tableData,
-    startY: 25,
+    theme: 'grid',
+    headStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0], halign: 'center' },
+    columnStyles: { 
+      0: { halign: 'center', cellWidth: 10 },
+      2: { cellWidth: 40 },
+      3: { halign: 'center' }
+    }
   });
-  
+
+  // 5. Tanda Tangan
+  const finalY = doc.lastAutoTable.finalY || 100;
+  doc.text('Mengetahui,', 150, finalY + 15, { align: 'center' });
+  doc.text('Herthy Diana Soumokil, SST', 150, finalY + 30, { align: 'center' });
+  doc.line(130, finalY + 31, 170, finalY + 31); // Garis bawah nama
+
   doc.save(`Daftar_Hadir_${selectedDate}.pdf`);
 };
   
@@ -1296,7 +1319,6 @@ const exportPresensiToPDF = () => {
       <div className="p-6 border-b border-slate-100 flex-shrink-0">
         {!['admin', 'pimpinan'].includes(user.role) && (
           <div className="bg-amber-50 text-amber-700 p-2 mb-4 rounded-xl text-[9px] font-black uppercase text-center italic">
-            Mode Lihat (Read-Only) - Tidak dapat melakukan perubahan data
           </div>
         )}
         
@@ -2290,6 +2312,7 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
