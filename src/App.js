@@ -764,7 +764,7 @@ const pimpinan = pimpinanTerpilih;
 
     // Isi Data
     let rowNum = 9;
-    users.filter(u => u.role !== 'admin' && u.name !== 'NAMA_PIMPINAN_LAMA')
+    users.filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.')
          .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
          .forEach((u, idx) => {
            const row = sheet.getRow(rowNum);
@@ -781,7 +781,7 @@ const pimpinan = pimpinanTerpilih;
     
     rowNum += 4;
     sheet.mergeCells(`B${rowNum}:C${rowNum}`);
-    sheet.getCell(`B${rowNum}`).value = 'NAMA PIMPINAN BARU';
+    sheet.getCell(`B${rowNum}`).value = 'Herthy Diana Soumokil,SST';
     sheet.getCell(`B${rowNum}`).font = { bold: true, underline: true };
     sheet.getCell(`B${rowNum}`).alignment = { horizontal: 'center' };
 
@@ -1255,7 +1255,7 @@ const pimpinan = pimpinanTerpilih;
           </thead>
           <tbody className="divide-y divide-slate-50">
             {users
-              .filter(u => u.role !== 'admin' && u.name !== 'MASUKKAN_NAMA_PIMPINAN_LAMA') // Ganti nama ini dengan nama pimpinan lama
+              .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.') // Ganti nama ini dengan nama pimpinan lama
               .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
               .map((u, index) => (
                 <tr key={u.firestoreId} className="hover:bg-indigo-50/30 transition-colors">
@@ -2162,6 +2162,7 @@ const pimpinan = pimpinanTerpilih;
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
