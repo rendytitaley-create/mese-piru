@@ -77,11 +77,11 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
 
   const [tempLinks, setTempLinks] = useState({});
 
-  // STATE KHUSUS TELADAN
-  const [peerReviews, setPeerReviews] = useState([]);
+  // STATE KHUSUS prima
+  const [nilai360, setnilai360] = useState([]);
   const [winners, setWinners] = useState([]);
   const [publishStatus, setPublishStatus] = useState({});
-  const [showVotingModal, setShowVotingModal] = useState(false);
+  const [showPenilaianModal, setshowPenilaianModal] = useState(false);
   const [selectedStaffForVote, setSelectedStaffForVote] = useState(null);
   const [voteData, setVoteData] = useState({ kinerja: 5, perilaku: 5, inovasi: 5 });
 
@@ -156,7 +156,7 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
     });
 
     const unsubVotes = onSnapshot(collection(db, "peer_reviews"), (snap) => {
-      setPeerReviews(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setnilai360(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
     const unsubWinners = onSnapshot(collection(db, "winners"), (snap) => {
@@ -287,7 +287,7 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
     "Luar Biasa! Disiplin Sempurna! 🌟",
     "Pertahankan! Nol Kekurangan Jam Kerja. ✅",
     "Disiplin adalah kunci kesuksesan! 🚀",
-    "Anda Teladan Kedisiplinan! 🏆"
+    "Anda prima Kedisiplinan! 🏆"
   ];
 
   const getMotivation = (name) => {
@@ -702,7 +702,7 @@ const pimpinan = pimpinanTerpilih;
       const nilaiBakira = hitungRerataRiil(s.username, bakira3Bulan);
       
       // 4. Peer Review (10% dari total nilai)
-      const sVotes = peerReviews.filter(v => v.targetUserId === s.username && v.period === targetPeriod && v.year === targetYear);
+      const sVotes = nilai360.filter(v => v.targetUserId === s.username && v.period === targetPeriod && v.year === targetYear);
       const avgVote = sVotes.length > 0 ? (sVotes.reduce((acc, curr) => acc + (curr.kinerja + curr.perilaku + curr.inovasi) / 3, 0) / sVotes.length) * 10 : 0;
       
       // Rumus Akhir: 50% CKP, 30% KJK, 10% BAKIRA, 10% VOTE
@@ -712,15 +712,15 @@ const pimpinan = pimpinanTerpilih;
     });
 
     return results.sort((a, b) => b.finalScore - a.finalScore);
-  }, [users, reports, kjkData, peerReviews, voteWindow, currentTW, selectedYear, bakiraRecords]); // Menambahkan bakiraRecords sebagai dependency
+  }, [users, reports, kjkData, nilai360, voteWindow, currentTW, selectedYear, bakiraRecords]); // Menambahkan bakiraRecords sebagai dependency
 
-  // === FITUR BARU: CETAK KERTAS KERJA PEMILIHAN PEGAWAI TELADAN ===
-  const exportKertasKerjaTeladan = async () => {
+  // === FITUR BARU: CETAK KERTAS KERJA PEMILIHAN PEGAWAI prima ===
+  const exportKertasKerjaPrima = async () => {
     const period = (voteWindow.period || currentTW).toUpperCase();
     const year = voteWindow.evalYear || selectedYear;
     // GANTI DENGAN BLOK INI:
 const daftarPimpinan = users.filter(u => u.role === 'pimpinan');
-let pilihanTeks = "Pilih nama pimpinan untuk Kertas Kerja Teladan:\n";
+let pilihanTeks = "Pilih nama pimpinan untuk Kertas Kerja Prima:\n";
 daftarPimpinan.forEach((p, i) => {
     pilihanTeks += `${i + 1}. ${p.name}\n`;
 });
@@ -735,12 +735,12 @@ if (!pimpinanTerpilih) {
 const pimpinan = pimpinanTerpilih;
 
     const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('Kertas Kerja Teladan');
+    const sheet = workbook.addWorksheet('Kertas Kerja Prima');
 
     // Header Judul
     sheet.mergeCells('A2:H2');
     const titleCell = sheet.getCell('A2');
-    titleCell.value = `KERTAS KERJA PENILAIAN PEGAWAI TELADAN PERIODE ${period}`;
+    titleCell.value = `KERTAS KERJA PENILAIAN PEGAWAI PRIMA PERIODE ${period}`;
     titleCell.font = { bold: true, size: 12 };
     titleCell.alignment = { horizontal: 'center' };
 
@@ -751,7 +751,7 @@ const pimpinan = pimpinanTerpilih;
     subTitle.alignment = { horizontal: 'center' };
 
     // Header Tabel
-    const headerRow = ['No', 'Nama Pegawai', 'Rata-Rata CKP (40%)', 'Skor KJK (30%)', 'Peer Review (30%)', 'Total Skor', 'Peringkat', 'Keterangan'];
+    const headerRow = ['No', 'Nama Pegawai', 'Rata-Rata CKP (40%)', 'Skor KJK (30%)', 'Nilai 360 (30%)', 'Total Skor', 'Peringkat', 'Keterangan'];
     sheet.getRow(6).values = headerRow;
 
     // Styling Header
@@ -763,29 +763,35 @@ const pimpinan = pimpinanTerpilih;
     });
 
     // Isi Data dari LeaderboardData
-    leaderboardData.forEach((staff, idx) => {
-      const row = sheet.getRow(7 + idx);
-      const ckpPortion = (staff.avgCKP * 0.4).toFixed(2);
-      const kjkPortion = (staff.kjkScore * 0.3).toFixed(2);
-      const votePortion = (staff.avgVote * 0.3).toFixed(2);
+   leaderboardData.forEach((staff, idx) => {
+  const row = sheet.getRow(7 + idx);
+  
+  // Perhitungan porsi nilai sesuai pembobotan baru
+  const ckpPortion = (staff.avgCKP * 0.5).toFixed(2);     // 50%
+  const kjkPortion = (staff.kjkScore * 0.3).toFixed(2);   // 30%
+  const bakiraPortion = (staff.nilaiBakira * 0.1).toFixed(2); // 10%
+  const votePortion = (staff.avgVote * 0.1).toFixed(2);   // 10%
 
-      row.values = [
-        idx + 1,
-        staff.name,
-        `${staff.avgCKP.toFixed(2)} (${ckpPortion})`,
-        `${staff.kjkScore.toFixed(2)} (${kjkPortion})`,
-        `${staff.avgVote.toFixed(2)} (${votePortion})`,
-        staff.finalScore,
-        idx + 1,
-        idx === 0 ? 'KANDIDAT TERBAIK' : ''
-      ];
+  row.values = [
+    idx + 1,
+    staff.name,
+    `${staff.avgCKP.toFixed(2)} (${ckpPortion})`,      // CKP
+    `${staff.kjkScore.toFixed(2)} (${kjkPortion})`,    // KJK
+    `${staff.nilaiBakira.toFixed(2)} (${bakiraPortion})`, // BAKIRA (Baru)
+    `${staff.avgVote.toFixed(2)} (${votePortion})`,    // VOTE
+    staff.finalScore,                                  // Total Skor
+    idx + 1,                                           // Peringkat
+    idx === 0 ? 'KANDIDAT TERBAIK' : ''
+  ];
 
-      row.eachCell((cell) => {
-        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-        cell.alignment = { horizontal: 'center' };
-      });
-      sheet.getCell(`B${7 + idx}`).alignment = { horizontal: 'left' };
-    });
+  row.eachCell((cell) => {
+    cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: 'thin' };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+  });
+  
+  // Rata kiri untuk nama pegawai
+  sheet.getCell(`B${7 + idx}`).alignment = { horizontal: 'left', vertical: 'middle' };
+});
 
     // Kolom Width
     sheet.getColumn(1).width = 5;
@@ -805,7 +811,7 @@ const pimpinan = pimpinanTerpilih;
     sheet.getCell(`F${signRow + 5}`).font = { bold: true, underline: true };
 
     const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `Kertas_Kerja_Teladan_${period}_${year}.xlsx`);
+    saveAs(new Blob([buffer]), `Kertas_Kerja_Prima_${period}_${year}.xlsx`);
   };
 
 const exportPresensiToPDF = () => {
@@ -995,8 +1001,8 @@ const exportPresensiToPDF = () => {
     try {
       const batch = writeBatch(db);
       const votesToDelete = targetUserId 
-        ? peerReviews.filter(v => v.targetUserId === targetUserId && v.period === period && v.year === year)
-        : peerReviews.filter(v => v.period === period && v.year === year);
+        ? nilai360.filter(v => v.targetUserId === targetUserId && v.period === period && v.year === year)
+        : nilai360.filter(v => v.period === period && v.year === year);
       
       votesToDelete.forEach(v => {
         batch.delete(doc(db, "peer_reviews", v.id));
@@ -1006,7 +1012,7 @@ const exportPresensiToPDF = () => {
     } catch (err) { alert("Gagal mereset data."); }
   };
 
-  const handleSubmitVote = async (e) => {
+  const handleSubmitNilai360 = async (e) => {
     e.preventDefault();
     try {
       const docId = `${voteWindow.evalYear}_${voteWindow.period}_from_${user.username}_to_${selectedStaffForVote.username}`;
@@ -1019,7 +1025,7 @@ const exportPresensiToPDF = () => {
         ...voteData,
         submittedAt: serverTimestamp()
       });
-      setShowVotingModal(false);
+      setshowPenilaianModal(false);
       alert("Voting berhasil dikirim!");
     } catch (err) { alert("Gagal mengirim voting."); }
   };
@@ -1179,7 +1185,7 @@ const exportPresensiToPDF = () => {
           )}
           <button onClick={() => setActiveTab('bukti_dukung')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'bukti_dukung' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Link size={20}/> Bukti Dukung</button>
           {['admin', 'pimpinan', 'ketua'].includes(user.role) && (<button onClick={() => setActiveTab('penilaian')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'penilaian' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><ClipboardCheck size={20}/> Penilaian Anggota</button>)}
-          <button onClick={() => setActiveTab('teladan')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'teladan' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Award size={20}/> Pegawai Teladan</button>
+          <button onClick={() => setActiveTab('prima')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'prima' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Award size={20}/> Pegawai Prima</button>
           {user.role === 'admin' && (<button onClick={() => setActiveTab('kjk_management')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'kjk_management' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><FileSpreadsheet size={20}/> Manajemen KJK</button>)}
           {user.role === 'admin' && (<button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'users' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Users size={20}/> Data Pegawai</button>)}
         </nav>
@@ -1635,7 +1641,7 @@ const exportPresensiToPDF = () => {
             </div>
           )}
 
-          {activeTab === 'teladan' && (
+          {activeTab === 'prima' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 italic space-y-10">
               {['admin', 'pimpinan'].includes(user.role) && (
                 <div className="bg-slate-900 p-8 md:p-12 rounded-[3rem] md:rounded-[4rem] text-white shadow-2xl border border-slate-800 relative overflow-hidden italic">
@@ -1644,13 +1650,13 @@ const exportPresensiToPDF = () => {
                     <div className="italic text-center md:text-left">
                       <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter flex items-center justify-center md:justify-start gap-4 italic">
                         <Trophy className="text-amber-500" size={32} /> 
-                        Top 3 Kandidat Pegawai Teladan
+                        Top 3 Kandidat Pegawai prima
                       </h2>
                       <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-2 italic">{(voteWindow.period || currentTW).toUpperCase()} {voteWindow.evalYear || selectedYear}</p>
                     </div>
                     {user.role === 'admin' && (
                       <div className="flex flex-wrap justify-center gap-3">
-                         <button onClick={exportKertasKerjaTeladan} className="flex items-center gap-3 bg-green-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic"><FileSpreadsheet size={16}/> Kertas Kerja</button>
+                         <button onClick={exportKertasKerjaPrima} className="flex items-center gap-3 bg-green-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic"><FileSpreadsheet size={16}/> Kertas Kerja</button>
                          <button onClick={handlePublish} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic"><Megaphone size={16}/> Publish Pengumuman</button>
                          <button onClick={() => handleResetVotes()} className="flex items-center gap-3 bg-red-50/10 text-red-500 px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-red-500 hover:text-white transition-all italic border border-red-500/20"><Trash2 size={16}/> Reset Voting</button>
                       </div>
@@ -1702,7 +1708,7 @@ const exportPresensiToPDF = () => {
                           </thead>
                           <tbody>
                             {leaderboardData.map((staff, idx) => {
-                              const votesDone = peerReviews.filter(v => v.reviewerId === staff.username && v.period === (voteWindow.period || currentTW) && v.year === (voteWindow.evalYear || selectedYear)).length;
+                              const votesDone = nilai360.filter(v => v.reviewerId === staff.username && v.period === (voteWindow.period || currentTW) && v.year === (voteWindow.evalYear || selectedYear)).length;
                               const totalRekan = users.filter(u => !['admin', 'pimpinan'].includes(u.role)).length - 1;
                               const isComplete = votesDone >= totalRekan;
                               
@@ -1742,7 +1748,7 @@ const exportPresensiToPDF = () => {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 italic">
                         {users.filter(u => u.username !== user.username && !['admin', 'pimpinan'].includes(u.role)).map((staff, idx) => {
-                          const hasVoted = peerReviews.some(v => v.reviewerId === user.username && v.targetUserId === staff.username && v.period === voteWindow.period && v.year === voteWindow.evalYear);
+                          const hasVoted = nilai360.some(v => v.reviewerId === user.username && v.targetUserId === staff.username && v.period === voteWindow.period && v.year === voteWindow.evalYear);
                           return (
                             <div key={idx} className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 flex flex-col items-center text-center transition-all hover:bg-white hover:shadow-xl hover:border-indigo-100 group italic">
                               <div className="w-20 h-20 rounded-[1.5rem] overflow-hidden mb-6 bg-white border border-slate-100 shadow-sm transition-transform group-hover:scale-110">
@@ -1752,7 +1758,7 @@ const exportPresensiToPDF = () => {
                               {hasVoted ? (
                                 <div className="w-full py-4 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center gap-2 font-black text-[10px] uppercase italic"><CheckCircle2 size={16}/> Selesai Dinilai</div>
                               ) : (
-                                <button onClick={() => { setSelectedStaffForVote(staff); setVoteData({kinerja:5, perilaku:5, inovasi:5}); setShowVotingModal(true); }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-100 active:scale-95 transition-all italic">Nilai Rekan</button>
+                                <button onClick={() => { setSelectedStaffForVote(staff); setVoteData({kinerja:5, perilaku:5, inovasi:5}); setshowPenilaianModal(true); }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-100 active:scale-95 transition-all italic">Nilai Rekan</button>
                               )}
                             </div>
                           );
@@ -1764,7 +1770,7 @@ const exportPresensiToPDF = () => {
                        {publishStatus[`${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`]?.isPublished ? (
                          <div className="animate-in fade-in duration-1000">
                            <Trophy className="mx-auto text-amber-500 mb-8" size={80} />
-                           <h2 className="text-3xl font-black uppercase text-slate-800 italic">Pegawai Teladan Periode Ini</h2>
+                           <h2 className="text-3xl font-black uppercase text-slate-800 italic">Pegawai prima Periode Ini</h2>
                            {winners.filter(w => w.period === (voteWindow.period || currentTW) && w.year === (voteWindow.evalYear || selectedYear)).map((w, idx) => (
                              <div key={idx} className="mt-12 bg-slate-900 p-12 rounded-[4rem] text-white max-w-md mx-auto italic shadow-2xl border-b-8 border-indigo-600">
                                 <div className="w-36 h-36 rounded-full overflow-hidden mx-auto mb-6 border-4 border-amber-500 shadow-lg">
@@ -2158,7 +2164,7 @@ const exportPresensiToPDF = () => {
           {user.role === 'admin' ? (
             <>
               <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button>
-              <button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button>
+              <button onClick={() => setActiveTab('prima')} className={`flex flex-col items-center gap-1 ${activeTab === 'prima' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">prima</span></button>
   <button onClick={() => setActiveTab('bakira')} className={`flex flex-col items-center gap-1 ${activeTab === 'bakira' ? 'text-indigo-600' : 'text-slate-300'}`}><Camera size={24}/><span className="text-[8px] font-black uppercase">BAKIRA</span></button>
               <button onClick={() => setActiveTab('users')} className={`flex flex-col items-center gap-1 ${activeTab === 'users' ? 'text-indigo-600' : 'text-slate-300'}`}><Users size={24}/><span className="text-[8px] font-black uppercase">Pegawai</span></button>
             </>
@@ -2166,14 +2172,14 @@ const exportPresensiToPDF = () => {
             <>
               <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center gap-1 ${activeTab === 'agenda' ? 'text-indigo-600' : 'text-slate-300'}`}><CalendarIcon size={24}/><span className="text-[8px] font-black uppercase">Agenda</span></button>
               <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button>
-              <button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button>
+              <button onClick={() => setActiveTab('prima')} className={`flex flex-col items-center gap-1 ${activeTab === 'prima' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">prima</span></button>
             </>
           ) : (
             <>
               <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center gap-1 ${activeTab === 'agenda' ? 'text-indigo-600' : 'text-slate-300'}`}><CalendarIcon size={24}/><span className="text-[8px] font-black uppercase">Agenda</span></button>
               <button onClick={() => setActiveTab('laporan')} className={`flex flex-col items-center gap-1 ${activeTab === 'laporan' ? 'text-indigo-600' : 'text-slate-300'}`}><FileText size={24}/><span className="text-[8px] font-black uppercase">Entri</span></button>
               {user.role === 'ketua' && <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button>}
-              <button onClick={() => setActiveTab('teladan')} className={`flex flex-col items-center gap-1 ${activeTab === 'teladan' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">Teladan</span></button>
+              <button onClick={() => setActiveTab('prima')} className={`flex flex-col items-center gap-1 ${activeTab === 'prima' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">prima</span></button>
             </>
           )}
         </div>
@@ -2261,10 +2267,10 @@ const exportPresensiToPDF = () => {
         </div>
       )}
 
-      {showVotingModal && selectedStaffForVote && (
+      {showPenilaianModal && selectedStaffForVote && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[110] font-sans italic">
-            <form onSubmit={handleSubmitVote} className="bg-white w-full max-w-lg rounded-[3rem] p-10 text-left overflow-y-auto max-h-[90vh] italic relative shadow-2xl">
-              <button type="button" onClick={() => setShowVotingModal(false)} className="absolute top-8 right-8 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
+            <form onSubmit={handleSubmitNilai360} className="bg-white w-full max-w-lg rounded-[3rem] p-10 text-left overflow-y-auto max-h-[90vh] italic relative shadow-2xl">
+              <button type="button" onClick={() => setshowPenilaianModal(false)} className="absolute top-8 right-8 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
               <div className="text-center mb-10 italic">
                   <div className="w-24 h-24 rounded-3xl overflow-hidden mx-auto mb-4 border-4 border-white shadow-xl">
                     {selectedStaffForVote.photoURL ? <img src={selectedStaffForVote.photoURL} alt={selectedStaffForVote.name} className="w-full h-full object-cover" /> : <div className="bg-slate-100 w-full h-full flex items-center justify-center text-slate-300"><User size={40}/></div>}
@@ -2292,7 +2298,7 @@ const exportPresensiToPDF = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-4 mt-12 italic">
-                  <button type="button" onClick={() => setShowVotingModal(false)} className="py-5 rounded-2xl font-black uppercase text-[10px] bg-slate-50 text-slate-400 italic">Batal</button>
+                  <button type="button" onClick={() => setshowPenilaianModal(false)} className="py-5 rounded-2xl font-black uppercase text-[10px] bg-slate-50 text-slate-400 italic">Batal</button>
                   <button type="submit" className="py-5 rounded-2xl font-black uppercase text-[10px] bg-indigo-600 text-white shadow-xl italic shadow-indigo-200">Kirim Penilaian</button>
               </div>
             </form>
@@ -2386,6 +2392,7 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
