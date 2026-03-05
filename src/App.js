@@ -48,6 +48,7 @@ const [bakiraDailyLog, setBakiraDailyLog] = useState({});
 const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   const [bakiraRecords, setBakiraRecords] = useState([]);
   const [exportFormat, setExportFormat] = useState('excel');
+  const [bakiraNotulenLink, setBakiraNotulenLink] = useState('');
   const [isKegiatanAda, setIsKegiatanAda] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -108,12 +109,14 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
         const data = docSnap.data();
         setBakiraDailyLog(data.absensi || {});
         setBakiraLinkDoc(data.linkDoc || '');
+        setBakiraNotulenLink(data.notulenLink || '');
         // Perbaikan: Mengambil status kegiatan yang tersimpan, default ke true jika belum ada
         setIsKegiatanAda(data.isKegiatanAda !== undefined ? data.isKegiatanAda : true);
       } else {
         // Jika dokumen tanggal baru belum ada, reset semua data ke nilai default
         setBakiraDailyLog({});
         setBakiraLinkDoc('');
+        setBakiraNotulenLink('');
         setIsKegiatanAda(true);
       }
     });
@@ -475,6 +478,7 @@ setPersistence(auth, browserSessionPersistence);
       date: selectedDate,
       absensi: bakiraDailyLog,
       linkDoc: bakiraLinkDoc,
+      notulenLink: bakiraNotulenLink,
       isKegiatanAda: isKegiatanAda, // Simpan status kegiatan
       updatedAt: serverTimestamp()
     }, { merge: true });
@@ -1516,6 +1520,27 @@ const exportPresensiToPDF = () => {
             </a>
           )}
         </div>
+          <label className="block text-[9px] font-black text-slate-400 uppercase italic mb-1 mt-4">Link Notulen Rapat</label>
+        <div className="flex gap-3">
+          <input 
+            readOnly={!['admin', 'pimpinan'].includes(user.role)}
+            type="text"
+            placeholder="Tempel link notulen di sini..."
+            className="flex-1 bg-white p-3 rounded-xl text-xs border border-slate-200 outline-none"
+            value={bakiraNotulenLink}
+            onChange={(e) => setBakiraNotulenLink(e.target.value)}
+          />
+          {bakiraNotulenLink && (
+            <a 
+              href={bakiraNotulenLink.startsWith('http') ? bakiraNotulenLink : `https://${bakiraNotulenLink}`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="bg-amber-600 text-white px-4 rounded-xl flex items-center font-black text-[10px] uppercase shadow-lg"
+            >
+              Buka Notulen
+            </a>
+          )}
+        </div>
       </div>
     </div>
   </div>
@@ -2396,3 +2421,4 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
