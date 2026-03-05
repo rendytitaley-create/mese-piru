@@ -825,17 +825,39 @@ const pimpinan = pimpinanTerpilih;
     sheet.getColumn(7).width = 15;
     sheet.getColumn(8).width = 25;
 
-    // Tanda Tangan
-    let signRow = 7 + leaderboardData.length + 3;
-    sheet.getCell(`F${signRow}`).value = `Seram Bagian Barat, ${new Date().toLocaleDateString('id-ID')}`;
-    sheet.getCell(`F${signRow + 1}`).value = `Pejabat Penilai,`;
-    sheet.getCell(`F${signRow + 5}`).value = pimpinan.name;
-    sheet.getCell(`F${signRow + 5}`).font = { bold: true, underline: true };
+    // --- BAGIAN TANDA TANGAN YANG DIPERBARUI ---
+let signRow = 7 + leaderboardData.length + 3; // Menentukan baris mulai TTD
+const hariIni = new Date().toLocaleDateString('id-ID', {
+  weekday: 'long', 
+  year: 'numeric', 
+  month: 'long', 
+  day: 'numeric'
+});
 
-    const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `Kertas_Kerja_Prima_${period}_${year}.xlsx`);
-  };
+// Baris 1: Lokasi dan Tanggal
+sheet.getCell(`F${signRow}`).value = `Piru, ${hariIni}`;
+sheet.getCell(`F${signRow}`).alignment = { horizontal: 'center' };
 
+// Baris 2: "Mengetahui,"
+sheet.getCell(`F${signRow + 1}`).value = "Mengetahui,";
+sheet.getCell(`F${signRow + 1}`).alignment = { horizontal: 'center' };
+
+// Baris 3: Jabatan
+sheet.getCell(`F${signRow + 2}`).value = "Kepala BPS Kab. Seram Bagian Barat,";
+sheet.getCell(`F${signRow + 2}`).alignment = { horizontal: 'center' };
+
+// Baris 4-5: Dibiarkan kosong untuk ruang Tanda Tangan Basah
+
+// Baris 6: Nama Pimpinan
+sheet.getCell(`F${signRow + 5}`).value = pimpinan.name;
+sheet.getCell(`F${signRow + 5}`).font = { bold: true, underline: true };
+sheet.getCell(`F${signRow + 5}`).alignment = { horizontal: 'center' };
+
+// --- AKHIR PERUBAHAN ---
+
+const buffer = await workbook.xlsx.writeBuffer();
+saveAs(new Blob([buffer]), `Kertas_Kerja_Prima_${period}_${year}.xlsx`);
+    
 const exportPresensiToPDF = () => {
   const doc = new jsPDF('p', 'mm', 'a4');
 
@@ -2399,6 +2421,7 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
