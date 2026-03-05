@@ -1401,12 +1401,11 @@ const exportPresensiToPDF = () => {
 
    {activeTab === 'bakira' && (
   <div className="flex flex-col h-[85vh] animate-in fade-in duration-500 italic p-4 md:p-10">
-    {/* Container Utama: Menggunakan flex-row agar tabel dan panel terpisah secara presisi */}
     <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 max-w-6xl mx-auto w-full flex flex-col md:flex-row flex-1 overflow-hidden">
       
-      {/* KIRI: TABEL ABSENSI (DIPADATKAN DAN DIBERI RUANG) */}
-      <div className="flex-[2] overflow-y-auto border-r border-slate-100 flex flex-col">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
+      {/* KIRI: TABEL ABSENSI (HEADER STICKY) */}
+      <div className="flex-[2] flex flex-col overflow-hidden border-r border-slate-100">
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
           <h2 className="text-lg font-black uppercase italic tracking-tighter">Absensi BAKIRA</h2>
           <input 
             type="date" 
@@ -1416,40 +1415,47 @@ const exportPresensiToPDF = () => {
           />
         </div>
 
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase italic">
-            <tr><th className="p-4">No</th><th className="p-4">Pegawai</th><th className="p-4">Status</th></tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {users
-              .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.')
-              .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
-              .map((u, index) => (
-                <tr key={u.firestoreId} className="hover:bg-slate-50 transition-colors">
-                  <td className="p-4 text-[10px] font-bold text-slate-400">{index + 1}</td>
-                  <td className="p-4 font-black uppercase text-xs">{u.name}</td>
-                  <td className="p-4 w-40">
-                    <select 
-                      disabled={!['admin', 'pimpinan'].includes(user.role)}
-                      className={`p-2 rounded-xl text-[10px] font-black w-full outline-none border border-slate-100
-                        ${bakiraDailyLog[u.username] === 'hadir' ? 'bg-green-50 text-green-700' : 'bg-slate-50'}`}
-                      value={bakiraDailyLog[u.username] || 'hadir'}
-                      onChange={(e) => setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value})}
-                    >
-                      <option value="hadir">Hadir</option>
-                      <option value="izin">Izin</option>
-                      <option value="sakit">Sakit</option>
-                      <option value="tugas">Tugas</option>
-                      <option value="cuti">Cuti</option>
-                    </select>
-                  </td>
-                </tr>
-            ))}
-          </tbody>
-        </table>
+        {/* Wrapper Scroll Tabel dengan Header Sticky */}
+        <div className="flex-1 overflow-y-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-slate-50 sticky top-0 z-10 text-[9px] font-black text-slate-400 uppercase italic">
+              <tr>
+                <th className="p-4">No</th>
+                <th className="p-4">Pegawai</th>
+                <th className="p-4">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {users
+                .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.')
+                .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
+                .map((u, index) => (
+                  <tr key={u.firestoreId} className="hover:bg-slate-50 transition-colors">
+                    <td className="p-4 text-[10px] font-bold text-slate-400">{index + 1}</td>
+                    <td className="p-4 font-black uppercase text-xs">{u.name}</td>
+                    <td className="p-4 w-40">
+                      <select 
+                        disabled={!['admin', 'pimpinan'].includes(user.role)}
+                        className={`p-2 rounded-xl text-[10px] font-black w-full outline-none border border-slate-100
+                          ${bakiraDailyLog[u.username] === 'hadir' ? 'bg-green-50 text-green-700' : 'bg-slate-50'}`}
+                        value={bakiraDailyLog[u.username] || 'hadir'}
+                        onChange={(e) => setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value})}
+                      >
+                        <option value="hadir">Hadir</option>
+                        <option value="izin">Izin</option>
+                        <option value="sakit">Sakit</option>
+                        <option value="tugas">Tugas</option>
+                        <option value="cuti">Cuti</option>
+                      </select>
+                    </td>
+                  </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* KANAN: PANEL KONTROL & LINK (PROFESIONAL) */}
+      {/* KANAN: PANEL KONTROL (TETAP) */}
       <div className="flex-1 bg-slate-50 p-8 flex flex-col gap-6">
         <button 
           disabled={!['admin', 'pimpinan'].includes(user.role)}
@@ -1475,13 +1481,29 @@ const exportPresensiToPDF = () => {
           )}
         </div>
 
-        <div className="mt-auto space-y-3">
-          <button onClick={handleSaveBakira} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px]">Simpan Data</button>
+        <div className="mt-auto space-y-4">
+          {['admin', 'pimpinan'].includes(user.role) && (
+            <button onClick={handleSaveBakira} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px]">Simpan Perubahan</button>
+          )}
           <div className="flex gap-2">
-            <button onClick={() => exportFormat === 'excel' ? exportPresensiToExcel() : exportPresensiToPDF()} className="flex-1 bg-green-600 text-white py-3 rounded-xl font-black text-[9px] uppercase">Cetak {exportFormat === 'excel' ? 'Excel' : 'PDF'}</button>
+            <select 
+              value={exportFormat} 
+              onChange={(e) => setExportFormat(e.target.value)}
+              className="bg-white border border-slate-200 px-3 rounded-xl font-black text-[9px] uppercase outline-none"
+            >
+              <option value="excel">Excel</option>
+              <option value="pdf">PDF</option>
+            </select>
+            <button 
+              onClick={() => exportFormat === 'excel' ? exportPresensiToExcel() : exportPresensiToPDF()} 
+              className="flex-1 bg-green-600 text-white py-3 rounded-xl font-black text-[9px] uppercase shadow-lg active:scale-95 transition-all"
+            >
+              Cetak
+            </button>
           </div>
         </div>
       </div>
+      
     </div>
   </div>
 )}
@@ -2361,6 +2383,7 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
+
 
 
 
