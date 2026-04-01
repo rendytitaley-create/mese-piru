@@ -91,8 +91,6 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [newAgenda, setNewAgenda] = useState({ taskName: '', volume: '', satuan: '', date: new Date().toISOString().split('T')[0], isLembur: false });
-  const [isRangeMode, setIsRangeMode] = useState(false);
-const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null); // Filter klik tanggal
 
@@ -191,7 +189,6 @@ const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
     e.preventDefault();
     try {
       if (newAgenda.id) {
-        // Logika Update (Tetap satu data jika sedang mengedit)
         const agendaRef = doc(db, "agendas", newAgenda.id);
         await updateDoc(agendaRef, {
           taskName: newAgenda.taskName,
@@ -203,48 +200,17 @@ const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
         });
         alert("Agenda berhasil diperbarui.");
       } else {
-        // Logika Simpan Baru (Mendukung Single & Range)
-        let datesToProcess = [];
-        
-        if (!isRangeMode) {
-          // Mode Satu Hari
-          datesToProcess.push(newAgenda.date);
-        } else {
-          // Mode Rentang Tanggal: Buat daftar tanggal dari mulai sampai selesai
-          let start = new Date(newAgenda.date);
-          let end = new Date(endDate);
-          
-          if (end < start) {
-            alert("Tanggal selesai tidak boleh sebelum tanggal mulai!");
-            return;
-          }
-
-          while (start <= end) {
-            datesToProcess.push(start.toISOString().split('T')[0]);
-            start.setDate(start.getDate() + 1);
-          }
-        }
-
-        // Simpan ke Firebase (Append satu per satu menggunakan Batch)
-        const batch = writeBatch(db);
-        datesToProcess.forEach((tgl) => {
-          const newDocRef = doc(collection(db, "agendas"));
-          batch.set(newDocRef, {
-            ...newAgenda,
-            date: tgl, 
-            userId: user.username,
-            userName: user.name,
-            isImported: false,
-            isLembur: newAgenda.isLembur || false,
-            createdAt: serverTimestamp()
-          });
+        await addDoc(collection(db, "agendas"), {
+          ...newAgenda,
+          userId: user.username,
+          userName: user.name,
+          isImported: false,
+          isLembur: newAgenda.isLembur || false,
+          createdAt: serverTimestamp()
         });
-
-        await batch.commit();
-        alert(`${datesToProcess.length} Agenda berhasil ditambahkan.`);
+        alert("Agenda berhasil ditambahkan.");
       }
       setShowAgendaModal(false);
-      setIsRangeMode(false); // Reset mode ke tunggal setelah simpan
       setNewAgenda({ taskName: '', volume: '', satuan: '', date: new Date().toISOString().split('T')[0], isLembur: false });
     } catch (err) { 
       console.error(err);
@@ -2276,57 +2242,8 @@ const exportPresensiToPDF = () => {
             <button type="button" onClick={() => setShowAgendaModal(false)} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400"><X size={20}/></button>
             <CalendarIcon size={40} className="text-indigo-600 mb-6 mx-auto" />
             <h3 className="text-xl font-black uppercase italic mb-8">Catat Agenda: {newAgenda.date}</h3>
-            {/* 1. TAMBAHKAN TOMBOL PILIHAN MODE DI SINI */}
-           {!newAgenda.id && (
-              <div className="flex gap-4 justify-center mb-6">
-                <label className={`flex-1 p-3 rounded-2xl border cursor-pointer transition-all ${!isRangeMode ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
-                  <input type="radio" className="hidden" checked={!isRangeMode} onChange={() => setIsRangeMode(false)} />
-                  <span className="text-[10px] font-black uppercase italic text-center block">Satu Hari</span>
-                </label>
-                <label className={`flex-1 p-3 rounded-2xl border cursor-pointer transition-all ${isRangeMode ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
-                  <input type="radio" className="hidden" checked={isRangeMode} onChange={() => setIsRangeMode(true)} />
-                  <span className="text-[10px] font-black uppercase italic text-center block">Rentang Tanggal</span>
-                </label>
-              </div>
-            )}
-
-            {/* Input Tanggal */}
-            <div className={`grid ${isRangeMode ? 'grid-cols-2' : 'grid-cols-1'} gap-4 mb-6 text-left`}>
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-400 uppercase italic px-2">
-                  {isRangeMode ? "Dari Tanggal" : "Tanggal"}
-                </label>
-                <input 
-                  type="date" 
-                  className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic" 
-                  value={newAgenda.date} 
-                  onChange={e => setNewAgenda({...newAgenda, date: e.target.value})} 
-                />
-              </div>
-              
-              {isRangeMode && (
-                <div className="space-y-1">
-                  <label className="text-[8px] font-black text-slate-400 uppercase italic px-2">Sampai Tanggal</label>
-                  <input 
-                    type="date" 
-                    className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic" 
-                    value={endDate} 
-                    onChange={e => setEndDate(e.target.value)} 
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Input Detail Pekerjaan */}
             <div className="space-y-4 italic">
-              <textarea 
-                required 
-                placeholder="Apa yang Anda kerjakan?" 
-                className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic h-32 resize-none" 
-                value={newAgenda.taskName} 
-                onChange={e => setNewAgenda({...newAgenda, taskName: e.target.value})} 
-              />
-              
+              <textarea required placeholder="Apa yang Anda kerjakan?" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic h-32 resize-none" value={newAgenda.taskName} onChange={e => setNewAgenda({...newAgenda, taskName: e.target.value})} />
               <div 
                 className={`flex items-center justify-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer ${newAgenda.isLembur ? 'bg-amber-500 border-amber-600 text-white shadow-md' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
                 onClick={() => setNewAgenda({...newAgenda, isLembur: !newAgenda.isLembur})}
@@ -2339,19 +2256,16 @@ const exportPresensiToPDF = () => {
                 />
                 <span className={`text-[10px] font-black uppercase italic tracking-widest ${newAgenda.isLembur ? 'text-white' : 'text-slate-500'}`}>Kategori Lembur / Hari Libur</span>
               </div>
-
               <div className="grid grid-cols-2 gap-4 italic text-center">
                 <input required type="number" placeholder="Volume" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic" value={newAgenda.volume} onChange={e => setNewAgenda({...newAgenda, volume: e.target.value})} />
                 <input required type="text" placeholder="Satuan" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic" value={newAgenda.satuan} onChange={e => setNewAgenda({...newAgenda, satuan: e.target.value})} />
               </div>
             </div>
-
-            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-5 rounded-2xl shadow-xl uppercase text-[10px] mt-8 italic transition-all active:scale-95">
-              Simpan Catatan
-            </button>
+            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-5 rounded-2xl shadow-xl uppercase text-[10px] mt-8 italic transition-all active:scale-95">Simpan Catatan</button>
           </form>
         </div>
       )}
+
       {/* MODAL BARU: IMPORT AGENDA KE LAPORAN */}
       {showImportModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[140] font-sans italic">
@@ -2518,14 +2432,3 @@ const exportPresensiToPDF = () => {
 
 export default PIRUApp;
 // === SELESAI: SELURUH KODE UTUH TERKIRIM ===
-
-
-
-
-
-
-
-
-
-
-
