@@ -1015,24 +1015,46 @@ const exportPresensiToPDF = () => {
     } catch (err) { alert("Gagal mempublikasikan."); }
   };
 
-  const handleResetVotes = async (targetUserId = null) => {
-    const period = voteWindow.period || currentTW;
-    const year = voteWindow.evalYear || selectedYear;
-    const msg = targetUserId ? "Reset voting untuk pegawai ini?" : "Reset SEMUA data voting periode ini?";
-    if (!window.confirm(msg)) return;
-    try {
-      const batch = writeBatch(db);
-      const votesToDelete = targetUserId 
-        ? nilai360.filter(v => v.targetUserId === targetUserId && v.period === period && v.year === year)
-        : nilai360.filter(v => v.period === period && v.year === year);
-      
-      votesToDelete.forEach(v => {
-        batch.delete(doc(db, "peer_reviews", v.id));
-      });
-      await batch.commit();
-      alert("Data voting berhasil dibersihkan.");
-    } catch (err) { alert("Gagal mereset data."); }
-  };
+  const handleResetVotes = async (targetUserId = null, reviewerId = null) => {
+  const period = voteWindow.period || currentTW;
+  const year = voteWindow.evalYear || selectedYear;
+  
+  // Tentukan pesan konfirmasi berdasarkan tombol mana yang diklik
+  let msg = "Reset SEMUA data voting periode ini?";
+  if (targetUserId) msg = "Reset semua nilai yang DITERIMA pegawai ini?";
+  if (reviewerId) msg = `Reset semua nilai yang TELAH DIKIRIM oleh ${reviewerId}?`;
+
+  if (!window.confirm(msg)) return;
+  
+  try {
+    const batch = writeBatch(db);
+    let votesToDelete = nilai360.filter(v => v.period === period && v.year === year);
+
+    // Jika yang diklik adalah reset per orang (si penerima nilai)
+    if (targetUserId) {
+      votesToDelete = votesToDelete.filter(v => v.targetUserId === targetUserId);
+    } 
+    // Jika yang diklik adalah reset hasil input (si penilai) -> Fitur Baru Anda
+    else if (reviewerId) {
+      votesToDelete = votesToDelete.filter(v => v.reviewerId === reviewerId);
+    }
+
+    if (votesToDelete.length === 0) {
+      alert("Tidak ada data untuk dihapus.");
+      return;
+    }
+
+    votesToDelete.forEach(v => {
+      batch.delete(doc(db, "peer_reviews", v.id));
+    });
+
+    await batch.commit();
+    alert("Data voting berhasil dikembalikan/direset.");
+  } catch (err) { 
+    console.error(err);
+    alert("Gagal mereset data."); 
+  }
+};
 
   const handleSubmitNilai360 = async (e) => {
     e.preventDefault();
@@ -1723,11 +1745,22 @@ const exportPresensiToPDF = () => {
                                 <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/20 italic">
                                   <td className="py-4 font-black uppercase text-[10px] italic">{staff.name}</td>
                                   <td className="py-4 text-center italic font-bold text-slate-400 text-[10px]">{votesDone} / {totalRekan} Rekan</td>
-                                  <td className="py-4 text-center italic">
-                                    <span className={`text-[8px] font-black uppercase px-3 py-1 rounded-full ${isComplete ? 'bg-green-500/10 text-green-400' : 'bg-amber-500/10 text-amber-400'}`}>
-                                      {isComplete ? "Lengkap" : "Proses"}
-                                    </span>
-                                  </td>
+                                 <td className="py-4 text-center italic">
+  <div className="flex flex-col items-center gap-2">
+    <span className={`text-[8px] font-black uppercase px-3 py-1 rounded-full ${isComplete ? 'bg-green-500/10 text-green-400' : 'bg-amber-500/10 text-amber-400'}`}>
+      {isComplete ? "Lengkap" : "Proses"}
+    </span>
+    {/* Tombol Reset Khusus Admin jika sudah ada vote yang masuk */}
+    {user.role === 'admin' && votesDone > 0 && (
+      <button 
+        onClick={() => handleResetVotes(null, staff.username)}
+        className="text-[7px] font-black text-red-500 hover:text-red-700 underline uppercase italic"
+      >
+        Reset Penilaian Saya
+      </button>
+    )}
+  </div>
+</td>
                                   {(!voteWindow.active || publishStatus[`${voteWindow.evalYear}_${voteWindow.period}`]?.isPublished) && (
                                     <td className="py-4 text-center italic font-black text-indigo-400 text-xs">{staff.finalScore}</td>
                                   )}
