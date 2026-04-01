@@ -1717,7 +1717,20 @@ const exportPresensiToPDF = () => {
                       <div className="flex flex-wrap justify-center gap-3">
                          <button onClick={exportKertasKerjaPrima} className="flex items-center gap-3 bg-green-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic"><FileSpreadsheet size={16}/> Kertas Kerja</button>
                          <button onClick={handlePublish} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic"><Megaphone size={16}/> Publish Pengumuman</button>
-                         <button onClick={() => handleResetVotes()} className="flex items-center gap-3 bg-red-50/10 text-red-500 px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-red-500 hover:text-white transition-all italic border border-red-500/20"><Trash2 size={16}/> Reset Voting</button>
+                         {publishStatus[`${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`]?.isPublished && (
+  <button 
+    onClick={async () => {
+      if(window.confirm("Tarik kembali pengumuman? Pegawai tidak akan bisa melihat pemenang lagi.")) {
+        await deleteDoc(doc(db, "publish_status", `${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`));
+        alert("Pengumuman berhasil ditarik kembali.");
+      }
+    }} 
+    className="flex items-center gap-3 bg-slate-100 text-slate-600 px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-sm italic border border-slate-200"
+  >
+    <RotateCcw size={16}/> Batal Publish
+  </button>
+)}
+                      <button onClick={() => handleResetVotes()} className="flex items-center gap-3 bg-red-50/10 text-red-500 px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-red-500 hover:text-white transition-all italic border border-red-500/20"><Trash2 size={16}/> Reset Voting</button>
                       </div>
                     )}
                   </div>
