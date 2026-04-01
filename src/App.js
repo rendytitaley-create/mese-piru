@@ -1753,9 +1753,28 @@ const exportPresensiToPDF = () => {
                             <div className="text-center italic"><p className="text-[7px] text-slate-500 font-black uppercase mb-1 italic">VOTE (30%)</p><p className="text-[11px] font-black text-white italic">{staff.avgVote.toFixed(0)}</p></div>
                           </div>
                           {user.role === 'pimpinan' && (
-                            <button onClick={() => handleSetWinner(staff)} className={`w-full mt-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all italic ${isWinner ? 'bg-amber-500 text-slate-900' : 'bg-white text-slate-900 hover:bg-amber-500 hover:text-slate-900'}`}>
-                              {isWinner ? "PEMENANG TERPILIH" : "TETAPKAN PEMENANG"}
-                            </button>
+                           <div className="w-full space-y-2 mt-8">
+  <button 
+    onClick={() => handleSetWinner(staff)} 
+    className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all italic ${isWinner ? 'bg-amber-500 text-slate-900 shadow-lg' : 'bg-white text-slate-900 border border-slate-200 hover:bg-amber-500 hover:text-slate-900'}`}
+  >
+    {isWinner ? "🏆 PEMENANG TERPILIH" : "TETAPKAN PEMENANG"}
+  </button>
+  
+  {isWinner && (
+    <button 
+      onClick={async () => {
+        if(window.confirm("Batalkan status pemenang untuk pegawai ini?")) {
+          await deleteDoc(doc(db, "winners", `${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`));
+          alert("Status pemenang berhasil dibatalkan.");
+        }
+      }} 
+      className="w-full py-2 text-red-500 font-black text-[8px] uppercase tracking-widest italic hover:underline"
+    >
+      Hapus Status Juara
+    </button>
+  )}
+</div>
                           )}
                         </div>
                       );
