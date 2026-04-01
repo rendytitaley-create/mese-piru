@@ -1701,86 +1701,89 @@ const exportPresensiToPDF = () => {
           )}
 
           {activeTab === 'prima' && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 italic space-y-10">
-              {['admin', 'pimpinan'].includes(user.role) && (
-                <div className="bg-slate-900 p-8 md:p-12 rounded-[3rem] md:rounded-[4rem] text-white shadow-2xl border border-slate-800 relative overflow-hidden italic">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 blur-[100px] -z-10"></div>
-                  <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12 italic text-center md:text-left">
-                    <div className="italic text-center md:text-left">
-                      <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter flex items-center justify-center md:justify-start gap-4 italic">
-                        <Trophy className="text-amber-500" size={32} /> 
-                        Top 3 Kandidat Pegawai prima
-                      </h2>
-                      <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-2 italic">{(voteWindow.period || currentTW).toUpperCase()} {voteWindow.evalYear || selectedYear}</p>
-                    </div>
-                    {user.role === 'admin' && (
-                      <div className="flex flex-wrap justify-center gap-3">
-                         <button onClick={exportKertasKerjaPrima} className="flex items-center gap-3 bg-green-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic"><FileSpreadsheet size={16}/> Kertas Kerja</button>
-                         <button onClick={handlePublish} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic"><Megaphone size={16}/> Publish Pengumuman</button>
-                         {publishStatus[`${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`]?.isPublished && (
-  <button 
-    onClick={async () => {
-      if(window.confirm("Tarik kembali pengumuman? Pegawai tidak akan bisa melihat pemenang lagi.")) {
-        await deleteDoc(doc(db, "publish_status", `${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`));
-        alert("Pengumuman berhasil ditarik kembali.");
-      }
-    }} 
-    className="flex items-center gap-3 bg-slate-100 text-slate-600 px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-sm italic border border-slate-200"
-  >
-    <RotateCcw size={16}/> Batal Publish
-  </button>
-)}
-                      <button onClick={() => handleResetVotes()} className="flex items-center gap-3 bg-red-50/10 text-red-500 px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-red-500 hover:text-white transition-all italic border border-red-500/20"><Trash2 size={16}/> Reset Voting</button>
-                      </div>
+  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 italic space-y-10">
+    {/* BAGIAN 1: KHUSUS ADMIN & PIMPINAN */}
+    {['admin', 'pimpinan'].includes(user.role) && (
+      <div className="bg-slate-900 p-8 md:p-12 rounded-[3rem] md:rounded-[4rem] text-white shadow-2xl border border-slate-800 relative overflow-hidden italic">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 blur-[100px] -z-10"></div>
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12 italic text-center md:text-left">
+          <div className="italic text-center md:text-left">
+            <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter flex items-center justify-center md:justify-start gap-4 italic">
+              <Trophy className="text-amber-500" size={32} /> 
+              Top 3 Kandidat Pegawai prima
+            </h2>
+            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-2 italic">{(voteWindow.period || currentTW).toUpperCase()} {voteWindow.evalYear || selectedYear}</p>
+          </div>
+
+          {user.role === 'admin' && (
+            <div className="flex flex-wrap justify-center gap-3">
+              <button onClick={exportKertasKerjaPrima} className="flex items-center gap-3 bg-green-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic"><FileSpreadsheet size={16}/> Kertas Kerja</button>
+              <button onClick={handlePublish} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic"><Megaphone size={16}/> Publish Pengumuman</button>
+              {publishStatus[`${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`]?.isPublished && (
+                <button 
+                  onClick={async () => {
+                    if(window.confirm("Tarik kembali pengumuman?")) {
+                      await deleteDoc(doc(db, "publish_status", `${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`));
+                      alert("Pengumuman ditarik.");
+                    }
+                  }} 
+                  className="flex items-center gap-3 bg-slate-100 text-slate-600 px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-sm italic border border-slate-200"
+                >
+                  <RotateCcw size={16}/> Batal Publish
+                </button>
+              )}
+              <button onClick={() => handleResetVotes()} className="flex items-center gap-3 bg-red-50/10 text-red-500 px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-red-500 hover:text-white transition-all italic border border-red-500/20"><Trash2 size={16}/> Reset Voting</button>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 italic mb-12">
+          {leaderboardData.slice(0, 3).map((staff, index) => {
+            const isWinner = winners.some(w => w.username === staff.username && w.period === (voteWindow.period || currentTW) && w.year === (voteWindow.evalYear || selectedYear));
+            return (
+              <div key={index} className={`relative p-8 rounded-[2.5rem] border-2 flex flex-col items-center text-center transition-all italic ${isWinner ? 'border-amber-500 bg-slate-800/50 shadow-[0_0_30px_rgba(245,158,11,0.1)]' : 'border-slate-800 bg-slate-900/50'}`}>
+                {index === 0 && <div className="absolute -top-4 -right-4 bg-amber-500 text-slate-900 w-12 h-12 rounded-full flex items-center justify-center shadow-lg transform rotate-12"><Star size={24} fill="currentColor"/></div>}
+                <div className="w-24 h-24 rounded-[2rem] overflow-hidden mb-6 border-4 border-slate-800 shadow-xl bg-slate-800">
+                  {staff.photoURL ? <img src={staff.photoURL} className="w-full h-full object-cover" alt={staff.name} /> : <div className="w-full h-full flex items-center justify-center text-indigo-400"><User size={40}/></div>}
+                </div>
+                <p className="font-black text-white uppercase italic text-sm tracking-tighter mb-1">{staff.name}</p>
+                <p className="text-indigo-400 font-black text-3xl italic mb-6 tracking-tighter">{staff.finalScore}</p>
+                
+                <div className="w-full grid grid-cols-3 gap-2 border-t border-slate-800 pt-6 italic">
+                  <div className="text-center italic"><p className="text-[7px] text-slate-500 font-black uppercase mb-1 italic">CKP (40%)</p><p className="text-[11px] font-black text-white italic">{staff.avgCKP.toFixed(0)}</p></div>
+                  <div className="text-center border-x border-slate-800 italic px-1"><p className="text-[7px] text-slate-500 font-black uppercase mb-1 italic">KJK (30%)</p><p className="text-[11px] font-black text-white italic">{staff.kjkScore.toFixed(0)}</p></div>
+                  <div className="text-center italic"><p className="text-[7px] text-slate-500 font-black uppercase mb-1 italic">VOTE (30%)</p><p className="text-[11px] font-black text-white italic">{staff.avgVote.toFixed(0)}</p></div>
+                </div>
+
+                {user.role === 'pimpinan' && (
+                  <div className="w-full space-y-2 mt-8">
+                    <button 
+                      onClick={() => handleSetWinner(staff)} 
+                      className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all italic ${isWinner ? 'bg-amber-500 text-slate-900 shadow-lg' : 'bg-white text-slate-900 border border-slate-200 hover:bg-amber-500 hover:text-slate-900'}`}
+                    >
+                      {isWinner ? "🏆 PEMENANG TERPILIH" : "TETAPKAN PEMENANG"}
+                    </button>
+                    {isWinner && (
+                      <button 
+                        onClick={async () => {
+                          if(window.confirm("Batalkan status?")) {
+                            await deleteDoc(doc(db, "winners", `${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`));
+                            alert("Dibatalkan.");
+                          }
+                        }} 
+                        className="w-full py-2 text-red-500 font-black text-[8px] uppercase tracking-widest italic hover:underline"
+                      >
+                        Hapus Status Juara
+                      </button>
                     )}
                   </div>
-
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 italic mb-12">
-  {leaderboardData.slice(0, 3).map((staff, index) => {
-    const isWinner = winners.some(w => w.username === staff.username && w.period === (voteWindow.period || currentTW) && w.year === (voteWindow.evalYear || selectedYear));
-    return (
-      <div key={index} className={`relative p-8 rounded-[2.5rem] border-2 flex flex-col items-center text-center transition-all italic ${isWinner ? 'border-amber-500 bg-slate-800/50 shadow-[0_0_30px_rgba(245,158,11,0.1)]' : 'border-slate-800 bg-slate-900/50'}`}>
-        {index === 0 && <div className="absolute -top-4 -right-4 bg-amber-500 text-slate-900 w-12 h-12 rounded-full flex items-center justify-center shadow-lg transform rotate-12"><Star size={24} fill="currentColor"/></div>}
-        <div className="w-24 h-24 rounded-[2rem] overflow-hidden mb-6 border-4 border-slate-800 shadow-xl bg-slate-800">
-          {staff.photoURL ? <img src={staff.photoURL} className="w-full h-full object-cover" alt={staff.name} /> : <div className="w-full h-full flex items-center justify-center text-indigo-400"><User size={40}/></div>}
+                )}
+              </div>
+            );
+          })}
         </div>
-        <p className="font-black text-white uppercase italic text-sm tracking-tighter mb-1">{staff.name}</p>
-        <p className="text-indigo-400 font-black text-3xl italic mb-6 tracking-tighter">{staff.finalScore}</p>
-        
-        <div className="w-full grid grid-cols-3 gap-2 border-t border-slate-800 pt-6 italic">
-          <div className="text-center italic"><p className="text-[7px] text-slate-500 font-black uppercase mb-1 italic">CKP (40%)</p><p className="text-[11px] font-black text-white italic">{staff.avgCKP.toFixed(0)}</p></div>
-          <div className="text-center border-x border-slate-800 italic px-1"><p className="text-[7px] text-slate-500 font-black uppercase mb-1 italic">KJK (30%)</p><p className="text-[11px] font-black text-white italic">{staff.kjkScore.toFixed(0)}</p></div>
-          <div className="text-center italic"><p className="text-[7px] text-slate-500 font-black uppercase mb-1 italic">VOTE (30%)</p><p className="text-[11px] font-black text-white italic">{staff.avgVote.toFixed(0)}</p></div>
-        </div>
-
-        {user.role === 'pimpinan' && (
-          <div className="w-full space-y-2 mt-8">
-            <button 
-              onClick={() => handleSetWinner(staff)} 
-              className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all italic ${isWinner ? 'bg-amber-500 text-slate-900 shadow-lg' : 'bg-white text-slate-900 border border-slate-200 hover:bg-amber-500 hover:text-slate-900'}`}
-            >
-              {isWinner ? "🏆 PEMENANG TERPILIH" : "TETAPKAN PEMENANG"}
-            </button>
-            
-            {isWinner && (
-              <button 
-                onClick={async () => {
-                  if(window.confirm("Batalkan status pemenang untuk pegawai ini?")) {
-                    await deleteDoc(doc(db, "winners", `${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`));
-                    alert("Status pemenang berhasil dibatalkan.");
-                  }
-                }} 
-                className="w-full py-2 text-red-500 font-black text-[8px] uppercase tracking-widest italic hover:underline"
-              >
-                Hapus Status Juara
-              </button>
-            )}
-          </div>
-        )}
       </div>
-    );
-  })}
-</div>
+    )} {/* PENUTUP LOGIKA ROLE DI ATAS */}
 
                   {user.role === 'admin' && (
                     <div className="bg-slate-800/40 rounded-[2.5rem] p-8 border border-slate-700/50 italic">
