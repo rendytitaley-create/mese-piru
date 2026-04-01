@@ -91,6 +91,8 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [newAgenda, setNewAgenda] = useState({ taskName: '', volume: '', satuan: '', date: new Date().toISOString().split('T')[0], isLembur: false });
+  const [isRangeMode, setIsRangeMode] = useState(false);
+const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null); // Filter klik tanggal
 
@@ -189,6 +191,7 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
     e.preventDefault();
     try {
       if (newAgenda.id) {
+        // Logika Update (Tetap satu data jika sedang mengedit)
         const agendaRef = doc(db, "agendas", newAgenda.id);
         await updateDoc(agendaRef, {
           taskName: newAgenda.taskName,
@@ -200,17 +203,48 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
         });
         alert("Agenda berhasil diperbarui.");
       } else {
-        await addDoc(collection(db, "agendas"), {
-          ...newAgenda,
-          userId: user.username,
-          userName: user.name,
-          isImported: false,
-          isLembur: newAgenda.isLembur || false,
-          createdAt: serverTimestamp()
+        // Logika Simpan Baru (Mendukung Single & Range)
+        let datesToProcess = [];
+        
+        if (!isRangeMode) {
+          // Mode Satu Hari
+          datesToProcess.push(newAgenda.date);
+        } else {
+          // Mode Rentang Tanggal: Buat daftar tanggal dari mulai sampai selesai
+          let start = new Date(newAgenda.date);
+          let end = new Date(endDate);
+          
+          if (end < start) {
+            alert("Tanggal selesai tidak boleh sebelum tanggal mulai!");
+            return;
+          }
+
+          while (start <= end) {
+            datesToProcess.push(start.toISOString().split('T')[0]);
+            start.setDate(start.getDate() + 1);
+          }
+        }
+
+        // Simpan ke Firebase (Append satu per satu menggunakan Batch)
+        const batch = writeBatch(db);
+        datesToProcess.forEach((tgl) => {
+          const newDocRef = doc(collection(db, "agendas"));
+          batch.set(newDocRef, {
+            ...newAgenda,
+            date: tgl, 
+            userId: user.username,
+            userName: user.name,
+            isImported: false,
+            isLembur: newAgenda.isLembur || false,
+            createdAt: serverTimestamp()
+          });
         });
-        alert("Agenda berhasil ditambahkan.");
+
+        await batch.commit();
+        alert(`${datesToProcess.length} Agenda berhasil ditambahkan.`);
       }
       setShowAgendaModal(false);
+      setIsRangeMode(false); // Reset mode ke tunggal setelah simpan
       setNewAgenda({ taskName: '', volume: '', satuan: '', date: new Date().toISOString().split('T')[0], isLembur: false });
     } catch (err) { 
       console.error(err);
