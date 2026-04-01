@@ -17,6 +17,36 @@ import { saveAs } from 'file-saver';
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
+// === AWAL KODE ANIMASI JUARA ===
+const winnerStyles = `
+  @keyframes reveal-winner {
+    0% { opacity: 0; transform: scale(0.9) translateY(30px); filter: blur(10px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+  }
+  @keyframes shine-sweep {
+    0% { left: -100%; }
+    100% { left: 200%; }
+  }
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.2); }
+    50% { box-shadow: 0 0 40px rgba(245, 158, 11, 0.5); }
+  }
+  .animate-reveal-winner { animation: reveal-winner 1s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+  .animate-glow-pulse { animation: glow-pulse 3s infinite; }
+  .shine-effect { position: relative; overflow: hidden; }
+  .shine-effect::after {
+    content: ''; position: absolute; top: -50%; left: -100%; width: 50%; height: 200%;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,0.3), transparent);
+    transform: rotate(30deg); animation: shine-sweep 4s infinite;
+  }
+`;
+
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement("style");
+  styleSheet.innerText = winnerStyles;
+  document.head.appendChild(styleSheet);
+}
+// === AKHIR KODE ANIMASI JUARA ===
 // === CONFIG FIREBASE ANDA ===
 const firebaseConfig = {
   apiKey: "AIzaSyDVRt3zgojeVh8ek61yXFQ9r9ihpOt7BqQ",
@@ -1808,20 +1838,49 @@ const exportPresensiToPDF = () => {
                   ) : (
                     <div className="text-center py-20 italic">
                        {publishStatus[`${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`]?.isPublished ? (
-                         <div className="animate-in fade-in duration-1000">
-                           <Trophy className="mx-auto text-amber-500 mb-8" size={80} />
-                           <h2 className="text-3xl font-black uppercase text-slate-800 italic">Pegawai prima Periode Ini</h2>
-                           {winners.filter(w => w.period === (voteWindow.period || currentTW) && w.year === (voteWindow.evalYear || selectedYear)).map((w, idx) => (
-                             <div key={idx} className="mt-12 bg-slate-900 p-12 rounded-[4rem] text-white max-w-md mx-auto italic shadow-2xl border-b-8 border-indigo-600">
-                                <div className="w-36 h-36 rounded-full overflow-hidden mx-auto mb-6 border-4 border-amber-500 shadow-lg">
-                                   {w.photoURL ? <img src={w.photoURL} alt={w.name} className="w-full h-full object-cover"/> : <User size={50}/>}
-                                </div>
-                                <p className="font-black uppercase text-2xl italic tracking-tighter">{w.name}</p>
-                                <p className="text-indigo-400 font-bold uppercase text-[10px] mt-2 tracking-[0.2em]">{w.jabatan}</p>
-                                <div className="mt-8 pt-8 border-t border-slate-800"><p className="text-amber-500 font-black text-[10px] uppercase italic">Selamat atas Dedikasi Anda!</p></div>
-                             </div>
-                           ))}
-                         </div>
+                 <div className="animate-reveal-winner py-10">
+                   <div className="relative inline-block mb-12">
+                      <Trophy className="mx-auto text-amber-500" size={80} />
+                      <div className="absolute -inset-4 bg-amber-400/20 blur-2xl rounded-full -z-10 animate-pulse"></div>
+                   </div>
+                   
+                   <h2 className="text-3xl font-black uppercase text-slate-800 italic tracking-tighter mb-2">Pegawai Prima Periode Ini</h2>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-16 italic">Penghargaan Atas Dedikasi & Integritas Tinggi</p>
+                   
+                   {winners.filter(w => w.period === (voteWindow.period || currentTW) && w.year === (voteWindow.evalYear || selectedYear)).map((w, idx) => (
+                     <div key={idx} className="relative group max-w-sm mx-auto mb-20">
+                        {/* KARTU HITAM PREMIUM */}
+                        <div className="shine-effect animate-glow-pulse bg-slate-900 p-12 rounded-[4rem] text-white italic border border-amber-500/30 relative z-10 shadow-2xl">
+                          <Star className="absolute top-8 left-8 text-amber-500/10" size={40} />
+                          
+                          <div className="relative w-40 h-40 rounded-full overflow-hidden mx-auto mb-8 border-4 border-amber-500 shadow-[0_0_25px_rgba(245,158,11,0.5)] bg-slate-800">
+                             {w.photoURL ? (
+                               <img src={w.photoURL} alt={w.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"/>
+                             ) : (
+                               <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-600"><User size={60}/></div>
+                             )}
+                          </div>
+                          
+                          <p className="font-black uppercase text-2xl italic tracking-tighter leading-tight mb-2">{w.name}</p>
+                          <p className="text-indigo-400 font-black uppercase text-[10px] tracking-[0.2em] mb-8">{w.jabatan}</p>
+                          
+                          <div className="pt-8 border-t border-white/10 flex flex-col items-center gap-2">
+                             <Heart className="text-rose-500 fill-rose-500 animate-pulse" size={18} />
+                             <p className="text-amber-500 font-black text-[9px] uppercase italic tracking-widest text-center">Selamat atas Dedikasi Anda!</p>
+                          </div>
+                        </div>
+
+                        {/* LABEL EMAS MELAYANG DI BAWAH KARTU */}
+                        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-20 w-max">
+                           <div className="bg-gradient-to-r from-amber-300 via-amber-500 to-amber-300 px-10 py-4 rounded-2xl shadow-xl border-2 border-white/50 shadow-amber-500/20">
+                              <span className="text-slate-900 font-black uppercase italic text-[11px] tracking-[0.2em] flex items-center gap-3">
+                                🏆 PEGAWAI PRIMA 🏆
+                              </span>
+                           </div>
+                        </div>
+                     </div>
+                   ))}
+                 </div>
                        ) : (
                          <div className="flex flex-col items-center italic">
                             <div className="bg-slate-50 p-12 rounded-full mb-8 text-slate-300"><Clock size={64}/></div>
