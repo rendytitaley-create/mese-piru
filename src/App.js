@@ -1883,7 +1883,7 @@ const exportPresensiToPDF = () => {
             return (
               <div key={idx} className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 flex flex-col items-center text-center italic">
                 <div className="w-20 h-20 rounded-[1.5rem] overflow-hidden mb-6 bg-white border">
-                  {staff.photoURL ? <img src={staff.photoURL} className="w-full h-full object-cover" /> : <User size={32} className="text-slate-300 mt-6"/>}
+                  {staff.photoURL ? <img src={staff.photoURL} alt={staff.name} className="w-full h-full object-cover" /> : <User size={32} className="text-slate-300 mt-6"/>}
                 </div>
                 <p className="font-black text-slate-800 uppercase italic text-xs mb-6">{staff.name}</p>
                 {hasVoted ? (
