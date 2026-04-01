@@ -1837,6 +1837,8 @@ const exportPresensiToPDF = () => {
     </div>
   </div>
 )}
+</div>
+)}
 
            {user.role !== 'admin' && user.role !== 'pimpinan' && (
   <div className="bg-white p-8 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] shadow-sm border border-slate-100 italic">
