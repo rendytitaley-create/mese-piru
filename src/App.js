@@ -1785,61 +1785,58 @@ const exportPresensiToPDF = () => {
       </div>
     )} {/* PENUTUP LOGIKA ROLE DI ATAS */}
 
-                  {user.role === 'admin' && (
-                    <div className="bg-slate-800/40 rounded-[2.5rem] p-8 border border-slate-700/50 italic">
-                      <div className="flex items-center gap-4 mb-8 italic">
-                        <ClipboardCheck size={24} className="text-indigo-400" />
-                        <h3 className="font-black uppercase text-sm tracking-tighter italic">Monitoring Partisipasi & Bukti Dukung</h3>
-                      </div>
-                      <div className="overflow-x-auto italic">
-                        <table className="w-full text-left italic border-collapse">
-                          <thead>
-                            <tr className="border-b border-slate-700 text-[9px] font-black text-slate-500 uppercase tracking-widest italic">
-                              <th className="pb-4 italic">Nama Pegawai</th>
-                              <th className="pb-4 text-center italic">Progres Voting</th>
-                              <th className="pb-4 text-center italic">Status</th>
-                              {(!voteWindow.active || publishStatus[`${voteWindow.evalYear}_${voteWindow.period}`]?.isPublished) && <th className="pb-4 text-center italic">Skor Akhir</th>}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {leaderboardData.map((staff, idx) => {
-                              const votesDone = nilai360.filter(v => v.reviewerId === staff.username && v.period === (voteWindow.period || currentTW) && v.year === (voteWindow.evalYear || selectedYear)).length;
-                              const totalRekan = users.filter(u => !['admin', 'pimpinan'].includes(u.role)).length - 1;
-                              const isComplete = votesDone >= totalRekan;
-                              
-                              return (
-                                <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/20 italic">
-                                  <td className="py-4 font-black uppercase text-[10px] italic">{staff.name}</td>
-                                  <td className="py-4 text-center italic font-bold text-slate-400 text-[10px]">{votesDone} / {totalRekan} Rekan</td>
-                                 <td className="py-4 text-center italic">
-  <div className="flex flex-col items-center gap-2">
-    <span className={`text-[8px] font-black uppercase px-3 py-1 rounded-full ${isComplete ? 'bg-green-500/10 text-green-400' : 'bg-amber-500/10 text-amber-400'}`}>
-      {isComplete ? "Lengkap" : "Proses"}
-    </span>
-    {/* Tombol Reset Khusus Admin jika sudah ada vote yang masuk */}
-    {user.role === 'admin' && votesDone > 0 && (
-      <button 
-        onClick={() => handleResetVotes(null, staff.username)}
-        className="text-[7px] font-black text-red-500 hover:text-red-700 underline uppercase italic"
-      >
-        Reset Penilaian Saya
-      </button>
-    )}
+                 {user.role === 'admin' && (
+  <div className="bg-slate-900 p-8 md:p-12 rounded-[3rem] md:rounded-[4rem] text-white shadow-2xl border border-slate-800 relative overflow-hidden italic">
+    <div className="flex items-center gap-4 mb-8 italic">
+      <ClipboardCheck size={24} className="text-indigo-400" />
+      <h3 className="font-black uppercase text-sm tracking-tighter italic">Monitoring Partisipasi & Bukti Dukung</h3>
+    </div>
+    <div className="overflow-x-auto italic">
+      <table className="w-full text-left italic border-collapse">
+        <thead>
+          <tr className="border-b border-slate-700 text-[9px] font-black text-slate-500 uppercase tracking-widest italic">
+            <th className="pb-4 italic">Nama Pegawai</th>
+            <th className="pb-4 text-center italic">Progres Voting</th>
+            <th className="pb-4 text-center italic">Status</th>
+            {(!voteWindow.active || publishStatus[`${voteWindow.evalYear}_${voteWindow.period}`]?.isPublished) && <th className="pb-4 text-center italic">Skor Akhir</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {leaderboardData.map((staff, idx) => {
+            const votesDone = nilai360.filter(v => v.reviewerId === staff.username && v.period === (voteWindow.period || currentTW) && v.year === (voteWindow.evalYear || selectedYear)).length;
+            const totalRekan = users.filter(u => !['admin', 'pimpinan'].includes(u.role)).length - 1;
+            const isComplete = votesDone >= totalRekan;
+            
+            return (
+              <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/20 italic">
+                <td className="py-4 font-black uppercase text-[10px] italic">{staff.name}</td>
+                <td className="py-4 text-center italic font-bold text-slate-400 text-[10px]">{votesDone} / {totalRekan} Rekan</td>
+                <td className="py-4 text-center italic">
+                  <div className="flex flex-col items-center gap-2">
+                    <span className={`text-[8px] font-black uppercase px-3 py-1 rounded-full ${isComplete ? 'bg-green-500/10 text-green-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                      {isComplete ? "Lengkap" : "Proses"}
+                    </span>
+                    {user.role === 'admin' && votesDone > 0 && (
+                      <button 
+                        onClick={() => handleResetVotes(null, staff.username)}
+                        className="text-[7px] font-black text-red-500 hover:text-red-700 underline uppercase italic"
+                      >
+                        Reset Penilaian Saya
+                      </button>
+                    )}
+                  </div>
+                </td>
+                {(!voteWindow.active || publishStatus[`${voteWindow.evalYear}_${voteWindow.period}`]?.isPublished) && (
+                  <td className="py-4 text-center italic font-black text-indigo-400 text-xs">{staff.finalScore}</td>
+                )}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   </div>
-</td>
-                                  {(!voteWindow.active || publishStatus[`${voteWindow.evalYear}_${voteWindow.period}`]?.isPublished) && (
-                                    <td className="py-4 text-center italic font-black text-indigo-400 text-xs">{staff.finalScore}</td>
-                                  )}
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+)}
 
            {user.role !== 'admin' && user.role !== 'pimpinan' && (
   <div className="bg-white p-8 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] shadow-sm border border-slate-100 italic">
