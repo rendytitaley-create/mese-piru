@@ -1847,7 +1847,6 @@ const exportPresensiToPDF = () => {
     {publishStatus[`${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`]?.isPublished ? (
       <div className="animate-reveal-winner py-10 text-center">
          <Trophy className="mx-auto text-amber-500 mb-8" size={80} />
-         <h2 className="text-3xl font-black uppercase text-slate-800 italic tracking-tighter mb-2">Pegawai Prima Periode Ini</h2>
          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-16 italic">Penghargaan Atas Dedikasi & Integritas Tinggi</p>
          
          {winners.filter(w => w.period === (voteWindow.period || currentTW) && w.year === (voteWindow.evalYear || selectedYear)).map((w, idx) => (
@@ -1861,7 +1860,9 @@ const exportPresensiToPDF = () => {
               </div>
               <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-20 w-max">
                  <div className="bg-gradient-to-r from-amber-300 via-amber-500 to-amber-300 px-10 py-4 rounded-2xl shadow-xl border-2 border-white/50">
-                    <span className="text-slate-900 font-black uppercase italic text-[11px] tracking-[0.2em]">🏆 PEGAWAI PRIMA 🏆</span>
+                    <span className="text-slate-900 font-black uppercase italic text-[11px] tracking-[0.2em]">
+  🏆 PEGAWAI PRIMA {(w.period || currentTW).toUpperCase()} 🏆
+</span>
                  </div>
               </div>
            </div>
