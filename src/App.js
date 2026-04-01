@@ -1837,99 +1837,86 @@ const exportPresensiToPDF = () => {
                 </div>
               )}
 
-              {user.role !== 'admin' && user.role !== 'pimpinan' && (
-                <div className="bg-white p-8 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] shadow-sm border border-slate-100 italic">
-                  {voteWindow.active ? (
-                    <>
-                      <div className="flex items-center gap-6 mb-12 italic text-center md:text-left">
-                        <div className="bg-indigo-50 p-5 rounded-[2rem] text-indigo-600 shadow-inner"><Award size={40}/></div>
-                        <div className="italic text-left">
-                            <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">Nominasi Pegawai Prima {voteWindow.period.toUpperCase()} {voteWindow.evalYear}</h2>
-                            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1 italic">Beri Nilai Objektif Rekan Kerja Anda (Aktif 1-7 {new Date().toLocaleString('default', { month: 'long' })})</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 italic">
-                        {users.filter(u => u.username !== user.username && !['admin', 'pimpinan'].includes(u.role)).map((staff, idx) => {
-                          const hasVoted = nilai360.some(v => v.reviewerId === user.username && v.targetUserId === staff.username && v.period === voteWindow.period && v.year === voteWindow.evalYear);
-                          return (
-                            <div key={idx} className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 flex flex-col items-center text-center transition-all hover:bg-white hover:shadow-xl hover:border-indigo-100 group italic">
-                              <div className="w-20 h-20 rounded-[1.5rem] overflow-hidden mb-6 bg-white border border-slate-100 shadow-sm transition-transform group-hover:scale-110">
-                                {staff.photoURL ? <img src={staff.photoURL} alt={staff.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><User size={32}/></div>}
-                              </div>
-                              <p className="font-black text-slate-800 uppercase italic text-xs tracking-tighter mb-6 h-10 flex items-center justify-center">{staff.name}</p>
-                              {hasVoted ? (
-                                <div className="w-full py-4 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center gap-2 font-black text-[10px] uppercase italic"><CheckCircle2 size={16}/> Selesai Dinilai</div>
-                              ) : (
-                                <button onClick={() => { setSelectedStaffForVote(staff); setVoteData({kinerja:5, perilaku:5, inovasi:5}); setshowPenilaianModal(true); }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-100 active:scale-95 transition-all italic">Nilai Rekan</button>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-center py-20 italic">
-                       {publishStatus[`${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`]?.isPublished ? (
-                 <div className="animate-reveal-winner py-10">
-                   <div className="relative inline-block mb-12">
-                      <Trophy className="mx-auto text-amber-500" size={80} />
-                      <div className="absolute -inset-4 bg-amber-400/20 blur-2xl rounded-full -z-10 animate-pulse"></div>
-                   </div>
-                   
-                   <h2 className="text-3xl font-black uppercase text-slate-800 italic tracking-tighter mb-2">Pegawai Prima Periode Ini</h2>
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-16 italic">Penghargaan Atas Dedikasi & Integritas Tinggi</p>
-                   
-                   {winners.filter(w => w.period === (voteWindow.period || currentTW) && w.year === (voteWindow.evalYear || selectedYear)).map((w, idx) => (
-                     <div key={idx} className="relative group max-w-sm mx-auto mb-20">
-                        {/* KARTU HITAM PREMIUM */}
-                        <div className="shine-effect animate-glow-pulse bg-slate-900 p-12 rounded-[4rem] text-white italic border border-amber-500/30 relative z-10 shadow-2xl">
-                          <Star className="absolute top-8 left-8 text-amber-500/10" size={40} />
-                          
-                          <div className="relative w-40 h-40 rounded-full overflow-hidden mx-auto mb-8 border-4 border-amber-500 shadow-[0_0_25px_rgba(245,158,11,0.5)] bg-slate-800">
-                             {w.photoURL ? (
-                               <img src={w.photoURL} alt={w.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"/>
-                             ) : (
-                               <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-600"><User size={60}/></div>
-                             )}
-                          </div>
-                          
-                          <p className="font-black uppercase text-2xl italic tracking-tighter leading-tight mb-2">{w.name}</p>
-                          <p className="text-indigo-400 font-black uppercase text-[10px] tracking-[0.2em] mb-8">{w.jabatan}</p>
-                          
-                          <div className="pt-8 border-t border-white/10 flex flex-col items-center gap-2">
-                             <Heart className="text-rose-500 fill-rose-500 animate-pulse" size={18} />
-                             <p className="text-amber-500 font-black text-[9px] uppercase italic tracking-widest text-center">Selamat atas Dedikasi Anda!</p>
-                          </div>
-                        </div>
-
-                        {/* LABEL EMAS MELAYANG DI BAWAH KARTU */}
-                        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-20 w-max">
-                           <div className="bg-gradient-to-r from-amber-300 via-amber-500 to-amber-300 px-10 py-4 rounded-2xl shadow-xl border-2 border-white/50 shadow-amber-500/20">
-                              <span className="text-slate-900 font-black uppercase italic text-[11px] tracking-[0.2em] flex items-center gap-3">
-                                🏆 PEGAWAI PRIMA 🏆
-                              </span>
-                           </div>
-                        </div>
-                     </div>
-                   ))}
-                 </div>
-                       ) : (
-                         <div className="flex flex-col items-center italic">
-                            <div className="bg-slate-50 p-12 rounded-full mb-8 text-slate-300"><Clock size={64}/></div>
-                            <h3 className="text-2xl font-black uppercase text-slate-400 italic text-center leading-tight">
-                                Silahkan Kembali Lagi Pada Periode Penilaian Selanjutnya.
-                            </h3>
-                            <p className="text-[11px] font-black uppercase text-slate-400 mt-3 italic tracking-widest leading-loose text-center">
-                                Masa Penilaian akan aktif pada tanggal 1 s/d 7 di bulan pertama Triwulan berikutnya.
-                            </p>
-                         </div>
-                       )}
-                    </div>
-                  )}
+             {user.role !== 'admin' && user.role !== 'pimpinan' && (
+  <div className="bg-white p-8 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] shadow-sm border border-slate-100 italic">
+    {/* 1. CEK DULU APAKAH SUDAH DI-PUBLISH (PRIORITAS UTAMA) */}
+    {publishStatus[`${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`]?.isPublished ? (
+      <div className="animate-reveal-winner py-10 text-center">
+         <div className="relative inline-block mb-12">
+            <Trophy className="mx-auto text-amber-500" size={80} />
+            <div className="absolute -inset-4 bg-amber-400/20 blur-2xl rounded-full -z-10 animate-pulse"></div>
+         </div>
+         
+         <h2 className="text-3xl font-black uppercase text-slate-800 italic tracking-tighter mb-2">Pegawai Prima Periode Ini</h2>
+         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-16 italic">Penghargaan Atas Dedikasi & Integritas Tinggi</p>
+         
+         {winners.filter(w => w.period === (voteWindow.period || currentTW) && w.year === (voteWindow.evalYear || selectedYear)).map((w, idx) => (
+           <div key={idx} className="relative group max-w-sm mx-auto mb-20 text-center">
+              <div className="shine-effect animate-glow-pulse bg-slate-900 p-12 rounded-[4rem] text-white italic border border-amber-500/30 relative z-10 shadow-2xl">
+                <Star className="absolute top-8 left-8 text-amber-500/10" size={40} />
+                <div className="relative w-40 h-40 rounded-full overflow-hidden mx-auto mb-8 border-4 border-amber-500 shadow-[0_0_25px_rgba(245,158,11,0.5)] bg-slate-800">
+                   {w.photoURL ? <img src={w.photoURL} alt={w.name} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-600"><User size={60}/></div>}
                 </div>
-              )}
-            </div>
-          )}
+                <p className="font-black uppercase text-2xl italic tracking-tighter leading-tight mb-2">{w.name}</p>
+                <p className="text-indigo-400 font-black uppercase text-[10px] tracking-[0.2em] mb-8">{w.jabatan}</p>
+                <div className="pt-8 border-t border-white/10 flex flex-col items-center gap-2">
+                   <Heart className="text-rose-500 fill-rose-500 animate-pulse" size={18} />
+                   <p className="text-amber-500 font-black text-[9px] uppercase italic tracking-widest text-center">Selamat atas Dedikasi Anda!</p>
+                </div>
+              </div>
+              <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-20 w-max text-center">
+                 <div className="bg-gradient-to-r from-amber-300 via-amber-500 to-amber-300 px-10 py-4 rounded-2xl shadow-xl border-2 border-white/50 shadow-amber-500/20">
+                    <span className="text-slate-900 font-black uppercase italic text-[11px] tracking-[0.2em] flex items-center gap-3">
+                      🏆 PEGAWAI PRIMA 🏆
+                    </span>
+                 </div>
+              </div>
+           </div>
+         ))}
+      </div>
+    ) : voteWindow.active ? (
+      /* 2. JIKA BELUM PUBLISH, TAMPILKAN MENU VOTING JIKA TANGGAL 1-7 */
+      <>
+        <div className="flex items-center gap-6 mb-12 italic text-center md:text-left">
+          <div className="bg-indigo-50 p-5 rounded-[2rem] text-indigo-600 shadow-inner"><Award size={40}/></div>
+          <div className="italic text-left">
+              <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">Peer Review {voteWindow.period.toUpperCase()} {voteWindow.evalYear}</h2>
+              <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1 italic">Beri Nilai Objektif Rekan Kerja Anda (Aktif 1-7 {new Date().toLocaleString('default', { month: 'long' })})</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 italic">
+          {users.filter(u => u.username !== user.username && !['admin', 'pimpinan'].includes(u.role)).map((staff, idx) => {
+            const hasVoted = nilai360.some(v => v.reviewerId === user.username && v.targetUserId === staff.username && v.period === voteWindow.period && v.year === voteWindow.evalYear);
+            return (
+              <div key={idx} className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 flex flex-col items-center text-center transition-all hover:bg-white hover:shadow-xl hover:border-indigo-100 group italic">
+                <div className="w-20 h-20 rounded-[1.5rem] overflow-hidden mb-6 bg-white border border-slate-100 shadow-sm transition-transform group-hover:scale-110">
+                  {staff.photoURL ? <img src={staff.photoURL} alt={staff.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><User size={32}/></div>}
+                </div>
+                <p className="font-black text-slate-800 uppercase italic text-xs tracking-tighter mb-6 h-10 flex items-center justify-center">{staff.name}</p>
+                {hasVoted ? (
+                  <div className="w-full py-4 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center gap-2 font-black text-[10px] uppercase italic"><CheckCircle2 size={16}/> Selesai Dinilai</div>
+                ) : (
+                  <button onClick={() => { setSelectedStaffForVote(staff); setVoteData({kinerja:5, perilaku:5, inovasi:5}); setshowPenilaianModal(true); }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-100 active:scale-95 transition-all italic">Nilai Rekan</button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </>
+    ) : (
+      /* 3. JIKA TIDAK PUBLISH DAN BUKAN TANGGAL 1-7 */
+      <div className="flex flex-col items-center italic py-20 text-center">
+          <div className="bg-slate-50 p-12 rounded-full mb-8 text-slate-300"><Clock size={64}/></div>
+          <h3 className="text-2xl font-black uppercase text-slate-400 italic text-center leading-tight">
+              Silahkan Kembali Lagi Pada Periode Penilaian Selanjutnya.
+          </h3>
+          <p className="text-[11px] font-black uppercase text-slate-400 mt-3 italic tracking-widest leading-loose text-center text-center">
+              Masa Penilaian akan aktif pada tanggal 1 s/d 7 di bulan pertama Triwulan berikutnya.
+          </p>
+      </div>
+    )}
+  </div>
+)}
 
           {activeTab === 'kjk_management' && user.role === 'admin' && (
             <div className="animate-in slide-in-from-bottom-4 duration-500 italic mb-10">
