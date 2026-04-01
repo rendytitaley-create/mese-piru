@@ -2277,7 +2277,7 @@ const exportPresensiToPDF = () => {
             <CalendarIcon size={40} className="text-indigo-600 mb-6 mx-auto" />
             <h3 className="text-xl font-black uppercase italic mb-8">Catat Agenda: {newAgenda.date}</h3>
             {/* 1. TAMBAHKAN TOMBOL PILIHAN MODE DI SINI */}
-            {!newAgenda.id && (
+           {!newAgenda.id && (
               <div className="flex gap-4 justify-center mb-6">
                 <label className={`flex-1 p-3 rounded-2xl border cursor-pointer transition-all ${!isRangeMode ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
                   <input type="radio" className="hidden" checked={!isRangeMode} onChange={() => setIsRangeMode(false)} />
@@ -2290,7 +2290,7 @@ const exportPresensiToPDF = () => {
               </div>
             )}
 
-            {/* 2. TAMBAHKAN INPUT TANGGAL MULAI & SELESAI */}
+            {/* Input Tanggal */}
             <div className={`grid ${isRangeMode ? 'grid-cols-2' : 'grid-cols-1'} gap-4 mb-6 text-left`}>
               <div className="space-y-1">
                 <label className="text-[8px] font-black text-slate-400 uppercase italic px-2">
@@ -2316,7 +2316,17 @@ const exportPresensiToPDF = () => {
                 </div>
               )}
             </div>
-              <textarea required placeholder="Apa yang Anda kerjakan?" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic h-32 resize-none" value={newAgenda.taskName} onChange={e => setNewAgenda({...newAgenda, taskName: e.target.value})} />
+
+            {/* Input Detail Pekerjaan */}
+            <div className="space-y-4 italic">
+              <textarea 
+                required 
+                placeholder="Apa yang Anda kerjakan?" 
+                className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic h-32 resize-none" 
+                value={newAgenda.taskName} 
+                onChange={e => setNewAgenda({...newAgenda, taskName: e.target.value})} 
+              />
+              
               <div 
                 className={`flex items-center justify-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer ${newAgenda.isLembur ? 'bg-amber-500 border-amber-600 text-white shadow-md' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
                 onClick={() => setNewAgenda({...newAgenda, isLembur: !newAgenda.isLembur})}
@@ -2329,16 +2339,19 @@ const exportPresensiToPDF = () => {
                 />
                 <span className={`text-[10px] font-black uppercase italic tracking-widest ${newAgenda.isLembur ? 'text-white' : 'text-slate-500'}`}>Kategori Lembur / Hari Libur</span>
               </div>
+
               <div className="grid grid-cols-2 gap-4 italic text-center">
                 <input required type="number" placeholder="Volume" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic" value={newAgenda.volume} onChange={e => setNewAgenda({...newAgenda, volume: e.target.value})} />
                 <input required type="text" placeholder="Satuan" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic" value={newAgenda.satuan} onChange={e => setNewAgenda({...newAgenda, satuan: e.target.value})} />
               </div>
             </div>
-            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-5 rounded-2xl shadow-xl uppercase text-[10px] mt-8 italic transition-all active:scale-95">Simpan Catatan</button>
+
+            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-5 rounded-2xl shadow-xl uppercase text-[10px] mt-8 italic transition-all active:scale-95">
+              Simpan Catatan
+            </button>
           </form>
         </div>
       )}
-
       {/* MODAL BARU: IMPORT AGENDA KE LAPORAN */}
       {showImportModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[140] font-sans italic">
