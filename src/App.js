@@ -1829,7 +1829,6 @@ const exportPresensiToPDF = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 italic">
               {users.filter(u => u.username !== user.username && !['admin', 'pimpinan'].includes(u.role)).map((staff, idx) => {
-                {/* KEMBALIKAN LOGIKA hasVoted ASLI ANDA */}
                 const hasVoted = nilai360.some(v => v.reviewerId === user.username && v.targetUserId === staff.username && v.period === voteWindow.period && v.year === voteWindow.evalYear);
                 return (
                   <div key={idx} className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 flex flex-col items-center text-center italic">
