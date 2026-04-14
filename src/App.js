@@ -1045,6 +1045,19 @@ const exportPresensiToPDF = () => {
     } catch (err) { alert("Gagal mempublikasikan."); }
   };
 
+  const handleUnpublish = async () => {
+    const period = voteWindow.period || currentTW;
+    const year = voteWindow.evalYear || selectedYear;
+    if (!window.confirm(`Batalkan publikasi pengumuman periode ${period.toUpperCase()} ${year}? Pengumuman tidak akan terlihat lagi oleh pegawai.`)) return;
+    try {
+        await deleteDoc(doc(db, "publish_status", `${year}_${period}`));
+        alert("Publikasi berhasil dibatalkan.");
+    } catch (err) { 
+        console.error(err);
+        alert("Gagal membatalkan publikasi."); 
+    }
+  };
+
   const handleResetVotes = async (targetUserId = null, reviewerId = null) => {
   const period = voteWindow.period || currentTW;
   const year = voteWindow.evalYear || selectedYear;
@@ -1721,7 +1734,17 @@ const exportPresensiToPDF = () => {
           {user.role === 'admin' && (
             <div className="flex flex-wrap justify-center gap-3">
               <button onClick={exportKertasKerjaPrima} className="flex items-center gap-3 bg-green-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic"><FileSpreadsheet size={16}/> Kertas Kerja</button>
-              <button onClick={handlePublish} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic"><Megaphone size={16}/> Publish Pengumuman</button>
+              {/* Tombol Publish - Muncul jika belum dipublish */}
+{!publishStatus[`${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`]?.isPublished ? (
+  <button onClick={handlePublish} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic">
+    <Megaphone size={16}/> Publish Pengumuman
+  </button>
+) : (
+  /* Tombol Batal Publish - Muncul jika sudah dipublish */
+  <button onClick={handleUnpublish} className="flex items-center gap-3 bg-red-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic">
+    <X size={16}/> Batalkan Pengumuman
+  </button>
+)}
               <button onClick={() => handleResetVotes()} className="flex items-center gap-3 bg-red-50/10 text-red-500 px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-red-500 hover:text-white transition-all italic border border-red-500/20"><Trash2 size={16}/> Reset Voting</button>
             </div>
           )}
