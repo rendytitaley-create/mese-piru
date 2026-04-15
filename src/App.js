@@ -1846,7 +1846,7 @@ const exportPresensiToPDF = () => {
             <div className="flex items-center gap-6 mb-12 italic text-left">
               <div className="bg-indigo-50 p-5 rounded-[2rem] text-indigo-600"><Award size={40}/></div>
               <div className="italic">
-                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">Peer Review {voteWindow.period.toUpperCase()} {voteWindow.evalYear}</h2>
+                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">Penilaian 360 {voteWindow.period.toUpperCase()} {voteWindow.evalYear}</h2>
                 <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1 italic">Beri Nilai Objektif Rekan Kerja Anda</p>
               </div>
             </div>
