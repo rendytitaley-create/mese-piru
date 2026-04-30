@@ -2152,22 +2152,6 @@ const exportPresensiToPDF = () => {
                 </button>
               </div>
 
-              {/* LOGO SETTINGS (ADMIN ONLY) */}
-              {user.role === 'admin' && (
-                <div className="bg-white rounded-[2.5rem] shadow-sm border p-8 flex flex-col md:flex-row items-center gap-8 italic">
-                    <div className="w-32 h-32 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group">
-                       {appSettings.logoURL ? ( <img src={appSettings.logoURL} className="w-full h-full object-contain p-2" alt="App Logo" /> ) : ( <ImageIcon size={32} className="text-slate-300" /> )}
-                       <input type="file" accept="image/png, image/jpeg" onChange={handleLogoUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
-                    </div>
-                    <div className="flex-1 text-center md:text-left italic">
-                       <h4 className="font-black text-slate-800 uppercase tracking-tighter mb-1 italic">Logo Aplikasi Global</h4>
-                       <p className="text-[10px] text-slate-400 font-bold uppercase italic mb-4">Ganti logo pada halaman Login dan Sidebar untuk semua user</p>
-                       <label className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] cursor-pointer inline-block transition-all active:scale-95 italic">Pilih Logo Baru</label>
-                    </div>
-                </div>
-              )}
-            </div>
-          )}
               {user.role === 'admin' && (
                 <div className="bg-white rounded-[2.5rem] shadow-sm border p-8 flex flex-col md:flex-row items-center gap-8 italic">
                     <div className="w-32 h-32 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group">
