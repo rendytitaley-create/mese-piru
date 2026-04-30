@@ -2050,71 +2050,108 @@ const exportPresensiToPDF = () => {
           )}
 
           {activeTab === 'users' && (
-            <div className="italic mb-10">
-              <div className="bg-white rounded-[2.5rem] shadow-sm border overflow-hidden p-6 italic mb-6">
-                <table className="w-full text-left text-xs italic">
-                  <thead><tr className="bg-slate-50 border-b text-[9px] font-black text-slate-400 uppercase italic"><th className="p-4">Pegawai</th><th className="p-4 text-center">Aksi</th></tr></thead>
-                  <tbody>{users.map(u => (<tr key={u.firestoreId} className="border-b hover:bg-slate-50 italic"><td className="p-4 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0">
-                      {u.photoURL ? <img src={u.photoURL} className="w-full h-full object-cover" alt={u.name} /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-400">{u.name.charAt(0)}</div>}
+  <div className="italic mb-10">
+    <div className="bg-white rounded-[2.5rem] shadow-sm border overflow-hidden p-6 italic mb-6">
+      <table className="w-full text-left text-xs italic">
+        <thead>
+          <tr className="bg-slate-50 border-b text-[9px] font-black text-slate-400 uppercase italic">
+            <th className="p-4">Pegawai</th>
+            <th className="p-4 text-center">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {users.map((u) => (
+            <tr key={u.firestoreId} className="border-b hover:bg-slate-50 italic">
+              {/* KOLOM 1: INFO PEGAWAI */}
+              <td className="p-4 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0">
+                  {u.photoURL ? (
+                    <img src={u.photoURL} className="w-full h-full object-cover" alt={u.name} />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-400">
+                      {u.name.charAt(0)}
                     </div>
-                    <div><p className="font-black text-slate-800 uppercase tracking-tighter leading-none">{u.name}</p><p className="text-indigo-500 text-[8px] font-bold mt-1">@{u.username} | {u.role}</p></div>
-                  <div className="flex justify-center gap-2">
-  {/* Tombol Edit */}
-  <button 
-    onClick={() => { 
-      setIsEditingUser(true); 
-      setCurrentUserId(u.firestoreId); 
-      setNewUser({ 
-        name: u.name, 
-        username: u.username, 
-        password: u.password, 
-        role: u.role, 
-        jabatan: u.jabatan, 
-        photoURL: u.photoURL || '',
-        status: u.status || 'aktif' 
-      }); 
-      setShowUserModal(true); 
-    }} 
-    className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"
-    title="Edit"
-  >
-    <Edit3 size={14}/>
-  </button>
+                  )}
+                </div>
+                <div>
+                  <p className="font-black text-slate-800 uppercase tracking-tighter leading-none">{u.name}</p>
+                  <p className="text-indigo-500 text-[8px] font-bold mt-1">
+                    @{u.username} | {u.role} | <span className="uppercase">{u.status || 'aktif'}</span>
+                  </p>
+                </div>
+              </td>
 
-  {/* Tombol Nonaktif/Aktif (Langkah 2) */}
-  <button 
-    onClick={async () => {
-      const statusSekarang = u.status || 'aktif';
-      const statusBaru = statusSekarang === 'nonaktif' ? 'aktif' : 'nonaktif';
-      const pesan = statusBaru === 'nonaktif' 
-        ? `Nonaktifkan ${u.name}? (Data akan disembunyikan dari aplikasi)` 
-        : `Aktifkan kembali ${u.name}?`;
+              {/* KOLOM 2: TOMBOL AKSI */}
+              <td className="p-4 text-center">
+                <div className="flex justify-center gap-2">
+                  {/* Tombol Edit */}
+                  <button 
+                    onClick={() => { 
+                      setIsEditingUser(true); 
+                      setCurrentUserId(u.firestoreId); 
+                      setNewUser({ 
+                        name: u.name, 
+                        username: u.username, 
+                        password: u.password, 
+                        role: u.role, 
+                        jabatan: u.jabatan, 
+                        photoURL: u.photoURL || '',
+                        status: u.status || 'aktif' 
+                      }); 
+                      setShowUserModal(true); 
+                    }} 
+                    className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"
+                    title="Edit"
+                  >
+                    <Edit3 size={14}/>
+                  </button>
 
-      if (window.confirm(pesan)) {
-        await updateDoc(doc(db, "users", u.firestoreId), { status: statusBaru });
-        alert(`Status ${u.name} berhasil diubah.`);
-      }
-    }} 
-    className={`p-2 rounded-xl italic ${u.status === 'nonaktif' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}
-    title={u.status === 'nonaktif' ? "Aktifkan" : "Nonaktifkan"}
-  >
-    {u.status === 'nonaktif' ? <UserPlus size={14}/> : <ShieldCheck size={14}/>}
-  </button>
+                  {/* Tombol Nonaktif / Aktif */}
+                  <button 
+                    type="button"
+                    onClick={async () => {
+                      const statusSekarang = u.status || 'aktif';
+                      const statusBaru = statusSekarang === 'nonaktif' ? 'aktif' : 'nonaktif';
+                      const pesan = statusBaru === 'nonaktif' 
+                        ? `Nonaktifkan ${u.name}? (Pegawai akan disembunyikan dari daftar)` 
+                        : `Aktifkan kembali ${u.name}?`;
 
-  {/* Tombol Hapus Permanen */}
-  <button 
-    onClick={() => {
-      if (window.confirm(`HAPUS PERMANEN: Apakah Anda yakin ingin menghapus ${u.name}? Tindakan ini tidak bisa dibatalkan.`)) {
-        deleteDoc(doc(db, "users", u.firestoreId));
-      }
-    }} 
-    className="p-2 bg-red-50 text-red-400 rounded-xl italic"
-    title="Hapus Permanen"
-  >
-    <Trash2 size={14}/>
-  </button>
-</div>
+                      if (window.confirm(pesan)) {
+                        await updateDoc(doc(db, "users", u.firestoreId), { status: statusBaru });
+                        alert(`Status ${u.name} diperbarui.`);
+                      }
+                    }} 
+                    className={`p-2 rounded-xl italic ${u.status === 'nonaktif' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}
+                    title={u.status === 'nonaktif' ? "Aktifkan" : "Nonaktifkan"}
+                  >
+                    {u.status === 'nonaktif' ? <UserPlus size={14}/> : <ShieldCheck size={14}/>}
+                  </button>
+
+                  {/* Tombol Hapus Permanen */}
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm(`HAPUS PERMANEN: Apakah Anda yakin ingin menghapus ${u.name}? Tindakan ini tidak bisa dibatalkan.`)) {
+                        deleteDoc(doc(db, "users", u.firestoreId));
+                      }
+                    }} 
+                    className="p-2 bg-red-50 text-red-400 rounded-xl italic"
+                    title="Hapus"
+                  >
+                    <Trash2 size={14}/>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <button onClick={() => { resetUserForm(); setShowUserModal(true); }} className="mt-4 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 italic">
+        <UserPlus size={14}/> Tambah Pegawai
+      </button>
+    </div>
+  </div>
+)}
               {user.role === 'admin' && (
                 <div className="bg-white rounded-[2.5rem] shadow-sm border p-8 flex flex-col md:flex-row items-center gap-8 italic">
                     <div className="w-32 h-32 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group">
