@@ -533,7 +533,7 @@ setPersistence(auth, browserSessionPersistence);
 };
 
   const resetReportForm = () => { setIsEditing(false); setCurrentReportId(null); setNewReport({ title: '', target: '', realisasi: '', satuan: '', keterangan: '', targetUser: '', originalAgendaId: '' }); };
-  const resetUserForm = () => { setIsEditingUser(false); setCurrentUserId(null); setNewUser({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '' }); };
+  const resetUserForm = () => { setIsEditingUser(false); setCurrentUserId(null); setNewUser({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '',status: 'aktif' }); };
 
   const handleNilaiSemua = async () => {
     if (filterStaffName === 'Semua') return;
@@ -725,7 +725,7 @@ const pimpinan = pimpinanTerpilih;
   }, [selectedMonth]);
 
   const leaderboardData = useMemo(() => {
-    const staff = users.filter(u => !['admin', 'pimpinan'].includes(u.role));
+    const staff = users.filter(u => !['admin', 'pimpinan'].includes(u.role) && u.status !== 'nonaktif');
     const targetPeriod = voteWindow.period || currentTW;
     const targetYear = voteWindow.evalYear || selectedYear;
 
@@ -2059,10 +2059,62 @@ const exportPresensiToPDF = () => {
                       {u.photoURL ? <img src={u.photoURL} className="w-full h-full object-cover" alt={u.name} /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-400">{u.name.charAt(0)}</div>}
                     </div>
                     <div><p className="font-black text-slate-800 uppercase tracking-tighter leading-none">{u.name}</p><p className="text-indigo-500 text-[8px] font-bold mt-1">@{u.username} | {u.role}</p></div>
-                  </td><td className="p-4 text-center"><div className="flex justify-center gap-2"><button onClick={() => { setIsEditingUser(true); setCurrentUserId(u.firestoreId); setNewUser({ name: u.name, username: u.username, password: u.password, role: u.role, jabatan: u.jabatan, photoURL: u.photoURL || '' }); setShowUserModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button><button onClick={() => deleteDoc(doc(db, "users", u.firestoreId))} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button></div></td></tr>))}</tbody>
-                </table>
-                <button onClick={() => { resetUserForm(); setShowUserModal(true); }} className="mt-4 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 italic"><UserPlus size={14}/> Tambah Pegawai</button>
-              </div>
+                  <div className="flex justify-center gap-2">
+  {/* Tombol Edit */}
+  <button 
+    onClick={() => { 
+      setIsEditingUser(true); 
+      setCurrentUserId(u.firestoreId); 
+      setNewUser({ 
+        name: u.name, 
+        username: u.username, 
+        password: u.password, 
+        role: u.role, 
+        jabatan: u.jabatan, 
+        photoURL: u.photoURL || '',
+        status: u.status || 'aktif' 
+      }); 
+      setShowUserModal(true); 
+    }} 
+    className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"
+    title="Edit"
+  >
+    <Edit3 size={14}/>
+  </button>
+
+  {/* Tombol Nonaktif/Aktif (Langkah 2) */}
+  <button 
+    onClick={async () => {
+      const statusSekarang = u.status || 'aktif';
+      const statusBaru = statusSekarang === 'nonaktif' ? 'aktif' : 'nonaktif';
+      const pesan = statusBaru === 'nonaktif' 
+        ? `Nonaktifkan ${u.name}? (Data akan disembunyikan dari aplikasi)` 
+        : `Aktifkan kembali ${u.name}?`;
+
+      if (window.confirm(pesan)) {
+        await updateDoc(doc(db, "users", u.firestoreId), { status: statusBaru });
+        alert(`Status ${u.name} berhasil diubah.`);
+      }
+    }} 
+    className={`p-2 rounded-xl italic ${u.status === 'nonaktif' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}
+    title={u.status === 'nonaktif' ? "Aktifkan" : "Nonaktifkan"}
+  >
+    {u.status === 'nonaktif' ? <UserPlus size={14}/> : <ShieldCheck size={14}/>}
+  </button>
+
+  {/* Tombol Hapus Permanen */}
+  <button 
+    onClick={() => {
+      if (window.confirm(`HAPUS PERMANEN: Apakah Anda yakin ingin menghapus ${u.name}? Tindakan ini tidak bisa dibatalkan.`)) {
+        deleteDoc(doc(db, "users", u.firestoreId));
+      }
+    }} 
+    className="p-2 bg-red-50 text-red-400 rounded-xl italic"
+    title="Hapus Permanen"
+  >
+    <Trash2 size={14}/>
+  </button>
+</div>
               {user.role === 'admin' && (
                 <div className="bg-white rounded-[2.5rem] shadow-sm border p-8 flex flex-col md:flex-row items-center gap-8 italic">
                     <div className="w-32 h-32 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group">
