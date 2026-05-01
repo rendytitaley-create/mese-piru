@@ -1017,6 +1017,80 @@ const exportPresensiToPDF = () => {
   saveAs(new Blob([buffer]), `Daftar_Hadir_${new Date().toLocaleDateString('id-ID')}.xlsx`);
 };
 
+// FITUR BARU: CETAK REKAP KJK 12 BULAN
+const exportRekapKJKTahunan = async () => {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('Rekap KJK Tahunan');
+  const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+  // 1. Judul Utama
+  sheet.mergeCells('A1:O1'); // Menggabungkan kolom A sampai O
+  const titleCell = sheet.getCell('A1');
+  titleCell.value = `REKAPITULASI KEKURANGAN JAM KERJA (KJK) TAHUN ${selectedYear}`;
+  titleCell.font = { bold: true, size: 14 };
+  titleCell.alignment = { horizontal: 'center' };
+
+  // 2. Header Tabel (No | Nama | Jan...Des | Total)
+  const headers = ['No', 'Nama Pegawai', ...monthNames, 'Total Kumulatif'];
+  const headerRow = sheet.getRow(3);
+  headerRow.values = headers;
+
+  headerRow.eachCell(cell => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+    cell.font = { bold: true };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+  });
+
+  // 3. Ambil Data Pegawai Aktif
+  const daftarPegawai = users.filter(u => !['admin', 'pimpinan'].includes(u.role) && u.status !== 'nonaktif');
+
+  daftarPegawai.forEach((p, idx) => {
+    const pFirstWord = getFirstWord(p.name);
+    const rowData = [idx + 1, p.name];
+    let totalMins = 0;
+
+    // Loop 12 Bulan
+    for (let m = 1; m <= 12; m++) {
+      const foundKJK = kjkData.find(k => getFirstWord(k.nama) === pFirstWord && k.month === m && k.year === selectedYear);
+      if (foundKJK) {
+        rowData.push(foundKJK.kjkValue);
+        totalMins += timeToMinutes(foundKJK.kjkValue);
+      } else {
+        rowData.push("00:00");
+      }
+    }
+
+    // Tambahkan Total di ujung kanan
+    rowData.push(minutesToTimeStr(totalMins));
+
+    const row = sheet.getRow(4 + idx);
+    row.values = rowData;
+    
+    row.eachCell((cell, colNumber) => {
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+      cell.alignment = { 
+        vertical: 'middle', 
+        horizontal: colNumber === 2 ? 'left' : 'center' 
+      };
+      
+      // Warnai MERAH jika ada KJK agar menonjol
+      if (colNumber > 2 && cell.value !== "00:00") {
+        cell.font = { color: { argb: 'FFFF0000' }, bold: true };
+      }
+    });
+  });
+
+  // Atur Lebar Kolom
+  sheet.getColumn(1).width = 5; // No
+  sheet.getColumn(2).width = 35; // Nama
+  for (let i = 3; i <= 14; i++) { sheet.getColumn(i).width = 12; } // Jan - Des
+  sheet.getColumn(15).width = 20; // Total
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  saveAs(new Blob([buffer]), `Rekap_KJK_Tahunan_${selectedYear}.xlsx`);
+};
+  
   const handleSetWinner = async (staff) => {
     const period = voteWindow.period || currentTW;
     const year = voteWindow.evalYear || selectedYear;
@@ -1896,6 +1970,13 @@ const exportPresensiToPDF = () => {
                                 <Plus size={16}/> Pilih File Excel
                                 <input type="file" accept=".xlsx, .xls" onChange={handleUploadKJK} className="hidden" />
                             </label>
+            <button 
+  type="button"
+  onClick={exportRekapKJKTahunan}
+  className="bg-green-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] inline-flex items-center gap-3 transition-all active:scale-95 shadow-lg italic ml-3"
+>
+  <Download size={16}/> Cetak Rekap KJK Tahunan
+</button>
                         </div>
                     </div>
                 </div>
