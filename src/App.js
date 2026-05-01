@@ -123,6 +123,7 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   const [newAgenda, setNewAgenda] = useState({ taskName: '', volume: '', satuan: '', date: new Date().toISOString().split('T')[0], isLembur: false });
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null); // Filter klik tanggal
+  const [selectedReportIds, setSelectedReportIds] = useState([]); // Untuk menyimpan ID yang dicentang
 
   // SINKRONISASI OTOMATIS: KALENDER MENGIKUTI HEADER
   useEffect(() => {
@@ -2178,26 +2179,89 @@ const exportPresensiToPDF = () => {
                       <h4 className="font-black text-slate-800 uppercase text-xs italic">Kontrol CKP: {filterStaffName}</h4>
                     </div>
                     <div className="flex items-center gap-3">
-                      <button onClick={handleNilaiSemua} className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-md transition-all active:scale-95 italic">
-                        <CheckCircle2 size={16}/> Nilai Semua
-                      </button>
-                      {['admin', 'pimpinan'].includes(user.role) && (
-                        <button onClick={handleReturnAllReports} className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 px-6 py-3 rounded-2xl font-black uppercase text-[10px] transition-all active:scale-95 italic border border-slate-200">
-                          <RotateCcw size={16}/> Kembalikan Seluruh CKP
-                        </button>
-                      )}
-                    </div>
+  {/* TOMBOL BARU: Nilai Terpilih (Hanya muncul jika ada yang dicentang) */}
+  {selectedReportIds.length > 0 && (
+    <button 
+      type="button"
+      onClick={async () => {
+        const val = prompt(`Masukkan nilai untuk ${selectedReportIds.length} pekerjaan yang dipilih:`);
+        if (!val || isNaN(val)) return;
+        const grade = parseFloat(val);
+        if (!window.confirm(`Berikan nilai ${grade} ke ${selectedReportIds.length} pekerjaan terpilih?`)) return;
+        
+        try {
+          const batch = writeBatch(db);
+          selectedReportIds.forEach((id) => {
+            const ref = doc(db, "reports", id);
+            if (user.role === 'ketua') batch.update(ref, { nilaiKetua: grade, status: 'dinilai_ketua' });
+            else if (user.role === 'pimpinan' || user.role === 'admin') batch.update(ref, { nilaiPimpinan: grade, status: 'selesai' });
+          });
+          await batch.commit();
+          alert("Berhasil memberikan nilai.");
+          setSelectedReportIds([]); // Menghapus centangan setelah selesai
+        } catch (err) { alert("Gagal menilai."); }
+      }}
+      className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg animate-bounce italic"
+    >
+      <CheckCircle2 size={16}/> Nilai Terpilih ({selectedReportIds.length})
+    </button>
+  )}
+
+  {/* TOMBOL LAMA: Nilai Semua */}
+  <button onClick={handleNilaiSemua} className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-md transition-all active:scale-95 italic">
+    <Zap size={16}/> Nilai Semua
+  </button>
+
+  {/* TOMBOL LAMA: Kembalikan CKP (Khusus Admin/Pimpinan) */}
+  {['admin', 'pimpinan'].includes(user.role) && (
+    <button onClick={handleReturnAllReports} className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 px-6 py-3 rounded-2xl font-black uppercase text-[10px] transition-all active:scale-95 italic border border-slate-200">
+      <RotateCcw size={16}/> Kembalikan Seluruh CKP
+    </button>
+  )}
+</div>
                 </div>
               )}
 
               <div className="hidden md:block bg-white rounded-[2.5rem] shadow-sm border p-0 overflow-hidden italic mb-10">
                 <table className="w-full text-left italic text-xs border-collapse">
                   <thead className="bg-slate-100 border-b text-[9px] font-black text-slate-500 uppercase tracking-widest italic sticky top-0 z-20">
-                    <tr><th className="p-4 w-12 text-center italic">No</th><th className="p-4 italic">Uraian Pekerjaan</th><th className="p-4 w-24 text-center italic">Satuan</th><th className="p-4 text-center w-28 italic">Volume</th><th className="p-4 text-center w-16 italic">Cap%</th><th className="p-4 text-center w-16 italic text-amber-600">Ketua</th><th className="p-4 text-center w-16 italic text-indigo-600">Pimp</th><th className="p-4 text-center w-24 italic">Aksi</th></tr>
+                    <tr>
+  <th className="p-4 w-10 text-center">
+    <input 
+      type="checkbox" 
+      className="w-4 h-4"
+      onChange={(e) => {
+        if (e.target.checked) {
+          // Centang Semua yang statusnya bukan pending
+          const ids = currentFilteredReports.filter(r => r.status !== 'pending').map(r => r.id);
+          setSelectedReportIds(ids);
+        } else {
+          setSelectedReportIds([]);
+        }
+      }}
+    />
+  </th>
+        <th className="p-4 w-12 text-center italic">No</th><th className="p-4 italic">Uraian Pekerjaan</th><th className="p-4 w-24 text-center italic">Satuan</th><th className="p-4 text-center w-28 italic">Volume</th><th className="p-4 text-center w-16 italic">Cap%</th><th className="p-4 text-center w-16 italic text-amber-600">Ketua</th><th className="p-4 text-center w-16 italic text-indigo-600">Pimp</th><th className="p-4 text-center w-24 italic">Aksi</th></tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 italic">
                     {currentFilteredReports.map((r, idx) => (
-                      <tr key={r.id} className="hover:bg-slate-50 transition-all italic group">
+                     <tr key={r.id} className={`${selectedReportIds.includes(r.id) ? 'bg-indigo-50' : 'hover:bg-slate-50'} transition-all italic group`}>
+  {/* KOLOM CHECKBOX PER BARIS */}
+  <td className="p-4 text-center">
+    <input 
+      type="checkbox" 
+      className="w-4 h-4 cursor-pointer"
+      checked={selectedReportIds.includes(r.id)}
+      disabled={r.status === 'pending'} 
+      onChange={() => {
+        if (selectedReportIds.includes(r.id)) {
+          setSelectedReportIds(selectedReportIds.filter(id => id !== r.id));
+        } else {
+          setSelectedReportIds([...selectedReportIds, r.id]);
+        }
+      }}
+    />
+  </td>
                         <td className="p-4 font-bold text-slate-400 text-center">{idx + 1}</td>
                         <td className="p-4 italic"><p className="font-black text-[12px] text-slate-800 uppercase tracking-tight leading-none mb-1 italic">{r.title}</p><span className="text-indigo-600 text-[8px] font-black uppercase bg-indigo-50 px-2 py-0.5 rounded-lg italic">{r.userName}</span></td>
                         <td className="p-4 text-center font-bold text-slate-500 uppercase text-[10px] italic">{r.satuan || '-'}</td>
