@@ -1150,7 +1150,7 @@ const exportPresensiToPDF = () => {
     const periodReports = reports.filter(r => monthsToInclude.includes(r.month) && r.year === selectedYear);
     const currentKJK = kjkData.filter(k => monthsToInclude.includes(k.month) && k.year === selectedYear);
 
-    const staffSummary = users.filter(u => u.role !== 'admin' && u.role !== 'pimpinan').map(s => {
+    const staffSummary = users.filter(u => u.role !== 'admin' && u.role !== 'pimpinan' && u.status !== 'nonaktif').map(s => {
       const sReports = periodReports.filter(r => r.userId === s.username);
       const total = sReports.length; 
       const selesai = sReports.filter(r => r.status === 'selesai').length; 
@@ -1311,7 +1311,7 @@ const exportPresensiToPDF = () => {
                   <>
                     <select className="p-2 bg-white border border-slate-200 rounded-xl font-black text-[10px] text-slate-600 shadow-sm outline-none italic" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
                       <option value="Semua">Data Saya</option>
-                      {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
+                      {users.filter(u => !['admin', 'pimpinan'].includes(u.role) && u.status !== 'nonaktif').map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                     </select>
                   </>
                 )}
@@ -1955,7 +1955,7 @@ const exportPresensiToPDF = () => {
                   <div className="md:hidden flex flex-col gap-3 mb-6 not-italic">
                     <select className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-black text-[12px] text-slate-600 shadow-sm italic outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
                       <option value="Semua">Data Saya</option>
-                      {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
+                      {users.filter(u => !['admin', 'pimpinan'].includes(u.role) && u.status !== 'nonaktif').map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                     </select>
                   </div>
                 )}
@@ -2060,7 +2060,7 @@ const exportPresensiToPDF = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map((u) => (
+                    {users.filter(u => u.status !== 'nonaktif').map((u) => (
                       <tr key={u.firestoreId} className="border-b hover:bg-slate-50 italic">
                         {/* KOLOM 1: INFO PEGAWAI */}
                         <td className="p-4 flex items-center gap-3">
@@ -2263,7 +2263,7 @@ const exportPresensiToPDF = () => {
                   <div className="flex flex-col gap-3 mb-4 not-italic">
                     <select className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-black text-[10px] text-slate-600 shadow-sm italic outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
                       <option value="Semua">Pilih Pegawai</option>
-                      {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
+                      {users.filter(u => !['admin', 'pimpinan'].includes(u.role) && u.status !== 'nonaktif').map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                     </select>
                     
                     {filterStaffName !== 'Semua' && (
@@ -2545,7 +2545,7 @@ const exportPresensiToPDF = () => {
             )}
 
             <div className="space-y-4 italic text-center">
-               {activeTab === 'penilaian' && !isEditing && ( <select required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-indigo-600 border border-slate-100 italic text-center" value={newReport.targetUser} onChange={e => setNewReport({...newReport, targetUser: e.target.value})}> <option value="">-- Pilih Nama Pegawai --</option> {users.filter(u => !['admin', 'pimpinan'].includes(u.role)).map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)} </select> )}
+               {activeTab === 'penilaian' && !isEditing && ( <select required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-indigo-600 border border-slate-100 italic text-center" value={newReport.targetUser} onChange={e => setNewReport({...newReport, targetUser: e.target.value})}> <option value="">-- Pilih Nama Pegawai --</option> {users.filter(u => !['admin', 'pimpinan'].includes(u.role) && u.status !== 'nonaktif').map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)} </select> )}
                <textarea required placeholder="Uraian Pekerjaan" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center h-32 resize-none" value={newReport.title} onChange={e => setNewReport({...newReport, title: e.target.value})} />
                <div className="grid grid-cols-2 gap-4 italic text-center"> <input required type="number" placeholder="Target" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" value={newReport.target} onChange={e => setNewReport({...newReport, target: e.target.value})} /> <input required type="number" placeholder="Realisasi" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" value={newReport.realisasi} onChange={e => setNewReport({...newReport, realisasi: e.target.value})} /> </div>
                <input list="satuan-list" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" placeholder="Satuan" value={newReport.satuan} onChange={e => setNewReport({...newReport, satuan: e.target.value})} />
