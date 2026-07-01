@@ -727,8 +727,8 @@ const pimpinan = pimpinanTerpilih;
 
   const leaderboardData = useMemo(() => {
     const staff = users.filter(u => !['admin', 'pimpinan'].includes(u.role) && u.status !== 'nonaktif');
-    const targetPeriod = voteWindow.period || currentTW;
-    const targetYear = voteWindow.evalYear || selectedYear;
+    const targetPeriod = ['admin', 'pimpinan'].includes(user.role) ? currentTW : (voteWindow.period || currentTW);
+const targetYear = selectedYear;
 
     let monthsToInclude = targetPeriod === 'tw1' ? [1, 2, 3] : targetPeriod === 'tw2' ? [4, 5, 6] : targetPeriod === 'tw3' ? [7, 8, 9] : [10, 11, 12];
     
@@ -1916,7 +1916,7 @@ const exportRekapKJKTahunan = async () => {
               </div>
             ))}
           </div>
-        ) : voteWindow.active ? (
+        ) : (voteWindow.active || ['admin', 'pimpinan'].includes(user.role)) ? (
           <>
             <div className="flex items-center gap-6 mb-12 italic text-left">
               <div className="bg-indigo-50 p-5 rounded-[2rem] text-indigo-600"><Award size={40}/></div>
@@ -1945,11 +1945,12 @@ const exportRekapKJKTahunan = async () => {
             </div>
           </>
         ) : (
-          <div className="flex flex-col items-center italic py-20 text-center">
-            <Clock size={64} className="text-slate-300 mb-8"/>
-            <h3 className="text-2xl font-black uppercase text-slate-400 italic">Penilaian Belum Aktif</h3>
-          </div>
-        )}
+  <div className="flex flex-col items-center italic py-20 text-center">
+    <Clock size={64} className="text-indigo-400 mb-8 animate-pulse"/>
+    <h3 className="text-2xl font-black uppercase text-indigo-600 italic">Masa Voting Ditutup</h3>
+    <p className="text-[10px] text-slate-400 font-bold uppercase mt-2">Gunakan pilihan Bulan/Tahun di atas untuk melihat rekapitulasi riwayat nilai triwulan sebelumnya</p>
+  </div>
+)}
       </div>
     )}
   </div>
