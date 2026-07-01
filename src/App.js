@@ -727,7 +727,7 @@ const pimpinan = pimpinanTerpilih;
 
   const leaderboardData = useMemo(() => {
     const staff = users.filter(u => !['admin', 'pimpinan'].includes(u.role) && u.status !== 'nonaktif');
-    const targetPeriod = ['admin', 'pimpinan'].includes(user.role) ? currentTW : (voteWindow.period || currentTW);
+    const targetPeriod = ['admin', 'pimpinan'].includes(user?.role) ? currentTW : (voteWindow.period || currentTW);
 const targetYear = selectedYear;
 
     let monthsToInclude = targetPeriod === 'tw1' ? [1, 2, 3] : targetPeriod === 'tw2' ? [4, 5, 6] : targetPeriod === 'tw3' ? [7, 8, 9] : [10, 11, 12];
@@ -765,7 +765,7 @@ const targetYear = selectedYear;
     });
 
     return results.sort((a, b) => b.finalScore - a.finalScore);
-  }, [users, reports, kjkData, nilai360, voteWindow, currentTW, selectedYear, bakiraRecords, user.role]); // Menambahkan user.role agar lulus sensor ESLint saat deploy
+  }, [users, reports, kjkData, nilai360, voteWindow, currentTW, selectedYear, bakiraRecords, user?.role]); // Menambahkan user.role agar lulus sensor ESLint saat deploy
 
   const exportKertasKerjaPrima = async () => {
   const period = (voteWindow.period || currentTW).toUpperCase();
