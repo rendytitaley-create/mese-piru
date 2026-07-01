@@ -726,18 +726,13 @@ const pimpinan = pimpinanTerpilih;
   }, [selectedMonth]);
 
   const leaderboardData = useMemo(() => {
-    const targetPeriod = ['admin', 'pimpinan'].includes(user?.role) ? currentTW : (voteWindow.period || currentTW);
-    const targetYear = selectedYear;
-
-    const staff = users.filter(u => {
-      if (targetPeriod === currentTW) {
-        return !['admin', 'pimpinan'].includes(u.role) && (u.status || 'aktif').toLowerCase() !== 'nonaktif';
-      }
-      return !['admin', 'pimpinan'].includes(u.role);
-    });
+    const staff = users.filter(u => !['admin', 'pimpinan'].includes(u.role) && u.status !== 'nonaktif');
+    const targetPeriod = voteWindow.period || currentTW;
+    const targetYear = voteWindow.evalYear || selectedYear;
 
     let monthsToInclude = targetPeriod === 'tw1' ? [1, 2, 3] : targetPeriod === 'tw2' ? [4, 5, 6] : targetPeriod === 'tw3' ? [7, 8, 9] : [10, 11, 12];
     
+    // Filter data BAKIRA 3 bulan untuk periode yang sedang dihitung
     const bakira3Bulan = bakiraRecords.filter(b => {
         const dateObj = new Date(b.date);
         const month = dateObj.getMonth() + 1;
@@ -746,170 +741,191 @@ const pimpinan = pimpinanTerpilih;
     });
 
     const results = staff.map(s => {
+      // 1. CKP (50% dari total nilai)
       const sReports = reports.filter(r => r.userId === s.username && r.year === targetYear && monthsToInclude.includes(r.month));
       const avgCKP = sReports.length > 0 ? (sReports.reduce((acc, curr) => acc + (Number(curr.nilaiPimpinan) || 0), 0) / sReports.length) : 0;
       
+      // 2. KJK (30% dari total nilai)
       const sFirstWord = getFirstWord(s.name);
       const sKJKs = kjkData.filter(k => getFirstWord(k.nama) === sFirstWord && k.year === targetYear && monthsToInclude.includes(k.month));
       const totalKJKMins = sKJKs.reduce((acc, curr) => acc + timeToMinutes(curr.kjkValue), 0);
       const kjkScore = Math.max(0, 100 - ((totalKJKMins / 60) * 5));
       
+      // 3. BAKIRA (10% dari total nilai)
       const nilaiBakira = hitungRerataRiil(s.username, bakira3Bulan);
       
+      // 4. Peer Review (10% dari total nilai)
       const sVotes = nilai360.filter(v => v.targetUserId === s.username && v.period === targetPeriod && v.year === targetYear);
       const avgVote = sVotes.length > 0 ? (sVotes.reduce((acc, curr) => acc + (curr.kinerja + curr.perilaku + curr.inovasi) / 3, 0) / sVotes.length) * 10 : 0;
       
+      // Rumus Akhir: 50% CKP, 30% KJK, 10% BAKIRA, 10% VOTE
       const finalScore = ((avgCKP * 0.5) + (kjkScore * 0.3) + (nilaiBakira * 0.1) + (avgVote * 0.1)).toFixed(2);
       
       return { ...s, finalScore, avgCKP, kjkScore, nilaiBakira, avgVote, totalVotesReceived: sVotes.length };
     });
 
     return results.sort((a, b) => b.finalScore - a.finalScore);
-  }, [users, reports, kjkData, nilai360, voteWindow, currentTW, selectedYear, bakiraRecords, user?.role]);
+  }, [users, reports, kjkData, nilai360, voteWindow, currentTW, selectedYear, bakiraRecords]); // Menambahkan bakiraRecords sebagai dependency
 
   const exportKertasKerjaPrima = async () => {
-    const period = (voteWindow.period || currentTW).toUpperCase();
-    const year = voteWindow.evalYear || selectedYear;
+  const period = (voteWindow.period || currentTW).toUpperCase();
+  const year = voteWindow.evalYear || selectedYear;
 
-    const daftarPimpinan = users.filter(u => u.role === 'pimpinan');
-    let pilihanTeks = "Pilih nama pimpinan untuk Kertas Kerja Prima:\n";
-    daftarPimpinan.forEach((p, i) => {
-      pilihanTeks += `${i + 1}. ${p.name}\n`;
-    });
+  const daftarPimpinan = users.filter(u => u.role === 'pimpinan');
+  let pilihanTeks = "Pilih nama pimpinan untuk Kertas Kerja Prima:\n";
+  daftarPimpinan.forEach((p, i) => {
+    pilihanTeks += `${i + 1}. ${p.name}\n`;
+  });
 
-    const pilihan = prompt(pilihanTeks + "\nMasukkan angka sesuai urutan:");
-    const pimpinanTerpilih = daftarPimpinan[parseInt(pilihan) - 1];
+  const pilihan = prompt(pilihanTeks + "\nMasukkan angka sesuai urutan:");
+  const pimpinanTerpilih = daftarPimpinan[parseInt(pilihan) - 1];
 
-    if (!pimpinanTerpilih) {
-      alert("Pilihan tidak valid, cetak dibatalkan.");
-      return;
-    }
-    const pimpinan = pimpinanTerpilih;
+  if (!pimpinanTerpilih) {
+    alert("Pilihan tidak valid, cetak dibatalkan.");
+    return;
+  }
+  const pimpinan = pimpinanTerpilih;
 
-    const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('Kertas Kerja Prima');
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('Kertas Kerja Prima');
 
-    sheet.mergeCells('A2:H2');
-    const titleCell = sheet.getCell('A2');
-    titleCell.value = `KERTAS KERJA PENILAIAN PEGAWAI PRIMA PERIODE ${period}`;
-    titleCell.font = { bold: true, size: 12 };
-    titleCell.alignment = { horizontal: 'center' };
+  // Header Judul
+  sheet.mergeCells('A2:H2');
+  const titleCell = sheet.getCell('A2');
+  titleCell.value = `KERTAS KERJA PENILAIAN PEGAWAI PRIMA PERIODE ${period}`;
+  titleCell.font = { bold: true, size: 12 };
+  titleCell.alignment = { horizontal: 'center' };
 
-    sheet.mergeCells('A3:H3');
-    const subTitle = sheet.getCell('A3');
-    subTitle.value = `BPS KABUPATEN SERAM BAGIAN BARAT TAHUN ${year}`;
-    subTitle.font = { bold: true, size: 11 };
-    subTitle.alignment = { horizontal: 'center' };
+  sheet.mergeCells('A3:H3');
+  const subTitle = sheet.getCell('A3');
+  subTitle.value = `BPS KABUPATEN SERAM BAGIAN BARAT TAHUN ${year}`;
+  subTitle.font = { bold: true, size: 11 };
+  subTitle.alignment = { horizontal: 'center' };
 
-    const headerRow = ['No', 'Nama Pegawai', 'Rata-Rata CKP (50%)', 'Skor KJK (30%)', 'BAKIRA (10%)', 'Nilai 360 (10%)', 'Total Skor', 'Peringkat', 'Keterangan'];
-    sheet.getRow(6).values = headerRow;
+  // Header Tabel
+  const headerRow = ['No', 'Nama Pegawai', 'Rata-Rata CKP (50%)', 'Skor KJK (30%)', 'BAKIRA (10%)', 'Nilai 360 (10%)', 'Total Skor', 'Peringkat', 'Keterangan'];
+  sheet.getRow(6).values = headerRow;
 
-    sheet.getRow(6).eachCell((cell) => {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
-      cell.font = { bold: true };
+  sheet.getRow(6).eachCell((cell) => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+    cell.font = { bold: true };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+  });
+
+  // Isi Data
+  leaderboardData.forEach((staff, idx) => {
+    const row = sheet.getRow(7 + idx);
+    const ckpPortion = (staff.avgCKP * 0.5).toFixed(2);
+    const kjkPortion = (staff.kjkScore * 0.3).toFixed(2);
+    const bakiraPortion = (staff.nilaiBakira * 0.1).toFixed(2);
+    const votePortion = (staff.avgVote * 0.1).toFixed(2);
+
+    row.values = [
+      idx + 1,
+      staff.name,
+      `${staff.avgCKP.toFixed(2)} (${ckpPortion})`,
+      `${staff.kjkScore.toFixed(2)} (${kjkPortion})`,
+      `${staff.nilaiBakira.toFixed(2)} (${bakiraPortion})`,
+      `${staff.avgVote.toFixed(2)} (${votePortion})`,
+      staff.finalScore,
+      idx + 1,
+      idx === 0 ? 'KANDIDAT TERBAIK' : ''
+    ];
+
+    row.eachCell((cell) => {
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: 'thin' };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     });
+    sheet.getCell(`B${7 + idx}`).alignment = { horizontal: 'left', vertical: 'middle' };
+  });
 
-    leaderboardData.forEach((staff, idx) => {
-      const row = sheet.getRow(7 + idx);
-      const ckpPortion = (staff.avgCKP * 0.5).toFixed(2);
-      const kjkPortion = (staff.kjkScore * 0.3).toFixed(2);
-      const bakiraPortion = (staff.nilaiBakira * 0.1).toFixed(2);
-      const votePortion = (staff.avgVote * 0.1).toFixed(2);
+  // Kolom Width
+  sheet.getColumn(1).width = 5; sheet.getColumn(2).width = 30; sheet.getColumn(3).width = 20;
+  sheet.getColumn(4).width = 20; sheet.getColumn(5).width = 20; sheet.getColumn(6).width = 15;
+  sheet.getColumn(7).width = 15; sheet.getColumn(8).width = 25;
 
-      row.values = [
-        idx + 1,
-        staff.name,
-        `${staff.avgCKP.toFixed(2)} (${ckpPortion})`,
-        `${staff.kjkScore.toFixed(2)} (${kjkPortion})`,
-        `${staff.nilaiBakira.toFixed(2)} (${bakiraPortion})`,
-        `${staff.avgVote.toFixed(2)} (${votePortion})`,
-        staff.finalScore,
-        idx + 1,
-        idx === 0 ? 'KANDIDAT TERBAIK' : ''
-      ];
+  // --- BAGIAN TANDA TANGAN ---
+  let signRow = 7 + leaderboardData.length + 3;
+  const hariIni = new Date().toLocaleDateString('id-ID', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
 
-      row.eachCell((cell) => {
-        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: 'thin' };
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      });
-      sheet.getCell(`B${7 + idx}`).alignment = { horizontal: 'left', vertical: 'middle' };
-    });
+  sheet.getCell(`F${signRow}`).value = `Piru, ${hariIni}`;
+  sheet.getCell(`F${signRow}`).alignment = { horizontal: 'center' };
+  sheet.getCell(`F${signRow + 1}`).value = "Mengetahui,";
+  sheet.getCell(`F${signRow + 1}`).alignment = { horizontal: 'center' };
+  sheet.getCell(`F${signRow + 2}`).value = "Kepala BPS Kab. Seram Bagian Barat,";
+  sheet.getCell(`F${signRow + 2}`).alignment = { horizontal: 'center' };
+  sheet.getCell(`F${signRow + 5}`).value = pimpinan.name;
+  sheet.getCell(`F${signRow + 5}`).font = { bold: true, underline: true };
+  sheet.getCell(`F${signRow + 5}`).alignment = { horizontal: 'center' };
+  // --- AKHIR TANDA TANGAN ---
 
-    sheet.getColumn(1).width = 5; sheet.getColumn(2).width = 30; sheet.getColumn(3).width = 20;
-    sheet.getColumn(4).width = 20; sheet.getColumn(5).width = 20; sheet.getColumn(6).width = 15;
-    sheet.getColumn(7).width = 15; sheet.getColumn(8).width = 25;
-
-    let signRow = 7 + leaderboardData.length + 3;
-    const hariIni = new Date().toLocaleDateString('id-ID', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-    });
-
-    sheet.getCell(`F${signRow}`).value = `Piru, ${hariIni}`;
-    sheet.getCell(`F${signRow}`).alignment = { horizontal: 'center' };
-    sheet.getCell(`F${signRow + 1}`).value = "Mengetahui,";
-    sheet.getCell(`F${signRow + 1}`).alignment = { horizontal: 'center' };
-    sheet.getCell(`F${signRow + 2}`).value = "Kepala BPS Kab. Seram Bagian Barat,";
-    sheet.getCell(`F${signRow + 2}`).alignment = { horizontal: 'center' };
-    sheet.getCell(`F${signRow + 5}`).value = pimpinan.name;
-    sheet.getCell(`F${signRow + 5}`).font = { bold: true, underline: true };
-    sheet.getCell(`F${signRow + 5}`).alignment = { horizontal: 'center' };
-
-    const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `Kertas_Kerja_Prima_${period}_${year}.xlsx`);
-  };
-
-  const exportPresensiToPDF = () => {
-    const doc = new jsPDF('p', 'mm', 'a4');
-    const dateObj = new Date(selectedDate);
-    const formattedDate = dateObj.toLocaleDateString('id-ID', { 
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-    });
-
-    doc.setFontSize(16);
-    doc.text("DAFTAR HADIR", 105, 15, { align: 'center' });
-
-    const labelX = 14;
-    const colonX = 40; 
-    const valueX = 43;
-
-    doc.setFontSize(10);
-    doc.text("Hari / Tanggal", labelX, 30); doc.text(":", colonX, 30); doc.text(formattedDate, valueX, 30);
-    doc.text("Waktu", labelX, 35);           doc.text(":", colonX, 35);
-    doc.text("Tempat", labelX, 40);          doc.text(":", colonX, 40);
-    doc.text("Agenda", labelX, 45);          doc.text(":", colonX, 45);
-    doc.text("Link Dokumen", labelX, 50);    doc.text(":", colonX, 50); doc.text(bakiraLinkDoc || '-', valueX, 50);
-
-    const tableData = users
-      .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.' && (u.status || 'aktif').toLowerCase() !== 'nonaktif')
-      .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
-      .filter(u => (bakiraDailyLog[u.username] || 'hadir') === 'hadir') 
-      .map((u, idx) => [idx + 1, u.name, u.jabatan || '-', 'Hadir']);
-
-    autoTable(doc, {
-      startY: 60,
-      head: [['No', 'Nama Pegawai', 'Jabatan', 'Status']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0], halign: 'center' },
-      columnStyles: { 
-        0: { halign: 'center', cellWidth: 10 },
-        2: { cellWidth: 40 },
-        3: { halign: 'center' }
-      }
-    });
-
-    const finalY = doc.lastAutoTable.finalY || 100;
-    const signX = 150; 
-
-    doc.text('Mengetahui,', signX, finalY + 10, { align: 'center' });
-    doc.text('Kepala BPS Kab. Seram Bagian Barat,', signX, finalY + 15, { align: 'center' });
+  const buffer = await workbook.xlsx.writeBuffer();
+  saveAs(new Blob([buffer]), `Kertas_Kerja_Prima_${period}_${year}.xlsx`);
+}; // <--- KURUNG KURAWAL PENUTUP INI SANGAT PENTING
+  
     
-    doc.text('Herthy Diana Soumokil, SST', signX, finalY + 35, { align: 'center' });
-    doc.line(130, finalY + 36, 170, finalY + 36); 
-    doc.save(`Daftar_Hadir_${selectedDate}.pdf`);
-  };
+const exportPresensiToPDF = () => {
+  const doc = new jsPDF('p', 'mm', 'a4');
+
+  const dateObj = new Date(selectedDate);
+  const formattedDate = dateObj.toLocaleDateString('id-ID', { 
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+  });
+
+  // 1. Judul Utama
+  doc.setFontSize(16);
+  doc.text("DAFTAR HADIR", 105, 15, { align: 'center' });
+
+  // 2. Info Detail (Hari/Tanggal, Waktu, Tempat, Agenda)
+  // Kita gunakan x = 45 sebagai posisi titik dua agar sejajar
+  const labelX = 14;
+  const colonX = 40; 
+  const valueX = 43;
+
+  doc.setFontSize(10);
+  doc.text("Hari / Tanggal", labelX, 30); doc.text(":", colonX, 30); doc.text(formattedDate, valueX, 30);
+  doc.text("Waktu", labelX, 35);           doc.text(":", colonX, 35);
+  doc.text("Tempat", labelX, 40);          doc.text(":", colonX, 40);
+  doc.text("Agenda", labelX, 45);          doc.text(":", colonX, 45);
+  doc.text("Link Dokumen", labelX, 50);    doc.text(":", colonX, 50); doc.text(bakiraLinkDoc || '-', valueX, 50);
+
+  // 3. Filter Data (Hanya yang HADIR saja)
+  const tableData = users
+    .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.' && (u.status || 'aktif').toLowerCase() !== 'nonaktif')
+    .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
+    .filter(u => (bakiraDailyLog[u.username] || 'hadir') === 'hadir') // Hanya yang hadir
+    .map((u, idx) => [idx + 1, u.name, u.jabatan || '-', 'Hadir']);
+
+  // 4. Membuat Tabel (autoTable)
+  autoTable(doc, {
+    startY: 60,
+    head: [['No', 'Nama Pegawai', 'Jabatan', 'Status']],
+    body: tableData,
+    theme: 'grid',
+    headStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0], halign: 'center' },
+    columnStyles: { 
+      0: { halign: 'center', cellWidth: 10 },
+      2: { cellWidth: 40 },
+      3: { halign: 'center' }
+    }
+  });
+
+  // 5. Tanda Tangan
+  // 5. Tanda Tangan (PDF)
+  const finalY = doc.lastAutoTable.finalY || 100;
+  const signX = 150; // Posisi horizontal (tengah kanan)
+
+  doc.text('Mengetahui,', signX, finalY + 10, { align: 'center' });
+  doc.text('Kepala BPS Kab. Seram Bagian Barat,', signX, finalY + 15, { align: 'center' });
+  
+  // Memberi jarak untuk tanda tangan (di sini tempatnya)
+  doc.text('Herthy Diana Soumokil, SST', signX, finalY + 35, { align: 'center' });
+  doc.line(130, finalY + 36, 170, finalY + 36); // Garis bawah nama
+  doc.save(`Daftar_Hadir_${selectedDate}.pdf`);
+};
   
   const exportPresensiToExcel = async () => {
   const workbook = new ExcelJS.Workbook();
@@ -1847,48 +1863,34 @@ const exportRekapKJKTahunan = async () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {leaderboardData
-                    .filter(staff => {
-                      const targetPeriodActive = ['admin', 'pimpinan'].includes(user?.role) ? currentTW : (voteWindow.period || currentTW);
-                      if (currentTW === targetPeriodActive) {
-                        return (staff.status || 'aktif').toLowerCase() !== 'nonaktif';
-                      }
-                      return true;
-                    })
-                    .map((staff, idx) => {
-                      const targetPeriodActive = ['admin', 'pimpinan'].includes(user?.role) ? currentTW : (voteWindow.period || currentTW);
-                      const votesDone = nilai360.filter(v => v.reviewerId === staff.username && v.period === targetPeriodActive && v.year === selectedYear).length;
-                      const totalRekan = users.filter(u => !['admin', 'pimpinan'].includes(u.role) && (u.status || 'aktif').toLowerCase() !== 'nonaktif').length - 1;
-                      const isComplete = votesDone >= totalRekan;
-                      return (
-                        <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/20 italic">
-                          <td className="py-4 font-black uppercase text-[10px] italic">
-                            {staff.name}
-                            {(staff.status || 'aktif').toLowerCase() === 'nonaktif' && (
-                              <span className="ml-2 px-1.5 py-0.5 text-[8px] bg-red-100 text-red-600 rounded font-black">
-                                NONAKTIF
-                              </span>
+                  {leaderboardData.filter(staff => (staff.status || 'aktif').toLowerCase() !== 'nonaktif').map((staff, idx) => {
+                    const votesDone = nilai360.filter(v => v.reviewerId === staff.username && v.period === (voteWindow.period || currentTW) && v.year === (voteWindow.evalYear || selectedYear)).length;
+                    const totalRekan = users.filter(u => !['admin', 'pimpinan'].includes(u.role)).length - 1;
+                    const isComplete = votesDone >= totalRekan;
+                    return (
+                      <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/20 italic">
+                        <td className="py-4 font-black uppercase text-[10px] italic">{staff.name}</td>
+                        <td className="py-4 text-center italic font-bold text-slate-400 text-[10px]">{votesDone} / {totalRekan} Rekan</td>
+                        <td className="py-4 text-center italic">
+                          <div className="flex flex-col items-center gap-2">
+                            <span className={`text-[8px] font-black uppercase px-3 py-1 rounded-full ${isComplete ? 'bg-green-500/10 text-green-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                              {isComplete ? "Lengkap" : "Proses"}
+                            </span>
+                            {user.role === 'admin' && votesDone > 0 && (
+                              <button onClick={() => handleResetVotes(null, staff.username)} className="text-[7px] font-black text-red-500 hover:text-red-700 underline uppercase italic">Reset Penilaian Saya</button>
                             )}
-                          </td>
-                          <td className="py-4 text-center italic font-bold text-slate-400 text-[10px]">{votesDone} / {totalRekan} Rekan</td>
-                          <td className="py-4 text-center italic text-[10px]">
-                            <div className="flex flex-col items-center gap-2">
-                              <span className={`text-[8px] font-black uppercase px-3 py-1 rounded-full ${isComplete ? 'bg-green-500/10 text-green-400' : 'bg-amber-500/10 text-amber-400'}`}>
-                                {isComplete ? "Lengkap" : "Proses"}
-                              </span>
-                              {user.role === 'admin' && votesDone > 0 && (
-                                <button onClick={() => handleResetVotes(null, staff.username)} className="text-[7px] font-black text-red-500 hover:text-red-700 underline uppercase italic">Reset Penilaian Saya</button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
         )}
+      </div>
+    )}
 
     {/* 2. BAGIAN PEGAWAI (VOTING / PENGUMUMAN) */}
     {user.role !== 'admin' && user.role !== 'pimpinan' && (
@@ -1914,7 +1916,7 @@ const exportRekapKJKTahunan = async () => {
               </div>
             ))}
           </div>
-        ) : (voteWindow.active || ['admin', 'pimpinan'].includes(user.role)) ? (
+        ) : voteWindow.active ? (
           <>
             <div className="flex items-center gap-6 mb-12 italic text-left">
               <div className="bg-indigo-50 p-5 rounded-[2rem] text-indigo-600"><Award size={40}/></div>
@@ -1943,12 +1945,11 @@ const exportRekapKJKTahunan = async () => {
             </div>
           </>
         ) : (
-  <div className="flex flex-col items-center italic py-20 text-center">
-    <Clock size={64} className="text-indigo-400 mb-8 animate-pulse"/>
-    <h3 className="text-2xl font-black uppercase text-indigo-600 italic">Masa Voting Ditutup</h3>
-    <p className="text-[10px] text-slate-400 font-bold uppercase mt-2">Gunakan pilihan Bulan/Tahun di atas untuk melihat rekapitulasi riwayat nilai triwulan sebelumnya</p>
-  </div>
-)}
+          <div className="flex flex-col items-center italic py-20 text-center">
+            <Clock size={64} className="text-slate-300 mb-8"/>
+            <h3 className="text-2xl font-black uppercase text-slate-400 italic">Penilaian Belum Aktif</h3>
+          </div>
+        )}
       </div>
     )}
   </div>
