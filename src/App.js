@@ -1857,7 +1857,6 @@ const exportRekapKJKTahunan = async () => {
         </div>
 
         {/* MONITORING PARTISIPASI (KHUSUS ADMIN) */}
-        {/* MONITORING PARTISIPASI (KHUSUS ADMIN) */}
         {user.role === 'admin' && (
           <div className="mt-12 pt-12 border-t border-slate-800 italic">
             <div className="flex items-center gap-4 mb-8 italic">
@@ -1916,8 +1915,6 @@ const exportRekapKJKTahunan = async () => {
             </div>
           </div>
         )}
-      </div>
-    )}
 
     {/* 2. BAGIAN PEGAWAI (VOTING / PENGUMUMAN) */}
     {user.role !== 'admin' && user.role !== 'pimpinan' && (
