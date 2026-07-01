@@ -729,17 +729,15 @@ const pimpinan = pimpinanTerpilih;
     const targetPeriod = ['admin', 'pimpinan'].includes(user?.role) ? currentTW : (voteWindow.period || currentTW);
     const targetYear = selectedYear;
 
-    // SINKRONISASI PEGAWAI: Jika melihat TW aktif hanya yang status aktif, jika histori TW lalu, yang nonaktif tetap muncul
     const staff = users.filter(u => {
       if (targetPeriod === currentTW) {
         return !['admin', 'pimpinan'].includes(u.role) && (u.status || 'aktif').toLowerCase() !== 'nonaktif';
       }
-      return !['admin', 'pimpinan'].includes(u.role); // Munculkan semua pegawai untuk histori masa lalu
+      return !['admin', 'pimpinan'].includes(u.role);
     });
 
     let monthsToInclude = targetPeriod === 'tw1' ? [1, 2, 3] : targetPeriod === 'tw2' ? [4, 5, 6] : targetPeriod === 'tw3' ? [7, 8, 9] : [10, 11, 12];
     
-    // Filter data BAKIRA 3 bulan untuk periode yang sedang dihitung
     const bakira3Bulan = bakiraRecords.filter(b => {
         const dateObj = new Date(b.date);
         const month = dateObj.getMonth() + 1;
@@ -748,24 +746,19 @@ const pimpinan = pimpinanTerpilih;
     });
 
     const results = staff.map(s => {
-      // 1. CKP (50% dari total nilai)
       const sReports = reports.filter(r => r.userId === s.username && r.year === targetYear && monthsToInclude.includes(r.month));
       const avgCKP = sReports.length > 0 ? (sReports.reduce((acc, curr) => acc + (Number(curr.nilaiPimpinan) || 0), 0) / sReports.length) : 0;
       
-      // 2. KJK (30% dari total nilai)
       const sFirstWord = getFirstWord(s.name);
       const sKJKs = kjkData.filter(k => getFirstWord(k.nama) === sFirstWord && k.year === targetYear && monthsToInclude.includes(k.month));
       const totalKJKMins = sKJKs.reduce((acc, curr) => acc + timeToMinutes(curr.kjkValue), 0);
       const kjkScore = Math.max(0, 100 - ((totalKJKMins / 60) * 5));
       
-      // 3. BAKIRA (10% dari total nilai)
       const nilaiBakira = hitungRerataRiil(s.username, bakira3Bulan);
       
-      // 4. Peer Review (10% dari total nilai)
       const sVotes = nilai360.filter(v => v.targetUserId === s.username && v.period === targetPeriod && v.year === targetYear);
       const avgVote = sVotes.length > 0 ? (sVotes.reduce((acc, curr) => acc + (curr.kinerja + curr.perilaku + curr.inovasi) / 3, 0) / sVotes.length) * 10 : 0;
       
-      // Rumus Akhir: 50% CKP, 30% KJK, 10% BAKIRA, 10% VOTE
       const finalScore = ((avgCKP * 0.5) + (kjkScore * 0.3) + (nilaiBakira * 0.1) + (avgVote * 0.1)).toFixed(2);
       
       return { ...s, finalScore, avgCKP, kjkScore, nilaiBakira, avgVote, totalVotesReceived: sVotes.length };
@@ -796,7 +789,6 @@ const pimpinan = pimpinanTerpilih;
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Kertas Kerja Prima');
 
-    // Header Judul
     sheet.mergeCells('A2:H2');
     const titleCell = sheet.getCell('A2');
     titleCell.value = `KERTAS KERJA PENILAIAN PEGAWAI PRIMA PERIODE ${period}`;
@@ -809,7 +801,6 @@ const pimpinan = pimpinanTerpilih;
     subTitle.font = { bold: true, size: 11 };
     subTitle.alignment = { horizontal: 'center' };
 
-    // Header Tabel
     const headerRow = ['No', 'Nama Pegawai', 'Rata-Rata CKP (50%)', 'Skor KJK (30%)', 'BAKIRA (10%)', 'Nilai 360 (10%)', 'Total Skor', 'Peringkat', 'Keterangan'];
     sheet.getRow(6).values = headerRow;
 
@@ -820,7 +811,6 @@ const pimpinan = pimpinanTerpilih;
       cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     });
 
-    // Isi Data
     leaderboardData.forEach((staff, idx) => {
       const row = sheet.getRow(7 + idx);
       const ckpPortion = (staff.avgCKP * 0.5).toFixed(2);
@@ -847,12 +837,10 @@ const pimpinan = pimpinanTerpilih;
       sheet.getCell(`B${7 + idx}`).alignment = { horizontal: 'left', vertical: 'middle' };
     });
 
-    // Kolom Width
     sheet.getColumn(1).width = 5; sheet.getColumn(2).width = 30; sheet.getColumn(3).width = 20;
     sheet.getColumn(4).width = 20; sheet.getColumn(5).width = 20; sheet.getColumn(6).width = 15;
     sheet.getColumn(7).width = 15; sheet.getColumn(8).width = 25;
 
-    // --- BAGIAN TANDA TANGAN ---
     let signRow = 7 + leaderboardData.length + 3;
     const hariIni = new Date().toLocaleDateString('id-ID', {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
@@ -867,72 +855,61 @@ const pimpinan = pimpinanTerpilih;
     sheet.getCell(`F${signRow + 5}`).value = pimpinan.name;
     sheet.getCell(`F${signRow + 5}`).font = { bold: true, underline: true };
     sheet.getCell(`F${signRow + 5}`).alignment = { horizontal: 'center' };
-    // --- AKHIR TANDA TANGAN ---
 
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), `Kertas_Kerja_Prima_${period}_${year}.xlsx`);
   };
-  
+
+  const exportPresensiToPDF = () => {
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const dateObj = new Date(selectedDate);
+    const formattedDate = dateObj.toLocaleDateString('id-ID', { 
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+    });
+
+    doc.setFontSize(16);
+    doc.text("DAFTAR HADIR", 105, 15, { align: 'center' });
+
+    const labelX = 14;
+    const colonX = 40; 
+    const valueX = 43;
+
+    doc.setFontSize(10);
+    doc.text("Hari / Tanggal", labelX, 30); doc.text(":", colonX, 30); doc.text(formattedDate, valueX, 30);
+    doc.text("Waktu", labelX, 35);           doc.text(":", colonX, 35);
+    doc.text("Tempat", labelX, 40);          doc.text(":", colonX, 40);
+    doc.text("Agenda", labelX, 45);          doc.text(":", colonX, 45);
+    doc.text("Link Dokumen", labelX, 50);    doc.text(":", colonX, 50); doc.text(bakiraLinkDoc || '-', valueX, 50);
+
+    const tableData = users
+      .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.' && (u.status || 'aktif').toLowerCase() !== 'nonaktif')
+      .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
+      .filter(u => (bakiraDailyLog[u.username] || 'hadir') === 'hadir') 
+      .map((u, idx) => [idx + 1, u.name, u.jabatan || '-', 'Hadir']);
+
+    autoTable(doc, {
+      startY: 60,
+      head: [['No', 'Nama Pegawai', 'Jabatan', 'Status']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0], halign: 'center' },
+      columnStyles: { 
+        0: { halign: 'center', cellWidth: 10 },
+        2: { cellWidth: 40 },
+        3: { halign: 'center' }
+      }
+    });
+
+    const finalY = doc.lastAutoTable.finalY || 100;
+    const signX = 150; 
+
+    doc.text('Mengetahui,', signX, finalY + 10, { align: 'center' });
+    doc.text('Kepala BPS Kab. Seram Bagian Barat,', signX, finalY + 15, { align: 'center' });
     
-const exportPresensiToPDF = () => {
-  const doc = new jsPDF('p', 'mm', 'a4');
-
-  const dateObj = new Date(selectedDate);
-  const formattedDate = dateObj.toLocaleDateString('id-ID', { 
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-  });
-
-  // 1. Judul Utama
-  doc.setFontSize(16);
-  doc.text("DAFTAR HADIR", 105, 15, { align: 'center' });
-
-  // 2. Info Detail (Hari/Tanggal, Waktu, Tempat, Agenda)
-  // Kita gunakan x = 45 sebagai posisi titik dua agar sejajar
-  const labelX = 14;
-  const colonX = 40; 
-  const valueX = 43;
-
-  doc.setFontSize(10);
-  doc.text("Hari / Tanggal", labelX, 30); doc.text(":", colonX, 30); doc.text(formattedDate, valueX, 30);
-  doc.text("Waktu", labelX, 35);           doc.text(":", colonX, 35);
-  doc.text("Tempat", labelX, 40);          doc.text(":", colonX, 40);
-  doc.text("Agenda", labelX, 45);          doc.text(":", colonX, 45);
-  doc.text("Link Dokumen", labelX, 50);    doc.text(":", colonX, 50); doc.text(bakiraLinkDoc || '-', valueX, 50);
-
-  // 3. Filter Data (Hanya yang HADIR saja)
-  const tableData = users
-    .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.' && (u.status || 'aktif').toLowerCase() !== 'nonaktif')
-    .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
-    .filter(u => (bakiraDailyLog[u.username] || 'hadir') === 'hadir') // Hanya yang hadir
-    .map((u, idx) => [idx + 1, u.name, u.jabatan || '-', 'Hadir']);
-
-  // 4. Membuat Tabel (autoTable)
-  autoTable(doc, {
-    startY: 60,
-    head: [['No', 'Nama Pegawai', 'Jabatan', 'Status']],
-    body: tableData,
-    theme: 'grid',
-    headStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0], halign: 'center' },
-    columnStyles: { 
-      0: { halign: 'center', cellWidth: 10 },
-      2: { cellWidth: 40 },
-      3: { halign: 'center' }
-    }
-  });
-
-  // 5. Tanda Tangan
-  // 5. Tanda Tangan (PDF)
-  const finalY = doc.lastAutoTable.finalY || 100;
-  const signX = 150; // Posisi horizontal (tengah kanan)
-
-  doc.text('Mengetahui,', signX, finalY + 10, { align: 'center' });
-  doc.text('Kepala BPS Kab. Seram Bagian Barat,', signX, finalY + 15, { align: 'center' });
-  
-  // Memberi jarak untuk tanda tangan (di sini tempatnya)
-  doc.text('Herthy Diana Soumokil, SST', signX, finalY + 35, { align: 'center' });
-  doc.line(130, finalY + 36, 170, finalY + 36); // Garis bawah nama
-  doc.save(`Daftar_Hadir_${selectedDate}.pdf`);
-};
+    doc.text('Herthy Diana Soumokil, SST', signX, finalY + 35, { align: 'center' });
+    doc.line(130, finalY + 36, 170, finalY + 36); 
+    doc.save(`Daftar_Hadir_${selectedDate}.pdf`);
+  };
   
   const exportPresensiToExcel = async () => {
   const workbook = new ExcelJS.Workbook();
