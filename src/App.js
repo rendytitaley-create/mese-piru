@@ -726,9 +726,16 @@ const pimpinan = pimpinanTerpilih;
   }, [selectedMonth]);
 
   const leaderboardData = useMemo(() => {
-    const staff = users.filter(u => !['admin', 'pimpinan'].includes(u.role) && u.status !== 'nonaktif');
     const targetPeriod = ['admin', 'pimpinan'].includes(user?.role) ? currentTW : (voteWindow.period || currentTW);
-const targetYear = selectedYear;
+    const targetYear = selectedYear;
+
+    // SINKRONISASI PEGAWAI: Jika melihat TW aktif hanya yang status aktif, jika histori TW lalu, yang nonaktif tetap muncul
+    const staff = users.filter(u => {
+      if (targetPeriod === currentTW) {
+        return !['admin', 'pimpinan'].includes(u.role) && (u.status || 'aktif').toLowerCase() !== 'nonaktif';
+      }
+      return !['admin', 'pimpinan'].includes(u.role); // Munculkan semua pegawai untuk histori masa lalu
+    });
 
     let monthsToInclude = targetPeriod === 'tw1' ? [1, 2, 3] : targetPeriod === 'tw2' ? [4, 5, 6] : targetPeriod === 'tw3' ? [7, 8, 9] : [10, 11, 12];
     
@@ -739,6 +746,9 @@ const targetYear = selectedYear;
         const year = dateObj.getFullYear();
         return year === targetYear && monthsToInclude.includes(month);
     });
+
+    const results = staff.map(s => {
+      // 1. CKP (50% dari total nilai)
 
     const results = staff.map(s => {
       // 1. CKP (50% dari total nilai)
@@ -1863,13 +1873,30 @@ const exportRekapKJKTahunan = async () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {leaderboardData.filter(staff => (staff.status || 'aktif').toLowerCase() !== 'nonaktif').map((staff, idx) => {
-                    const votesDone = nilai360.filter(v => v.reviewerId === staff.username && v.period === (voteWindow.period || currentTW) && v.year === (voteWindow.evalYear || selectedYear)).length;
-                    const totalRekan = users.filter(u => !['admin', 'pimpinan'].includes(u.role)).length - 1;
+                  <tbody>
+                  {leaderboardData.filter(staff => {
+                    // Jika melihat TW berjalan, sembunyikan pegawai nonaktif dari monitoring admin
+                    if (currentTW === (['admin', 'pimpinan'].includes(user?.role) ? currentTW : (voteWindow.period || currentTW))) {
+                      return (staff.status || 'aktif').toLowerCase() !== 'nonaktif';
+                    }
+                    return true; // Tampilkan histori semua pegawai jika admin memilih triwulan lalu
+                  }).map((staff, idx) => {
+                    // Menentukan target periode monitoring berdasarkan pilihan dropdown aktif
+                    const targetPeriodActive = ['admin', 'pimpinan'].includes(user?.role) ? currentTW : (voteWindow.period || currentTW);
+                    
+                    const votesDone = nilai360.filter(v => v.reviewerId === staff.username && v.period === targetPeriodActive && v.year === selectedYear).length;
+                    const totalRekan = users.filter(u => !['admin', 'pimpinan'].includes(u.role) && (u.status || 'aktif').toLowerCase() !== 'nonaktif').length - 1;
                     const isComplete = votesDone >= totalRekan;
                     return (
                       <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/20 italic">
-                        <td className="py-4 font-black uppercase text-[10px] italic">{staff.name}</td>
+                        <td className="py-4 font-black uppercase text-[10px] italic">
+  {staff.name}
+  {(staff.status || 'aktif').toLowerCase() === 'nonaktif' && (
+    <span className="ml-2 px-1.5 py-0.5 text-[8px] bg-red-100 text-red-600 rounded font-black">
+      NONAKTIF
+    </span>
+  )}
+</td>
                         <td className="py-4 text-center italic font-bold text-slate-400 text-[10px]">{votesDone} / {totalRekan} Rekan</td>
                         <td className="py-4 text-center italic">
                           <div className="flex flex-col items-center gap-2">
