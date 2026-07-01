@@ -894,7 +894,7 @@ const exportPresensiToPDF = () => {
 
   // 3. Filter Data (Hanya yang HADIR saja)
   const tableData = users
-    .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.')
+    .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.' && (u.status || 'aktif').toLowerCase() !== 'nonaktif')
     .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
     .filter(u => (bakiraDailyLog[u.username] || 'hadir') === 'hadir') // Hanya yang hadir
     .map((u, idx) => [idx + 1, u.name, u.jabatan || '-', 'Hadir']);
@@ -965,7 +965,7 @@ const exportPresensiToPDF = () => {
   let counter = 1;
   
   users
-    .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.')
+    .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.' && (u.status || 'aktif').toLowerCase() !== 'nonaktif')
     .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
     .forEach((u) => {
       // AMBIL STATUS (default 'hadir' jika tidak ada pilihan)
@@ -1575,9 +1575,9 @@ const exportRekapKJKTahunan = async () => {
               <tr><th className="p-4">No</th><th className="p-4">Pegawai</th><th className="p-4">Status</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {users
-                .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.')
-                .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
+  {users
+  .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.' && (u.status || 'aktif').toLowerCase() !== 'nonaktif')
+  .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
                 .map((u, index) => (
                   <tr key={u.firestoreId} className="hover:bg-slate-50 transition-colors">
                     <td className="p-4 text-[10px] font-bold text-slate-400">{index + 1}</td>
