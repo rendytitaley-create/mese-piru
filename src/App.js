@@ -765,7 +765,7 @@ const targetYear = selectedYear;
     });
 
     return results.sort((a, b) => b.finalScore - a.finalScore);
-  }, [users, reports, kjkData, nilai360, voteWindow, currentTW, selectedYear, bakiraRecords]); // Menambahkan bakiraRecords sebagai dependency
+  }, [users, reports, kjkData, nilai360, voteWindow, currentTW, selectedYear, bakiraRecords, user.role]); // Menambahkan user.role agar lulus sensor ESLint saat deploy
 
   const exportKertasKerjaPrima = async () => {
   const period = (voteWindow.period || currentTW).toUpperCase();
