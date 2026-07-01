@@ -726,9 +726,16 @@ const pimpinan = pimpinanTerpilih;
   }, [selectedMonth]);
 
   const leaderboardData = useMemo(() => {
-    const staff = users.filter(u => !['admin', 'pimpinan'].includes(u.role) && u.status !== 'nonaktif');
     const targetPeriod = ['admin', 'pimpinan'].includes(user?.role) ? currentTW : (voteWindow.period || currentTW);
-const targetYear = selectedYear;
+    const targetYear = selectedYear;
+
+    // SINKRONISASI PEGAWAI: Jika melihat TW aktif hanya yang status aktif, jika histori TW lalu, yang nonaktif tetap muncul
+    const staff = users.filter(u => {
+      if (targetPeriod === currentTW) {
+        return !['admin', 'pimpinan'].includes(u.role) && u.status !== 'nonaktif';
+      }
+      return !['admin', 'pimpinan'].includes(u.role); // Munculkan semua pegawai untuk histori masa lalu
+    });
 
     let monthsToInclude = targetPeriod === 'tw1' ? [1, 2, 3] : targetPeriod === 'tw2' ? [4, 5, 6] : targetPeriod === 'tw3' ? [7, 8, 9] : [10, 11, 12];
     
