@@ -749,9 +749,6 @@ const pimpinan = pimpinanTerpilih;
 
     const results = staff.map(s => {
       // 1. CKP (50% dari total nilai)
-
-    const results = staff.map(s => {
-      // 1. CKP (50% dari total nilai)
       const sReports = reports.filter(r => r.userId === s.username && r.year === targetYear && monthsToInclude.includes(r.month));
       const avgCKP = sReports.length > 0 ? (sReports.reduce((acc, curr) => acc + (Number(curr.nilaiPimpinan) || 0), 0) / sReports.length) : 0;
       
