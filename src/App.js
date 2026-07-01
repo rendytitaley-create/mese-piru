@@ -772,7 +772,7 @@ const pimpinan = pimpinanTerpilih;
     });
 
     return results.sort((a, b) => b.finalScore - a.finalScore);
-  }, [users, reports, kjkData, nilai360, voteWindow, currentTW, selectedYear, bakiraRecords, user?.role]); // Menambahkan user.role agar lulus sensor ESLint saat deploy
+  }, [users, reports, kjkData, nilai360, voteWindow, currentTW, selectedYear, bakiraRecords, user?.role]);
 
   const exportKertasKerjaPrima = async () => {
   const period = (voteWindow.period || currentTW).toUpperCase();
