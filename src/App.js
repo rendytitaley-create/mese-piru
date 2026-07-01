@@ -1857,6 +1857,7 @@ const exportRekapKJKTahunan = async () => {
         </div>
 
         {/* MONITORING PARTISIPASI (KHUSUS ADMIN) */}
+        {/* MONITORING PARTISIPASI (KHUSUS ADMIN) */}
         {user.role === 'admin' && (
           <div className="mt-12 pt-12 border-t border-slate-800 italic">
             <div className="flex items-center gap-4 mb-8 italic">
@@ -1873,44 +1874,43 @@ const exportRekapKJKTahunan = async () => {
                   </tr>
                 </thead>
                 <tbody>
-                  <tbody>
-                  {leaderboardData.filter(staff => {
-                    // Jika melihat TW berjalan, sembunyikan pegawai nonaktif dari monitoring admin
-                    if (currentTW === (['admin', 'pimpinan'].includes(user?.role) ? currentTW : (voteWindow.period || currentTW))) {
-                      return (staff.status || 'aktif').toLowerCase() !== 'nonaktif';
-                    }
-                    return true; // Tampilkan histori semua pegawai jika admin memilih triwulan lalu
-                  }).map((staff, idx) => {
-                    // Menentukan target periode monitoring berdasarkan pilihan dropdown aktif
-                    const targetPeriodActive = ['admin', 'pimpinan'].includes(user?.role) ? currentTW : (voteWindow.period || currentTW);
-                    
-                    const votesDone = nilai360.filter(v => v.reviewerId === staff.username && v.period === targetPeriodActive && v.year === selectedYear).length;
-                    const totalRekan = users.filter(u => !['admin', 'pimpinan'].includes(u.role) && (u.status || 'aktif').toLowerCase() !== 'nonaktif').length - 1;
-                    const isComplete = votesDone >= totalRekan;
-                    return (
-                      <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/20 italic">
-                        <td className="py-4 font-black uppercase text-[10px] italic">
-  {staff.name}
-  {(staff.status || 'aktif').toLowerCase() === 'nonaktif' && (
-    <span className="ml-2 px-1.5 py-0.5 text-[8px] bg-red-100 text-red-600 rounded font-black">
-      NONAKTIF
-    </span>
-  )}
-</td>
-                        <td className="py-4 text-center italic font-bold text-slate-400 text-[10px]">{votesDone} / {totalRekan} Rekan</td>
-                        <td className="py-4 text-center italic">
-                          <div className="flex flex-col items-center gap-2">
-                            <span className={`text-[8px] font-black uppercase px-3 py-1 rounded-full ${isComplete ? 'bg-green-500/10 text-green-400' : 'bg-amber-500/10 text-amber-400'}`}>
-                              {isComplete ? "Lengkap" : "Proses"}
-                            </span>
-                            {user.role === 'admin' && votesDone > 0 && (
-                              <button onClick={() => handleResetVotes(null, staff.username)} className="text-[7px] font-black text-red-500 hover:text-red-700 underline uppercase italic">Reset Penilaian Saya</button>
+                  {leaderboardData
+                    .filter(staff => {
+                      const targetPeriodActive = ['admin', 'pimpinan'].includes(user?.role) ? currentTW : (voteWindow.period || currentTW);
+                      if (currentTW === targetPeriodActive) {
+                        return (staff.status || 'aktif').toLowerCase() !== 'nonaktif';
+                      }
+                      return true;
+                    })
+                    .map((staff, idx) => {
+                      const targetPeriodActive = ['admin', 'pimpinan'].includes(user?.role) ? currentTW : (voteWindow.period || currentTW);
+                      const votesDone = nilai360.filter(v => v.reviewerId === staff.username && v.period === targetPeriodActive && v.year === selectedYear).length;
+                      const totalRekan = users.filter(u => !['admin', 'pimpinan'].includes(u.role) && (u.status || 'aktif').toLowerCase() !== 'nonaktif').length - 1;
+                      const isComplete = votesDone >= totalRekan;
+                      return (
+                        <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/20 italic">
+                          <td className="py-4 font-black uppercase text-[10px] italic">
+                            {staff.name}
+                            {(staff.status || 'aktif').toLowerCase() === 'nonaktif' && (
+                              <span className="ml-2 px-1.5 py-0.5 text-[8px] bg-red-100 text-red-600 rounded font-black">
+                                NONAKTIF
+                              </span>
                             )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          </td>
+                          <td className="py-4 text-center italic font-bold text-slate-400 text-[10px]">{votesDone} / {totalRekan} Rekan</td>
+                          <td className="py-4 text-center italic text-[10px]">
+                            <div className="flex flex-col items-center gap-2">
+                              <span className={`text-[8px] font-black uppercase px-3 py-1 rounded-full ${isComplete ? 'bg-green-500/10 text-green-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                                {isComplete ? "Lengkap" : "Proses"}
+                              </span>
+                              {user.role === 'admin' && votesDone > 0 && (
+                                <button onClick={() => handleResetVotes(null, staff.username)} className="text-[7px] font-black text-red-500 hover:text-red-700 underline uppercase italic">Reset Penilaian Saya</button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
             </div>
