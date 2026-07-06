@@ -298,12 +298,13 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   let jumlahHariKegiatan = 0;
 
   dataBakira3Bulan.forEach(hari => {
-    // Pastikan kita hanya menghitung hari yang memiliki kegiatan
-    if (hari.isKegiatanAda && hari.absensi && hari.absensi[username]) {
-      const status = hari.absensi[username];
+    // Memastikan HANYA menghitung jika hari itu disetting ADA KEGIATAN oleh admin
+    if (hari.isKegiatanAda && hari.absensi) {
       jumlahHariKegiatan++;
 
-      // Logika pembobotan baru
+      // KUNCI PERBAIKAN: Jika data di database kosong (undefined), sistem otomatis membacanya sebagai 'hadir'
+      const status = hari.absensi[username] || 'hadir';
+
       switch (status) {
         case 'hadir':
         case 'tugas':
@@ -320,12 +321,13 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
           totalSkor += 0;
           break;
         default:
-          totalSkor += 100; // Default untuk status lain jika ada
+          totalSkor += 100; // Pengaman jika ada status tak dikenal, otomatis dianggap hadir
+          break;
       }
     }
   });
 
-  // Jika tidak ada hari kegiatan, kembalikan 100 agar tidak merusak rerata
+  // Menghitung rata-rata nilai akhir triwulan secara adil
   return jumlahHariKegiatan > 0 ? (totalSkor / jumlahHariKegiatan) : 100;
 };
   
