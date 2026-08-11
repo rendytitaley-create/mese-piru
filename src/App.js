@@ -787,6 +787,13 @@ setPersistence(auth, browserSessionPersistence);
 
   const resetKOBForm = () => { setIsEditingKOB(false); setCurrentKOBId(null); setNewKOB({ iku: '', iki: '', satuan: '', target: '', realisasi: '', linkBuktiDukung: '', originalAgendaId: '' }); };
 
+  // Salin teks apa saja (link, uraian, dsb) ke clipboard, dengan pesan konfirmasi singkat.
+  const copyTextToClipboard = (text, label = 'Teks') => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    alert(`${label} berhasil disalin!`);
+  };
+
   const handleSubmitKOB = async (e) => {
     e.preventDefault();
     if (!newKOB.iku) { alert("Pilih IKU terlebih dahulu."); return; }
@@ -2591,7 +2598,13 @@ const exportRekapKJKTahunan = async () => {
                           )}
                           <tr className="hover:bg-slate-50 transition-all group">
                             <td className="p-4 font-bold text-slate-400 text-center">{idx + 1}</td>
-                            <td className="p-4"><p className="font-semibold text-[12px] text-slate-800 tracking-tight leading-none mb-1">{r.title}</p><span className="text-indigo-600 text-[8px] font-semibold bg-indigo-50 px-2 py-0.5 rounded-lg">{currentNameById[r.userId] || r.userName}</span></td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <p className="font-semibold text-[12px] text-slate-800 tracking-tight leading-none">{r.title}</p>
+                                <button onClick={() => copyTextToClipboard(r.title, 'Uraian Kegiatan')} className="text-slate-300 hover:text-indigo-600 shrink-0" title="Salin uraian"><Copy size={12}/></button>
+                              </div>
+                              <span className="text-indigo-600 text-[8px] font-semibold bg-indigo-50 px-2 py-0.5 rounded-lg">{currentNameById[r.userId] || r.userName}</span>
+                            </td>
                             <td className="p-4 text-center">
                                <span className={`text-[8px] font-semibold px-2 py-1 rounded-md ${r.status === 'selesai' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>{r.status.replace('_', ' ')}</span>
                             </td>
@@ -2642,7 +2655,10 @@ const exportRekapKJKTahunan = async () => {
                             <span className="text-[10px] font-semibold text-indigo-600">No. {idx + 1}</span>
                             <span className={`text-[8px] font-semibold px-2 py-1 rounded-md ${r.status === 'selesai' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>{r.status.replace('_', ' ')}</span>
                          </div>
-                         <h3 className="font-semibold text-slate-800 text-xs leading-tight mb-2">{r.title}</h3>
+                         <div className="flex items-start gap-1.5 mb-2">
+                          <h3 className="font-semibold text-slate-800 text-xs leading-tight flex-1">{r.title}</h3>
+                          <button onClick={() => copyTextToClipboard(r.title, 'Uraian Kegiatan')} className="text-slate-300 hover:text-indigo-600 shrink-0" title="Salin uraian"><Copy size={13}/></button>
+                        </div>
                          <p className="text-[9px] text-indigo-600 font-bold mb-6">Oleh: {currentNameById[r.userId] || r.userName}</p>
                          <div className="space-y-4 pt-4 border-t">
                             {r.userId === user.username && (
@@ -2746,18 +2762,24 @@ const exportRekapKJKTahunan = async () => {
                             {rows.map(r => (
                               <div key={r.id} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
                                 <div className="flex items-start justify-between gap-3">
-                                  <p className="font-semibold text-slate-700 text-[11px] flex-1">{r.iki}</p>
+                                  <div className="flex-1 flex items-start gap-2">
+                                    <p className="font-semibold text-slate-700 text-[11px]">{r.iki}</p>
+                                    <button onClick={() => copyTextToClipboard(r.iki, 'Uraian IKI')} className="p-1 text-slate-400 hover:text-indigo-600 shrink-0" title="Salin uraian"><Copy size={12}/></button>
+                                  </div>
                                   <div className="flex gap-2 shrink-0">
                                     <button onClick={() => { setIsEditingKOB(true); setCurrentKOBId(r.id); setNewKOB({ iku: r.iku, iki: r.iki, satuan: r.satuan, target: r.target, realisasi: r.realisasi, linkBuktiDukung: r.linkBuktiDukung || '', originalAgendaId: '' }); setShowKOBModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><Edit3 size={13}/></button>
                                     <button onClick={() => handleDeleteKOB(r.id)} className="p-2 bg-red-50 text-red-500 rounded-lg"><Trash2 size={13}/></button>
                                   </div>
                                 </div>
-                                <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3 text-[9px] text-slate-500">
+                                <div className="flex flex-wrap items-center gap-x-6 gap-y-1 mt-3 text-[9px] text-slate-500">
                                   <span>Satuan: <b className="text-slate-700">{r.satuan}</b></span>
                                   <span>Target: <b className="text-slate-700">{r.target}</b></span>
                                   <span>Realisasi: <b className="text-slate-700">{r.realisasi}</b></span>
                                   {r.linkBuktiDukung && (
-                                    <a href={r.linkBuktiDukung.startsWith('http') ? r.linkBuktiDukung : `https://${r.linkBuktiDukung}`} target="_blank" rel="noopener noreferrer" className="text-indigo-500 font-semibold underline">Lihat Bukti Dukung</a>
+                                    <span className="flex items-center gap-1.5">
+                                      <a href={r.linkBuktiDukung.startsWith('http') ? r.linkBuktiDukung : `https://${r.linkBuktiDukung}`} target="_blank" rel="noopener noreferrer" className="text-indigo-500 font-semibold underline">Lihat Bukti Dukung</a>
+                                      <button onClick={() => copyTextToClipboard(r.linkBuktiDukung, 'Link Bukti Dukung')} className="text-slate-400 hover:text-indigo-600" title="Salin link"><Copy size={12}/></button>
+                                    </span>
                                   )}
                                 </div>
                               </div>
@@ -2816,13 +2838,19 @@ const exportRekapKJKTahunan = async () => {
                             <div className="space-y-3">
                               {rows.map(r => (
                                 <div key={r.id} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                                  <p className="font-semibold text-slate-700 text-[11px]">{r.iki}</p>
-                                  <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3 text-[9px] text-slate-500">
+                                  <div className="flex items-start gap-2">
+                                    <p className="font-semibold text-slate-700 text-[11px]">{r.iki}</p>
+                                    <button onClick={() => copyTextToClipboard(r.iki, 'Uraian IKI')} className="p-1 text-slate-400 hover:text-indigo-600 shrink-0" title="Salin uraian"><Copy size={12}/></button>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-x-6 gap-y-1 mt-3 text-[9px] text-slate-500">
                                     <span>Satuan: <b className="text-slate-700">{r.satuan}</b></span>
                                     <span>Target: <b className="text-slate-700">{r.target}</b></span>
                                     <span>Realisasi: <b className="text-slate-700">{r.realisasi}</b></span>
                                     {r.linkBuktiDukung && (
-                                      <a href={r.linkBuktiDukung.startsWith('http') ? r.linkBuktiDukung : `https://${r.linkBuktiDukung}`} target="_blank" rel="noopener noreferrer" className="text-indigo-500 font-semibold underline">Lihat Bukti Dukung</a>
+                                      <span className="flex items-center gap-1.5">
+                                        <a href={r.linkBuktiDukung.startsWith('http') ? r.linkBuktiDukung : `https://${r.linkBuktiDukung}`} target="_blank" rel="noopener noreferrer" className="text-indigo-500 font-semibold underline">Lihat Bukti Dukung</a>
+                                        <button onClick={() => copyTextToClipboard(r.linkBuktiDukung, 'Link Bukti Dukung')} className="text-slate-400 hover:text-indigo-600" title="Salin link"><Copy size={12}/></button>
+                                      </span>
                                     )}
                                   </div>
                                 </div>
@@ -3061,7 +3089,13 @@ const exportRekapKJKTahunan = async () => {
     />
   </td>
                         <td className="p-4 font-bold text-slate-400 text-center">{idx + 1}</td>
-                        <td className="p-4"><p className="font-semibold text-[12px] text-slate-800 tracking-tight leading-none mb-1">{r.title}</p><span className="text-indigo-600 text-[8px] font-semibold bg-indigo-50 px-2 py-0.5 rounded-lg">{currentNameById[r.userId] || r.userName}</span></td>
+                        <td className="p-4">
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <p className="font-semibold text-[12px] text-slate-800 tracking-tight leading-none">{r.title}</p>
+                                <button onClick={() => copyTextToClipboard(r.title, 'Uraian Kegiatan')} className="text-slate-300 hover:text-indigo-600 shrink-0" title="Salin uraian"><Copy size={12}/></button>
+                              </div>
+                              <span className="text-indigo-600 text-[8px] font-semibold bg-indigo-50 px-2 py-0.5 rounded-lg">{currentNameById[r.userId] || r.userName}</span>
+                            </td>
                         <td className="p-4 text-center font-bold text-slate-500 text-[10px]">{r.satuan || '-'}</td>
                         <td className="p-4 text-center font-semibold">{r.realisasi} / {r.target}</td>
                         <td className="p-4 text-center font-semibold text-indigo-600">{((r.realisasi/r.target)*100).toFixed(0)}%</td>
@@ -3177,7 +3211,10 @@ const exportRekapKJKTahunan = async () => {
                           )}
                         </div>
                       </div>
-                      <h3 className="font-semibold text-slate-800 text-xs leading-tight mb-2">{r.title}</h3>
+                      <div className="flex items-start gap-1.5 mb-2">
+                          <h3 className="font-semibold text-slate-800 text-xs leading-tight flex-1">{r.title}</h3>
+                          <button onClick={() => copyTextToClipboard(r.title, 'Uraian Kegiatan')} className="text-slate-300 hover:text-indigo-600 shrink-0" title="Salin uraian"><Copy size={13}/></button>
+                        </div>
                       <p className="text-[9px] text-indigo-600 font-bold mb-4">Oleh: {currentNameById[r.userId] || r.userName}</p>
                       <div className="grid grid-cols-2 gap-4 border-t pt-4">
                         <div className="text-center"><p className="text-[8px] text-slate-400 font-semibold">Target/Real</p><p className="font-semibold text-[10px]">{r.realisasi} / {r.target}</p></div>
@@ -3492,7 +3529,7 @@ const exportRekapKJKTahunan = async () => {
 
       {showUserModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[110] font-sans text-center">
-          <form onSubmit={handleAddOrEditUser} className="bg-white w-full max-w-xl rounded-xl p-12 shadow-md relative">
+          <form onSubmit={handleAddOrEditUser} className="bg-white w-full max-w-xl rounded-xl p-8 md:p-12 shadow-md relative max-h-[90vh] overflow-y-auto">
             <button type="button" onClick={() => { setShowUserModal(false); resetUserForm(); }} className="absolute top-8 right-8 p-4 bg-slate-50 rounded-full text-slate-400"><X size={20}/></button>
             <h3 className="text-2xl font-semibold tracking-tight mb-8 text-slate-800 text-center">{isEditingUser ? "Edit Akun Pegawai" : "Tambah Pegawai"}</h3>
             <div className="space-y-4">
