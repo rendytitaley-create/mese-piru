@@ -86,6 +86,7 @@ function getFirstWord(name) {
 // Ditulis sebagai fungsi level-modul (bukan di dalam komponen) supaya identitasnya stabil
 // dan tidak perlu didaftarkan di dependency array useMemo/useCallback manapun.
 function isKJKForStaff(k, staff) {
+  if (!staff) return false;
   if (k.userId) return k.userId === staff.username;
   return getFirstWord(k.nama) === getFirstWord(staff.name);
 }
@@ -878,7 +879,6 @@ const pimpinan = pimpinanTerpilih;
       const avgCKP = sReports.length > 0 ? (sReports.reduce((acc, curr) => acc + (Number(curr.nilaiPimpinan) || 0), 0) / sReports.length) : 0;
       
       // 2. KJK (30% dari total nilai)
-      const sFirstWord = getFirstWord(s.name);
       const sKJKs = kjkData.filter(k => isKJKForStaff(k, s) && k.year === targetYear && monthsToInclude.includes(k.month));
       const totalKJKMins = sKJKs.reduce((acc, curr) => acc + timeToMinutes(curr.kjkValue), 0);
       const kjkScore = Math.max(0, 100 - ((totalKJKMins / 60) * 5));
@@ -1197,7 +1197,6 @@ const exportRekapKJKTahunan = async () => {
   const daftarPegawai = users.filter(u => !['admin', 'pimpinan'].includes(u.role) && u.status !== 'nonaktif');
 
   daftarPegawai.forEach((p, idx) => {
-    const pFirstWord = getFirstWord(p.name);
     const rowData = [idx + 1, p.name];
     let totalMins = 0;
 
@@ -1435,7 +1434,6 @@ const exportRekapKJKTahunan = async () => {
         score = gradedReports.length > 0 ? (gradedReports.reduce((a, c) => a + (Number(c.nilaiPimpinan) || 0), 0) / gradedReports.length) : 0;
       }
       
-      const sFirstWord = getFirstWord(s.name);
       const userKJKs = currentKJK.filter(k => isKJKForStaff(k, s));
       const totalMins = userKJKs.reduce((acc, curr) => acc + timeToMinutes(curr.kjkValue), 0);
 
