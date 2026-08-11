@@ -1736,7 +1736,7 @@ const exportRekapKJKTahunan = async () => {
         )}
 
  {activeTab === 'bakira' && (
-  <div className="flex-1 overflow-y-auto md:overflow-hidden flex flex-col md:h-[85vh] animate-in fade-in duration-500 p-4 md:p-10 pb-28 md:pb-10">
+  <div className="flex-1 overflow-y-auto md:flex-none md:overflow-visible flex flex-col md:h-[85vh] animate-in fade-in duration-500 p-4 md:p-10 pb-28 md:pb-10">
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 max-w-6xl mx-auto w-full flex flex-col md:flex-row md:flex-1 md:overflow-hidden">
       
       {/* KIRI: TABEL ABSENSI */}
