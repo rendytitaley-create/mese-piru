@@ -67,6 +67,14 @@ function formatDateLocal(d) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+// Format "YYYY-MM-DD" jadi teks tanggal panjang Indonesia (mis. "Rabu, 5 Agustus 2026").
+// Membangun Date dari komponen angka (bukan new Date(string)) supaya tidak berpotensi
+// bergeser akibat konversi zona waktu/UTC saat string tanggal-saja di-parse.
+function formatDateLongID(dateStr) {
+  const [y, m, d] = String(dateStr).split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -356,8 +364,13 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   let jumlahHariKegiatan = 0;
 
   dataBakira3Bulan.forEach(hari => {
-    // Memastikan HANYA menghitung jika hari itu disetting ADA KEGIATAN oleh admin
-    if (hari.isKegiatanAda && hari.absensi) {
+    // Memastikan HANYA menghitung jika hari itu disetting ADA KEGIATAN oleh admin.
+    // PERBAIKAN: data lama yang belum punya field isKegiatanAda (sebelum fitur ini ada)
+    // harus dianggap ADA (default true) juga di sini -- sama seperti default saat data dimuat
+    // ke layar (lihat useEffect pemuatan BAKIRA). Sebelumnya field kosong/undefined dianggap
+    // false di sini sehingga data kehadiran yang sudah diisi malah tidak ikut terhitung.
+    const kegiatanAda = hari.isKegiatanAda !== false;
+    if (kegiatanAda && hari.absensi) {
       jumlahHariKegiatan++;
 
       // KUNCI PERBAIKAN: Jika data di database kosong (undefined), sistem otomatis membacanya sebagai 'hadir'
@@ -578,6 +591,14 @@ setPersistence(auth, browserSessionPersistence);
   };
   const handleSaveBakira = async () => {
   try {
+    // Pengaman: cegah data absensi yang sudah diisi tapi diam-diam tidak ikut terhitung
+    // di rumus Pegawai Prima/Kertas Kerja karena status Kegiatan masih "Tidak Ada".
+    if (!isKegiatanAda && Object.keys(bakiraDailyLog).length > 0) {
+      const lanjut = window.confirm(
+        `Perhatian: absensi tanggal ${selectedDate} sudah diisi, tapi status "Kegiatan" masih TIDAK ADA.\n\nJika disimpan seperti ini, data kehadiran hari ini TIDAK akan ikut dihitung di rumus Pegawai Prima/Kertas Kerja.\n\nTekan OK untuk tetap simpan (Kegiatan: Tidak Ada), atau Batal untuk mengubah dulu ke "Kegiatan: ADA".`
+      );
+      if (!lanjut) return;
+    }
     const docRef = doc(db, "bakira", selectedDate);
     await setDoc(docRef, {
       date: selectedDate,
@@ -813,10 +834,12 @@ const pimpinan = pimpinanTerpilih;
     let monthsToInclude = targetPeriod === 'tw1' ? [1, 2, 3] : targetPeriod === 'tw2' ? [4, 5, 6] : targetPeriod === 'tw3' ? [7, 8, 9] : [10, 11, 12];
     
     // Filter data BAKIRA 3 bulan untuk periode yang sedang dihitung
+    // Catatan: ambil bulan/tahun langsung dari string "YYYY-MM-DD" (bukan lewat new Date(...))
+    // supaya tidak berpotensi bergeser akibat konversi zona waktu/UTC.
     const bakira3Bulan = bakiraRecords.filter(b => {
-        const dateObj = new Date(b.date);
-        const month = dateObj.getMonth() + 1;
-        const year = dateObj.getFullYear();
+        const [yStr, mStr] = String(b.date).split('-');
+        const month = parseInt(mStr, 10);
+        const year = parseInt(yStr, 10);
         return year === targetYear && monthsToInclude.includes(month);
     });
 
@@ -972,10 +995,7 @@ const pimpinan = pimpinanTerpilih;
 const exportPresensiToPDF = () => {
   const doc = new jsPDF('p', 'mm', 'a4');
 
-  const dateObj = new Date(selectedDate);
-  const formattedDate = dateObj.toLocaleDateString('id-ID', { 
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-  });
+  const formattedDate = formatDateLongID(selectedDate);
 
   // 1. Judul Utama
   doc.setFontSize(16);
@@ -1041,7 +1061,7 @@ const exportPresensiToPDF = () => {
   titleCell.alignment = { horizontal: 'center' };
 
   // 2. Info Detail
-  sheet.getCell('A3').value = 'Hari / Tanggal'; sheet.getCell('B3').value = `: ${new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+  sheet.getCell('A3').value = 'Hari / Tanggal'; sheet.getCell('B3').value = `: ${formatDateLongID(selectedDate)}`;
   sheet.getCell('A4').value = 'Waktu'; sheet.getCell('B4').value = ': ';
   sheet.getCell('A5').value = 'Tempat'; sheet.getCell('B5').value = ': ';
   sheet.getCell('A6').value = 'Agenda'; sheet.getCell('B6').value = ': ';
@@ -1116,7 +1136,7 @@ const exportPresensiToPDF = () => {
   sheet.getColumn(4).width = 15;
   
   const buffer = await workbook.xlsx.writeBuffer();
-  saveAs(new Blob([buffer]), `Daftar_Hadir_${new Date().toLocaleDateString('id-ID')}.xlsx`);
+  saveAs(new Blob([buffer]), `Daftar_Hadir_${selectedDate}.xlsx`);
 };
 
 // FITUR BARU: CETAK REKAP KJK 12 BULAN
@@ -1757,7 +1777,7 @@ const exportRekapKJKTahunan = async () => {
  ${!bakiraDailyLog[u.username] ? 'bg-slate-100' : ''}
  `}
                         value={bakiraDailyLog[u.username] || 'hadir'}
-                        onChange={(e) => setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value})}
+                        onChange={(e) => { setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value}); setIsKegiatanAda(true); }}
                       >
                         <option value="hadir">Hadir</option>
                         <option value="izin">Izin</option>
@@ -1783,6 +1803,14 @@ const exportRekapKJKTahunan = async () => {
         >
           {isKegiatanAda ? "Kegiatan Hari Ini: ADA" : "Kegiatan Hari Ini: TIDAK ADA"}
         </button>
+        {!isKegiatanAda && Object.keys(bakiraDailyLog).length > 0 && (
+          <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-xl p-3">
+            <AlertCircle size={16} className="shrink-0 mt-0.5"/>
+            <p className="text-[9px] leading-relaxed font-medium">
+              Kehadiran tanggal ini sudah diisi, tapi status "Kegiatan" masih TIDAK ADA — data kehadiran hari ini <b>tidak akan ikut dihitung</b> di rumus Pegawai Prima/Kertas Kerja. Ubah ke "ADA" kalau memang ada kegiatan hari ini.
+            </p>
+          </div>
+        )}
 
         <div className="space-y-4">
           <label className="block text-[9px] font-semibold text-slate-400">Link Dokumentasi</label>
