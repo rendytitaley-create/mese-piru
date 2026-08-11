@@ -1309,104 +1309,106 @@ const exportRekapKJKTahunan = async () => {
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50 font-sans"><Loader2 className="animate-spin text-indigo-600" size={50} /></div>;
 
   if (!user) return (
-    <div className="h-screen bg-slate-900 flex items-center justify-center p-4 italic">
-      <div className="bg-white w-full max-w-md rounded-[2.5rem] p-12 shadow-2xl text-center font-sans">
+    <div className="h-screen bg-slate-100 flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-md rounded-2xl p-10 shadow-xl border border-slate-200 text-center">
         {appSettings.logoURL ? (
-            <img src={appSettings.logoURL} alt="Logo" className="h-16 mx-auto mb-6 object-contain" />
+            <img src={appSettings.logoURL} alt="Logo" className="h-14 mx-auto mb-5 object-contain" />
         ) : (
-            <ShieldCheck size={45} className="text-indigo-600 mx-auto mb-6" />
+            <ShieldCheck size={40} className="text-indigo-600 mx-auto mb-5" />
         )}
-        <h1 className="text-4xl font-black mb-1 tracking-tighter text-slate-800 uppercase italic leading-none">PIRU</h1>
-        <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1 leading-none italic">Platform Integrasi kineRja terUkur</p>
-        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-10 text-center leading-none italic">BPS Kabupaten Seram Bagian Barat</p>
-        <form onSubmit={handleLogin} className="space-y-4 text-left font-sans not-italic">
-          <input type="text" placeholder="Username" className="w-full p-5 bg-slate-50 border rounded-2xl outline-none font-bold" value={authForm.username} onChange={e => setAuthForm({...authForm, username: e.target.value})} />
+        <h1 className="text-2xl font-bold mb-1 tracking-tight text-slate-800">PIRU</h1>
+        <p className="text-xs font-medium text-indigo-600 mb-1">Platform Integrasi Kinerja Terukur</p>
+        <p className="text-slate-400 text-xs mb-8">BPS Kabupaten Seram Bagian Barat</p>
+        <form onSubmit={handleLogin} className="space-y-3 text-left">
+          <input type="text" placeholder="Username" className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-lg outline-none text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow" value={authForm.username} onChange={e => setAuthForm({...authForm, username: e.target.value})} />
           <div className="relative">
-            <input type={showLoginPass ? "text" : "password"} placeholder="Password" className="w-full p-5 bg-slate-50 border rounded-2xl outline-none font-bold pr-14" value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})} />
-            <button type="button" onClick={() => setShowLoginPass(!showLoginPass)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400">{showLoginPass ? <EyeOff size={20}/> : <Eye size={20}/>}</button>
+            <input type={showLoginPass ? "text" : "password"} placeholder="Password" className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-lg outline-none text-sm pr-12 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow" value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})} />
+            <button type="button" onClick={() => setShowLoginPass(!showLoginPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">{showLoginPass ? <EyeOff size={18}/> : <Eye size={18}/>}</button>
           </div>
-          {authError && <div className="flex items-center gap-2 text-red-500 text-[10px] font-black uppercase italic animate-pulse"><AlertCircle size={14}/> {authError}</div>}
-          <button className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black uppercase text-xs mt-4 transition-all active:scale-95 shadow-lg">Login</button>
+          {authError && <div className="flex items-center gap-2 text-red-500 text-xs font-medium"><AlertCircle size={14}/> {authError}</div>}
+          <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-lg font-semibold text-sm mt-2 transition-colors shadow-sm">Masuk</button>
         </form>
       </div>
     </div>
   );
 
   return (
-    <div className="h-screen bg-slate-50 flex flex-col md:flex-row font-sans overflow-hidden text-slate-800 italic">
-      <div className="hidden md:flex w-72 bg-white border-r p-8 flex-col h-full sticky top-0 not-italic">
-        <div className="flex items-center gap-4 mb-14 px-2 italic">
-          <div className="p-2 rounded-2xl text-white">
+    <div className="h-screen bg-slate-50 flex flex-col md:flex-row font-sans overflow-hidden text-slate-800">
+      <div className="hidden md:flex w-64 bg-white border-r border-slate-200 p-6 flex-col h-full sticky top-0">
+        <div className="flex items-center gap-3 mb-10 px-1">
+          <div className="flex-shrink-0">
             {appSettings.logoURL ? (
-                <img src={appSettings.logoURL} alt="Logo" className="w-12 h-12 object-contain" />
+                <img src={appSettings.logoURL} alt="Logo" className="w-10 h-10 object-contain" />
             ) : (
-                <div className="bg-indigo-600 p-3 rounded-2xl"><ShieldCheck size={28}/></div>
+                <div className="bg-indigo-600 p-2.5 rounded-xl"><ShieldCheck size={22} className="text-white"/></div>
             )}
           </div>
-          <div><h2 className="font-black text-2xl uppercase tracking-tighter leading-none italic">PIRU</h2><p className="text-[8px] font-black text-indigo-600 uppercase tracking-widest mt-1 italic">Platform Integrasi kineRja terUkur</p></div>
+          <div><h2 className="font-bold text-lg leading-none text-slate-800">PIRU</h2><p className="text-[10px] text-slate-400 mt-1.5 leading-none">BPS Seram Bagian Barat</p></div>
         </div>
-        <nav className="flex-1 space-y-3 font-sans not-italic">
-          <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><LayoutDashboard size={20}/> Dashboard</button>
+        <nav className="flex-1 space-y-1 overflow-y-auto">
+          <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'dashboard' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}><LayoutDashboard size={18}/> Dashboard</button>
           {user.role !== 'admin' && (
             <>
               {/* TAB BARU: AGENDA */}
-              <button onClick={() => setActiveTab('agenda')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'agenda' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><CalendarIcon size={20}/> Agenda Kerja</button>
-              <button onClick={() => setActiveTab('laporan')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'laporan' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><FileText size={20}/> Entri Pekerjaan</button>
+              <button onClick={() => setActiveTab('agenda')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'agenda' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}><CalendarIcon size={18}/> Agenda Kerja</button>
+              <button onClick={() => setActiveTab('laporan')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'laporan' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}><FileText size={18}/> Entri Pekerjaan</button>
             </>
           )}
-          <button onClick={() => setActiveTab('bukti_dukung')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'bukti_dukung' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Link size={20}/> Bukti Dukung</button>
-          {['admin', 'pimpinan', 'ketua'].includes(user.role) && (<button onClick={() => setActiveTab('penilaian')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'penilaian' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><ClipboardCheck size={20}/> Penilaian Anggota</button>)}
-          <button onClick={() => setActiveTab('prima')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'prima' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Award size={20}/> Pegawai Prima</button>
-          {user.role === 'admin' && (<button onClick={() => setActiveTab('kjk_management')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'kjk_management' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><FileSpreadsheet size={20}/> Manajemen KJK</button>)}
-          {user.role === 'admin' && (<button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'users' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Users size={20}/> Data Pegawai</button>)}
+          <button onClick={() => setActiveTab('bukti_dukung')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bukti_dukung' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}><Link size={18}/> Bukti Dukung</button>
+          {['admin', 'pimpinan', 'ketua'].includes(user.role) && (<button onClick={() => setActiveTab('penilaian')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'penilaian' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}><ClipboardCheck size={18}/> Penilaian Anggota</button>)}
+          <button onClick={() => setActiveTab('prima')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'prima' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}><Award size={18}/> Pegawai Prima</button>
+          <button onClick={() => setActiveTab('bakira')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bakira' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}><Camera size={18}/> BAKIRA</button>
+          {user.role === 'admin' && (<button onClick={() => setActiveTab('kjk_management')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'kjk_management' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}><FileSpreadsheet size={18}/> Manajemen KJK</button>)}
+          {user.role === 'admin' && (<button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'users' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}><Users size={18}/> Data Pegawai</button>)}
         </nav>
-  <button onClick={() => setActiveTab('bakira')} className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase transition-all ${activeTab === 'bakira' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}><Camera size={20}/> BAKIRA</button>
-        <button onClick={() => setShowPasswordModal(true)} className="w-full flex items-center gap-4 px-5 py-3 rounded-2xl font-black text-[10px] uppercase text-slate-400 hover:text-indigo-600 transition-all italic mb-2"><KeyRound size={16}/> Ganti Password</button>
-        <button onClick={() => {localStorage.clear(); window.location.reload();}} className="w-full flex items-center gap-4 p-5 rounded-3xl font-black text-xs uppercase text-red-500 transition-all italic"><LogOut size={20}/> Logout</button>
+        <div className="pt-4 mt-4 border-t border-slate-100 space-y-1">
+          <button onClick={() => setShowPasswordModal(true)} className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-medium text-slate-400 hover:text-indigo-600 hover:bg-slate-50 transition-colors"><KeyRound size={16}/> Ganti Password</button>
+          <button onClick={() => {localStorage.clear(); window.location.reload();}} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"><LogOut size={18}/> Logout</button>
+        </div>
       </div>
-      <main className="flex-1 flex flex-col h-screen overflow-hidden font-sans italic relative">
-        <header className="px-6 md:px-10 py-6 md:py-10 pb-4 flex flex-row justify-between items-center italic sticky top-0 bg-blue-50/80 backdrop-blur-md border-b border-blue-100 z-30 shadow-sm">
-          <div className="flex-1 flex items-center gap-4 italic">
-            <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl overflow-hidden border-2 border-white shadow-md bg-white flex-shrink-0">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
+        <header className="px-6 md:px-10 py-5 flex flex-row justify-between items-center sticky top-0 bg-white/90 backdrop-blur-md border-b border-slate-200 z-30">
+          <div className="flex-1 flex items-center gap-3">
+            <div className="w-11 h-11 md:w-12 md:h-12 rounded-full overflow-hidden border border-slate-200 shadow-sm bg-white flex-shrink-0">
                 {user.photoURL ? ( <img src={user.photoURL} alt="Profil" className="w-full h-full object-cover" />
-                ) : ( <div className="w-full h-full flex items-center justify-center bg-indigo-100 text-indigo-600 font-black text-lg">{user.name.charAt(0)}</div> )}
+                ) : ( <div className="w-full h-full flex items-center justify-center bg-indigo-50 text-indigo-600 font-semibold text-base">{user.name.charAt(0)}</div> )}
             </div>
-            <div className="italic">
-              <h1 className="text-lg md:text-xl font-black text-slate-900 tracking-tighter uppercase leading-none italic break-words">{user.name}</h1>
-              <p className="text-indigo-600 font-bold uppercase tracking-widest text-[8px] mt-2 inline-block bg-white px-3 py-1 rounded-full border border-indigo-100 italic">{user.jabatan || user.role}</p>
+            <div>
+              <h1 className="text-base md:text-lg font-semibold text-slate-800 leading-tight break-words">{user.name}</h1>
+              <p className="text-slate-400 font-medium text-xs mt-0.5">{user.jabatan || user.role}</p>
             </div>
           </div>
-          <div className="flex items-center gap-4 md:gap-3 not-italic">
-             <button onClick={exportToExcel} className="md:hidden p-2 text-green-600 bg-white rounded-xl shadow-sm border border-slate-100"><Download size={22}/></button>
-             <button onClick={() => setShowPasswordModal(true)} className="md:hidden p-2 text-indigo-600 bg-white rounded-xl shadow-sm border border-slate-100"><KeyRound size={22}/></button>
-             <button onClick={() => {localStorage.clear(); window.location.reload();}} className="md:hidden p-2 text-red-500 bg-white rounded-xl shadow-sm border border-slate-100"><LogOut size={22}/></button>
-             <div className="hidden md:flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-2.5">
+             <button onClick={exportToExcel} className="md:hidden p-2 text-green-600 bg-white rounded-lg shadow-sm border border-slate-200"><Download size={20}/></button>
+             <button onClick={() => setShowPasswordModal(true)} className="md:hidden p-2 text-indigo-600 bg-white rounded-lg shadow-sm border border-slate-200"><KeyRound size={20}/></button>
+             <button onClick={() => {localStorage.clear(); window.location.reload();}} className="md:hidden p-2 text-red-500 bg-white rounded-lg shadow-sm border border-slate-200"><LogOut size={20}/></button>
+             <div className="hidden md:flex items-center gap-2.5">
                {activeTab === 'dashboard' && ['admin', 'pimpinan'].includes(user.role) && (
-                 <select className="bg-slate-900 text-white border-none rounded-xl px-4 py-2 font-black text-[10px] shadow-lg outline-none italic cursor-pointer" value={periodType} onChange={e => setPeriodType(e.target.value)}>
-                    <option value="monthly">BULANAN</option>
-                    <option value="tw1">TRIWULAN I</option>
-                    <option value="tw2">TRIWULAN II</option>
-                    <option value="tw3">TRIWULAN III</option>
-                    <option value="tw4">TRIWULAN IV</option>
-                    <option value="yearly">TAHUNAN</option>
+                 <select className="bg-slate-800 text-white border-none rounded-lg px-3 py-2 text-xs font-medium outline-none cursor-pointer" value={periodType} onChange={e => setPeriodType(e.target.value)}>
+                    <option value="monthly">Bulanan</option>
+                    <option value="tw1">Triwulan I</option>
+                    <option value="tw2">Triwulan II</option>
+                    <option value="tw3">Triwulan III</option>
+                    <option value="tw4">Triwulan IV</option>
+                    <option value="yearly">Tahunan</option>
                  </select>
                )}
                {(activeTab === 'penilaian' || activeTab === 'bukti_dukung' || activeTab === 'kjk_management' || activeTab === 'agenda') && ['admin', 'pimpinan', 'ketua'].includes(user.role) && (
                   <>
-                    <select className="p-2 bg-white border border-slate-200 rounded-xl font-black text-[10px] text-slate-600 shadow-sm outline-none italic" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
+                    <select className="p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 shadow-sm outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
                       <option value="Semua">Data Saya</option>
                      {users.filter(u => !['admin', 'pimpinan'].includes(u.role) && u.status !== 'nonaktif' && u.status !== 'Nonaktif').map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                     </select>
                   </>
                 )}
-               <select className="bg-white border border-slate-200 rounded-xl px-3 py-2 font-black text-[10px] text-slate-600 outline-none shadow-sm cursor-pointer italic" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
+               <select className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-600 outline-none shadow-sm cursor-pointer" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
                  {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
                </select>
-               <select className="bg-white border border-slate-200 rounded-xl px-3 py-2 font-black text-[10px] text-slate-600 outline-none shadow-sm cursor-pointer italic" value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}>
+               <select className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-600 outline-none shadow-sm cursor-pointer" value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}>
                  {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <option key={y} value={y}>{y}</option>)}
                </select>
-               <button onClick={exportToExcel} className="bg-green-600 text-white px-4 py-2.5 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-md italic"><Download size={14}/> Cetak</button>
-               {user.role !== 'admin' && activeTab !== 'agenda' && <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-black uppercase text-[10px] shadow-lg flex items-center gap-2 italic"><Plus size={14}/> Entri</button>}
+               <button onClick={exportToExcel} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors"><Download size={14}/> Cetak</button>
+               {user.role !== 'admin' && activeTab !== 'agenda' && <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-medium shadow-sm flex items-center gap-1.5 transition-colors"><Plus size={14}/> Entri</button>}
              </div>
           </div>
         </header>
