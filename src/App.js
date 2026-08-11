@@ -1310,7 +1310,7 @@ const exportRekapKJKTahunan = async () => {
 
   if (!user) return (
     <div className="h-screen bg-slate-100 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-md rounded-2xl p-10 shadow-xl border border-slate-200 text-center">
+      <div className="bg-white w-full max-w-md rounded-2xl p-10 shadow-md border border-slate-200 text-center">
         {appSettings.logoURL ? (
             <img src={appSettings.logoURL} alt="Logo" className="h-14 mx-auto mb-5 object-contain" />
         ) : (
@@ -1415,12 +1415,12 @@ const exportRekapKJKTahunan = async () => {
 
         {/* --- MODUL BARU: AGENDA (VISUAL KALENDER) --- */}
         {activeTab === 'agenda' && (
-          <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-8 animate-in fade-in slide-in-from-bottom-4 duration-500 italic pb-28 md:pb-10">
+          <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-28 md:pb-10">
             <div className="max-w-7xl mx-auto flex flex-col xl:flex-row gap-8">
               {/* KOLOM KALENDER */}
-              <div className="flex-1 bg-white rounded-[2.5rem] p-6 md:p-8 shadow-sm border border-slate-100 h-fit">
-                <div className="flex items-center justify-between mb-8 italic">
-                  <h2 className="text-xl font-black uppercase italic tracking-tighter">
+              <div className="flex-1 bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-slate-100 h-fit">
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-xl font-semibold tracking-tight">
                     {calendarDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                   </h2>
                   <div className="flex gap-2">
@@ -1439,9 +1439,9 @@ const exportRekapKJKTahunan = async () => {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-7 gap-2 md:gap-4 italic">
+                <div className="grid grid-cols-7 gap-2 md:gap-4">
                   {['Min','Sen','Sel','Rab','Kam','Jum','Sab'].map(d => (
-                    <div key={d} className="text-center text-[10px] font-black text-slate-300 uppercase italic py-2">{d}</div>
+                    <div key={d} className="text-center text-[10px] font-semibold text-slate-300 py-2">{d}</div>
                   ))}
                   {calendarDays.map((day, idx) => {
                     const currentFullDate = day ? `${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` : null;
@@ -1455,9 +1455,9 @@ const exportRekapKJKTahunan = async () => {
                             setSelectedCalendarDate(currentFullDate); 
                           }
                         }}
-                        className={`aspect-square rounded-2xl md:rounded-3xl border flex flex-col items-center justify-center relative cursor-pointer transition-all ${day ? 'hover:border-indigo-600 hover:bg-indigo-50/30' : 'border-transparent'} ${currentFullDate === selectedCalendarDate ? 'bg-indigo-600 border-indigo-600 shadow-md scale-95' : hasAgenda ? 'bg-indigo-50 border-indigo-200' : 'border-slate-50'}`}
+                        className={`aspect-square rounded-2xl md:rounded-xl border flex flex-col items-center justify-center relative cursor-pointer transition-all ${day ? 'hover:border-indigo-600 hover:bg-indigo-50/30' : 'border-transparent'} ${currentFullDate === selectedCalendarDate ? 'bg-indigo-600 border-indigo-600 shadow-md scale-95' : hasAgenda ? 'bg-indigo-50 border-indigo-200' : 'border-slate-50'}`}
                       >
-                        <span className={`text-xs md:text-lg font-black italic ${currentFullDate === selectedCalendarDate ? 'text-white' : hasAgenda ? 'text-indigo-600' : 'text-slate-400'}`}>{day}</span>
+                        <span className={`text-xs md:text-lg font-semibold ${currentFullDate === selectedCalendarDate ? 'text-white' : hasAgenda ? 'text-indigo-600' : 'text-slate-400'}`}>{day}</span>
                         {hasAgenda > 0 && currentFullDate !== selectedCalendarDate && <div className="absolute bottom-2 w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></div>}
                       </div>
                     );
@@ -1466,14 +1466,14 @@ const exportRekapKJKTahunan = async () => {
               </div>
 
               {/* KOLOM LIST AGENDA */}
-              <div className="w-full xl:w-96 flex flex-col gap-4 italic h-fit">
-                <div className="bg-slate-900 p-6 rounded-[2.5rem] text-white shadow-xl italic">
+              <div className="w-full xl:w-96 flex flex-col gap-4 h-fit">
+                <div className="bg-slate-900 p-6 rounded-2xl text-white shadow-md">
                     <div className="flex items-center justify-between gap-4">
                        <div className="min-w-0">
-                          <h3 className="font-black uppercase text-[10px] tracking-widest italic text-indigo-400 truncate">
+                          <h3 className="font-semibold text-[10px] text-indigo-400 truncate">
                             {selectedCalendarDate ? `${selectedCalendarDate}` : "Pilih Tanggal"}
                           </h3>
-                          <p className="text-[9px] text-slate-400 italic">Daftar Agenda Harian</p>
+                          <p className="text-[9px] text-slate-400">Daftar Agenda Harian</p>
                        </div>
                        {selectedCalendarDate && (user.role === 'pegawai' || filterStaffName === 'Semua') && (
                         <button 
@@ -1481,7 +1481,7 @@ const exportRekapKJKTahunan = async () => {
                             setNewAgenda({...newAgenda, date: selectedCalendarDate});
                             setShowAgendaModal(true);
                           }} 
-                          className="shrink-0 p-3 bg-indigo-600 rounded-xl font-black text-[9px] uppercase shadow-lg shadow-indigo-900/20 italic flex items-center gap-2"
+                          className="shrink-0 p-3 bg-indigo-600 rounded-xl font-semibold text-[9px] shadow-lg shadow-indigo-900/20 flex items-center gap-2"
                         >
                           <Plus size={14}/> Tambah
                         </button>
@@ -1489,12 +1489,12 @@ const exportRekapKJKTahunan = async () => {
                     </div>
                 </div>
 
-                <div className="space-y-3 italic pb-10">
+                <div className="space-y-3 pb-10">
                   {agendas.filter(a => 
                     (filterStaffName === 'Semua' ? a.userId === user.username : a.userName === filterStaffName) && 
                     (selectedCalendarDate ? a.date === selectedCalendarDate : a.date.includes(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`))
                   ).length === 0 ? (
-                    <div className="text-center py-10 text-slate-400 font-bold text-[10px] uppercase italic bg-white rounded-3xl border border-dashed">Tidak ada catatan</div>
+                    <div className="text-center py-10 text-slate-400 font-bold text-[10px] bg-white rounded-xl border border-dashed">Tidak ada catatan</div>
                   ) : (
                     agendas
                       .filter(a => 
@@ -1503,25 +1503,25 @@ const exportRekapKJKTahunan = async () => {
                       )
                       .sort((a,b) => new Date(b.date) - new Date(a.date))
                       .map(a => (
-                        <div key={a.id} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-start group italic gap-3">
-                          <div className="flex-1 min-w-0 italic">
-                            <p className="text-[7px] font-black text-indigo-500 uppercase italic mb-1">{a.date}</p>
-                            <h4 className="font-black text-slate-800 uppercase text-[10px] leading-normal break-words whitespace-pre-wrap italic">
+                        <div key={a.id} className="bg-white p-5 rounded-xl border border-slate-100 shadow-sm flex justify-between items-start group gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[7px] font-semibold text-indigo-500 mb-1">{a.date}</p>
+                            <h4 className="font-semibold text-slate-800 text-[10px] leading-normal break-words whitespace-pre-wrap">
                               {a.taskName}
                             </h4>
                             {a.isLembur && (
-                              <span className="inline-block mt-2 px-2 py-0.5 bg-amber-500 text-white text-[7px] font-black rounded-lg uppercase tracking-widest italic shadow-sm">
+                              <span className="inline-block mt-2 px-2 py-0.5 bg-amber-500 text-white text-[7px] font-semibold rounded-lg shadow-sm">
                                 LEMBUR
                               </span>
                             )}
-                            <p className="text-[9px] text-slate-400 font-bold italic mt-2 bg-slate-50 inline-block px-2 py-1 rounded-lg">
+                            <p className="text-[9px] text-slate-400 font-bold mt-2 bg-slate-50 inline-block px-2 py-1 rounded-lg">
                               {a.volume} {a.satuan}
                             </p>
                           </div>
-                          <div className="flex flex-col gap-2 shrink-0 italic">
+                          <div className="flex flex-col gap-2 shrink-0">
                             {a.isImported && <CheckSquare size={14} className="text-green-500"/>}
 {(user.role === 'pegawai' || filterStaffName === 'Semua') && !a.isImported && (
-  <div className="flex gap-2 italic">
+  <div className="flex gap-2">
     <button 
       onClick={() => {
         setNewAgenda({
@@ -1550,7 +1550,7 @@ const exportRekapKJKTahunan = async () => {
   </div>
 )}
 {a.isImported && (
-  <span className="text-[7px] font-black text-green-500 uppercase italic bg-green-50 px-2 py-1 rounded">
+  <span className="text-[7px] font-semibold text-green-500 bg-green-50 px-2 py-1 rounded">
     Sudah Dilaporkan
   </span>
 )}
@@ -1565,16 +1565,16 @@ const exportRekapKJKTahunan = async () => {
         )}
 
  {activeTab === 'bakira' && (
-  <div className="flex flex-col h-[85vh] animate-in fade-in duration-500 italic p-4 md:p-10">
-    <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 max-w-6xl mx-auto w-full flex flex-col md:flex-row flex-1 overflow-hidden">
+  <div className="flex flex-col h-[85vh] animate-in fade-in duration-500 p-4 md:p-10">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 max-w-6xl mx-auto w-full flex flex-col md:flex-row flex-1 overflow-hidden">
       
       {/* KIRI: TABEL ABSENSI */}
       <div className="flex-[2] flex flex-col overflow-hidden border-r border-slate-100">
         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
-          <h2 className="text-lg font-black uppercase italic tracking-tighter">Absensi BAKIRA</h2>
+          <h2 className="text-lg font-semibold tracking-tight">Absensi BAKIRA</h2>
           <input 
             type="date" 
-            className="p-3 bg-slate-50 border border-slate-200 rounded-2xl font-black text-[10px] italic outline-none"
+            className="p-3 bg-slate-50 border border-slate-200 rounded-2xl font-semibold text-[10px] outline-none"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
           />
@@ -1582,7 +1582,7 @@ const exportRekapKJKTahunan = async () => {
 
         <div className="flex-1 overflow-y-auto">
           <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50 sticky top-0 z-10 text-[9px] font-black text-slate-400 uppercase italic">
+            <thead className="bg-slate-50 sticky top-0 z-10 text-[9px] font-semibold text-slate-400">
               <tr><th className="p-4">No</th><th className="p-4">Pegawai</th><th className="p-4">Status</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -1592,19 +1592,19 @@ const exportRekapKJKTahunan = async () => {
                 .map((u, index) => (
                   <tr key={u.firestoreId} className="hover:bg-slate-50 transition-colors">
                     <td className="p-4 text-[10px] font-bold text-slate-400">{index + 1}</td>
-                    <td className="p-4 font-black uppercase text-xs">{u.name}</td>
+                    <td className="p-4 font-semibold text-xs">{u.name}</td>
                     <td className="p-4 w-40">
                       <select 
                         disabled={!['admin', 'pimpinan'].includes(user.role)}
-                        className={`p-2 rounded-xl text-[10px] font-black w-full outline-none border border-slate-100
-                          ${bakiraDailyLog[u.username] === 'hadir' ? 'bg-green-100 text-green-700' : ''}
-                          ${bakiraDailyLog[u.username] === 'izin' ? 'bg-yellow-100 text-yellow-700' : ''}
-                          ${bakiraDailyLog[u.username] === 'sakit' ? 'bg-blue-100 text-blue-700' : ''}
-                          ${bakiraDailyLog[u.username] === 'tugas' ? 'bg-purple-100 text-purple-700' : ''}
-                          ${bakiraDailyLog[u.username] === 'cuti' ? 'bg-orange-100 text-orange-700' : ''}
-                          ${bakiraDailyLog[u.username] === 'alpa' ? 'bg-red-100 text-red-700' : ''}
-                          ${!bakiraDailyLog[u.username] ? 'bg-slate-100' : ''}
-                        `}
+                        className={`p-2 rounded-xl text-[10px] font-semibold w-full outline-none border border-slate-100
+ ${bakiraDailyLog[u.username] === 'hadir' ? 'bg-green-100 text-green-700' : ''}
+ ${bakiraDailyLog[u.username] === 'izin' ? 'bg-yellow-100 text-yellow-700' : ''}
+ ${bakiraDailyLog[u.username] === 'sakit' ? 'bg-blue-100 text-blue-700' : ''}
+ ${bakiraDailyLog[u.username] === 'tugas' ? 'bg-purple-100 text-purple-700' : ''}
+ ${bakiraDailyLog[u.username] === 'cuti' ? 'bg-orange-100 text-orange-700' : ''}
+ ${bakiraDailyLog[u.username] === 'alpa' ? 'bg-red-100 text-red-700' : ''}
+ ${!bakiraDailyLog[u.username] ? 'bg-slate-100' : ''}
+ `}
                         value={bakiraDailyLog[u.username] || 'hadir'}
                         onChange={(e) => setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value})}
                       >
@@ -1628,43 +1628,43 @@ const exportRekapKJKTahunan = async () => {
         <button 
           disabled={!['admin', 'pimpinan'].includes(user.role)}
           onClick={() => setIsKegiatanAda(!isKegiatanAda)}
-          className={`w-full py-4 rounded-2xl font-black uppercase text-[10px] transition-all shadow-md ${isKegiatanAda ? 'bg-indigo-600 text-white' : 'bg-red-500 text-white'}`}
+          className={`w-full py-4 rounded-2xl font-semibold text-[10px] transition-all shadow-md ${isKegiatanAda ? 'bg-indigo-600 text-white' : 'bg-red-500 text-white'}`}
         >
           {isKegiatanAda ? "Kegiatan Hari Ini: ADA" : "Kegiatan Hari Ini: TIDAK ADA"}
         </button>
 
         <div className="space-y-4">
-          <label className="block text-[9px] font-black text-slate-400 uppercase italic">Link Dokumentasi</label>
+          <label className="block text-[9px] font-semibold text-slate-400">Link Dokumentasi</label>
           <input className="w-full p-4 text-xs rounded-xl border border-slate-200 outline-none" value={bakiraLinkDoc} onChange={e => setBakiraLinkDoc(e.target.value)} />
           {bakiraLinkDoc && (
-            <a href={bakiraLinkDoc.startsWith('http') ? bakiraLinkDoc : `https://${bakiraLinkDoc}`} target="_blank" rel="noopener noreferrer" className="block text-center bg-indigo-600 text-white p-3 rounded-xl font-black text-[10px] uppercase">Buka Link</a>
+            <a href={bakiraLinkDoc.startsWith('http') ? bakiraLinkDoc : `https://${bakiraLinkDoc}`} target="_blank" rel="noopener noreferrer" className="block text-center bg-indigo-600 text-white p-3 rounded-xl font-semibold text-[10px]">Buka Link</a>
           )}
         </div>
 
         <div className="space-y-4">
-          <label className="block text-[9px] font-black text-slate-400 uppercase italic">Link Notulen</label>
+          <label className="block text-[9px] font-semibold text-slate-400">Link Notulen</label>
           <input className="w-full p-4 text-xs rounded-xl border border-slate-200 outline-none" value={bakiraNotulenLink} onChange={e => setBakiraNotulenLink(e.target.value)} />
           {bakiraNotulenLink && (
-            <a href={bakiraNotulenLink.startsWith('http') ? bakiraNotulenLink : `https://${bakiraNotulenLink}`} target="_blank" rel="noopener noreferrer" className="block text-center bg-amber-600 text-white p-3 rounded-xl font-black text-[10px] uppercase">Buka Notulen</a>
+            <a href={bakiraNotulenLink.startsWith('http') ? bakiraNotulenLink : `https://${bakiraNotulenLink}`} target="_blank" rel="noopener noreferrer" className="block text-center bg-amber-600 text-white p-3 rounded-xl font-semibold text-[10px]">Buka Notulen</a>
           )}
         </div>
 
         <div className="mt-auto space-y-4">
           {['admin', 'pimpinan'].includes(user.role) && (
-            <button onClick={handleSaveBakira} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px]">Simpan Perubahan</button>
+            <button onClick={handleSaveBakira} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-semibold text-[10px]">Simpan Perubahan</button>
           )}
           <div className="flex gap-2">
             <select 
               value={exportFormat} 
               onChange={(e) => setExportFormat(e.target.value)}
-              className="bg-white border border-slate-200 px-3 rounded-xl font-black text-[9px] uppercase outline-none"
+              className="bg-white border border-slate-200 px-3 rounded-xl font-semibold text-[9px] outline-none"
             >
               <option value="excel">Excel</option>
               <option value="pdf">PDF</option>
             </select>
             <button 
               onClick={() => exportFormat === 'excel' ? exportPresensiToExcel() : exportPresensiToPDF()} 
-              className="flex-1 bg-green-600 text-white py-3 rounded-xl font-black text-[9px] uppercase shadow-lg active:scale-95 transition-all"
+              className="flex-1 bg-green-600 text-white py-3 rounded-xl font-semibold text-[9px] shadow-lg active:scale-95 transition-all"
             >
               Cetak
             </button>
@@ -1675,15 +1675,15 @@ const exportRekapKJKTahunan = async () => {
   </div>
 )}
         <div className="md:hidden px-6 py-4 bg-white border-b flex items-center justify-center gap-4 z-20">
-            <span className="text-[10px] font-black uppercase text-slate-400 italic">Periode:</span>
-            <select className="bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 font-black text-[11px] text-indigo-600 outline-none shadow-sm cursor-pointer italic" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
+            <span className="text-[10px] font-semibold text-slate-400">Periode:</span>
+            <select className="bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 font-semibold text-[11px] text-indigo-600 outline-none shadow-sm cursor-pointer" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
                 {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
             </select>
-            <select className="bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 font-black text-[11px] text-indigo-600 outline-none shadow-sm cursor-pointer italic" value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}>
+            <select className="bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 font-semibold text-[11px] text-indigo-600 outline-none shadow-sm cursor-pointer" value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}>
                 {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <option key={y} value={y}>{y}</option>)}
             </select>
             {activeTab === 'dashboard' && ['admin', 'pimpinan'].includes(user.role) && (
-              <select className="bg-slate-900 text-white border-none rounded-xl px-2 py-2 font-black text-[10px] shadow-lg outline-none italic" value={periodType} onChange={e => setPeriodType(e.target.value)}>
+              <select className="bg-slate-900 text-white border-none rounded-xl px-2 py-2 font-semibold text-[10px] shadow-lg outline-none" value={periodType} onChange={e => setPeriodType(e.target.value)}>
                  <option value="monthly">BLN</option>
                  <option value="tw1">TW1</option><option value="tw2">TW2</option><option value="tw3">TW3</option><option value="tw4">TW4</option>
                  <option value="yearly">THN</option>
@@ -1693,30 +1693,30 @@ const exportRekapKJKTahunan = async () => {
 
         <div className={`flex-1 overflow-y-auto px-6 md:px-10 pt-8 custom-scrollbar mb-24 md:mb-0 ${activeTab === 'agenda' ? 'hidden' : ''}`}>
           {activeTab === 'dashboard' && (
-            <div className="animate-in fade-in duration-500 italic">
+            <div className="animate-in fade-in duration-500">
               {['admin', 'pimpinan'].includes(user.role) ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-10">
                   {dashboardStats.staffSummary.map((s, i) => (
-                    <div key={i} className="bg-slate-900 p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] border border-slate-800 shadow-xl italic flex flex-col items-center text-center group transition-all hover:border-indigo-500/50">
-                      <div className="w-20 h-20 md:w-24 md:h-24 rounded-[2rem] overflow-hidden mb-6 border-4 border-slate-800 shadow-lg bg-slate-800 flex-shrink-0">
+                    <div key={i} className="bg-slate-900 p-8 md:p-10 rounded-2xl md:rounded-2xl border border-slate-800 shadow-md flex flex-col items-center text-center group transition-all hover:border-indigo-500/50">
+                      <div className="w-20 h-20 md:w-24 md:h-24 rounded-xl overflow-hidden mb-6 border-4 border-slate-800 shadow-lg bg-slate-800 flex-shrink-0">
                         {s.photoURL ? ( <img src={s.photoURL} alt={s.name} className="w-full h-full object-cover" />
                         ) : ( <div className="w-full h-full flex items-center justify-center bg-indigo-500/10 text-indigo-400"><User size={40} /></div> )}
                       </div>
-                      <p className="font-black text-xl text-white uppercase italic mb-1 tracking-tighter text-center">{s.name}</p>
+                      <p className="font-semibold text-xl text-white mb-1 tracking-tight text-center">{s.name}</p>
                       
                       {/* MODIFIKASI: Keterangan Status Penilaian */}
                       <div className="flex flex-col gap-2 items-center mb-4">
-                        <span className={`text-[9px] font-black uppercase px-4 py-1.5 rounded-full ${s.status === 'Selesai' ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-400'}`}>{s.status}</span>
+                        <span className={`text-[9px] font-semibold px-4 py-1.5 rounded-full ${s.status === 'Selesai' ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-400'}`}>{s.status}</span>
                         {s.pimpinanSelesai && (
-                           <span className="text-[7px] font-black uppercase px-3 py-1 bg-indigo-500 text-white rounded-full animate-pulse">PENILAIAN PIMPINAN SELESAI</span>
+                           <span className="text-[7px] font-semibold px-3 py-1 bg-indigo-500 text-white rounded-full animate-pulse">Penilaian Pimpinan Selesai</span>
                         )}
                       </div>
                       
                       {/* MODIFIKASI: PROGRESS BAR (KHUSUS KETUA TIM) */}
                       <div className="w-full px-4 mb-6">
                          <div className="flex justify-between items-center mb-2">
-                           <p className="text-[8px] font-black text-slate-500 uppercase italic">Progres Ketua Tim</p>
-                           <p className="text-[8px] font-black text-indigo-400 italic">{s.progressPercent}%</p>
+                           <p className="text-[8px] font-semibold text-slate-500">Progres Ketua Tim</p>
+                           <p className="text-[8px] font-semibold text-indigo-400">{s.progressPercent}%</p>
                          </div>
                          <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
                            <div 
@@ -1728,12 +1728,12 @@ const exportRekapKJKTahunan = async () => {
 
                       <div className="w-full grid grid-cols-2 gap-4 border-t border-slate-800 pt-6 mt-auto">
                         <div className="text-center">
-                            <p className="text-[9px] font-black text-slate-500 uppercase italic mb-1">CKP ({periodType})</p>
-                            <p className="text-3xl font-black text-white italic">{s.nilaiAkhir}</p>
+                            <p className="text-[9px] font-semibold text-slate-500 mb-1">CKP ({periodType})</p>
+                            <p className="text-3xl font-semibold text-white">{s.nilaiAkhir}</p>
                         </div>
                         <div className="text-center border-l border-slate-800">
-                            <p className="text-[9px] font-black text-slate-500 uppercase italic mb-1">KJK ({periodType})</p>
-                            <p className={`text-[11px] font-black italic mt-2 uppercase ${s.kjkMins === 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            <p className="text-[9px] font-semibold text-slate-500 mb-1">KJK ({periodType})</p>
+                            <p className={`text-[11px] font-semibold mt-2 ${s.kjkMins === 0 ? 'text-green-400' : 'text-red-400'}`}>
                                 {s.kjkMins === 0 ? "Sempurna 🌟" : formatKJKDisplay(s.kjkValue)}
                             </p>
                         </div>
@@ -1742,53 +1742,53 @@ const exportRekapKJKTahunan = async () => {
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col gap-8 italic mb-10">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 italic">
-                    <div className="bg-slate-900 p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl border border-slate-800 flex flex-col items-center text-center">
-                      <div className="bg-amber-500/10 p-5 rounded-3xl mb-8"><TrendingUp size={32} className="text-amber-500"/></div>
-                      <p className="text-slate-400 text-[10px] font-black uppercase mb-2 tracking-[0.2em] italic text-center">Bulan Ini: {dashboardStats.isFinal ? "Nilai Akhir" : "Estimasi Nilai"}</p>
-                      <p className="text-6xl md:text-7xl font-black text-amber-500 tracking-tighter italic mb-8 text-center">{dashboardStats.myNilaiAkhir}</p>
-                      <div className="w-full border-t border-slate-800 pt-8 mt-auto flex flex-col items-center italic text-center text-slate-500">
-                         <p className="text-[9px] font-black uppercase italic tracking-widest">{dashboardStats.myStatus}</p>
+                <div className="flex flex-col gap-8 mb-10">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="bg-slate-900 p-8 md:p-10 rounded-2xl md:rounded-2xl shadow-md border border-slate-800 flex flex-col items-center text-center">
+                      <div className="bg-amber-500/10 p-5 rounded-xl mb-8"><TrendingUp size={32} className="text-amber-500"/></div>
+                      <p className="text-slate-400 text-[10px] font-semibold mb-2 tracking-[0.2em] text-center">Bulan Ini: {dashboardStats.isFinal ? "Nilai Akhir" : "Estimasi Nilai"}</p>
+                      <p className="text-6xl md:text-7xl font-semibold text-amber-500 tracking-tight mb-8 text-center">{dashboardStats.myNilaiAkhir}</p>
+                      <div className="w-full border-t border-slate-800 pt-8 mt-auto flex flex-col items-center text-center text-slate-500">
+                         <p className="text-[9px] font-semibold">{dashboardStats.myStatus}</p>
                          
                          {/* MODIFIKASI: LABEL KIRIM CKP UNTUK DINILAI */}
                          {dashboardStats.isAnyPending && (
                            <button 
                             onClick={handleSignalSelesai}
-                            className="mt-4 flex items-center gap-3 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg transition-all active:scale-95 italic"
+                            className="mt-4 flex items-center gap-3 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-2xl font-semibold text-[10px] shadow-lg transition-all active:scale-95"
                            >
                             <Send size={14}/> KIRIM CKP UNTUK DINILAI
                            </button>
                          )}
                       </div>
                     </div>
-                    <div className="bg-slate-900 p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl border border-slate-800 flex flex-col items-center text-center">
-                      <div className="bg-indigo-500/10 p-5 rounded-3xl mb-8"><Clock size={32} className="text-indigo-400"/></div>
-                      <p className="text-slate-400 text-[10px] font-black uppercase mb-2 tracking-[0.2em] italic text-center">Bulan Ini: Kedisiplinan (KJK)</p>
-                      <p className={`text-4xl font-black tracking-tighter italic mb-4 text-center uppercase ${timeToMinutes(dashboardStats.myKJK) === 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    <div className="bg-slate-900 p-8 md:p-10 rounded-2xl md:rounded-2xl shadow-md border border-slate-800 flex flex-col items-center text-center">
+                      <div className="bg-indigo-500/10 p-5 rounded-xl mb-8"><Clock size={32} className="text-indigo-400"/></div>
+                      <p className="text-slate-400 text-[10px] font-semibold mb-2 tracking-[0.2em] text-center">Bulan Ini: Kedisiplinan (KJK)</p>
+                      <p className={`text-4xl font-semibold tracking-tight mb-4 text-center ${timeToMinutes(dashboardStats.myKJK) === 0 ? 'text-green-400' : 'text-red-400'}`}>
                           {formatKJKDisplay(dashboardStats.myKJK)}
                       </p>
-                      <div className="w-full border-t border-slate-800 pt-8 mt-auto italic text-center">
-                         <p className="text-[10px] font-black text-amber-400 uppercase italic tracking-tighter leading-tight">
+                      <div className="w-full border-t border-slate-800 pt-8 mt-auto text-center">
+                         <p className="text-[10px] font-semibold text-amber-400 tracking-tight leading-tight">
                            {timeToMinutes(dashboardStats.myKJK) === 0 ? getMotivation(user.name) : "Ayo tingkatkan kedisiplinan anda!"}
                          </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-indigo-600 p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl text-white flex flex-col md:flex-row items-center justify-between gap-8 border-b-8 border-indigo-800">
-                    <div className="text-center md:text-left italic">
-                        <p className="text-indigo-200 text-[10px] font-black uppercase mb-1 tracking-widest">AKUMULASI KINERJA TAHUNAN</p>
-                        <h2 className="text-3xl font-black italic tracking-tighter uppercase leading-none">REKAP TAHUN {selectedYear}</h2>
+                  <div className="bg-indigo-600 p-10 rounded-2xl md:rounded-2xl shadow-md text-white flex flex-col md:flex-row items-center justify-between gap-8 border-b-8 border-indigo-800">
+                    <div className="text-center md:text-left">
+                        <p className="text-indigo-200 text-[10px] font-semibold mb-1">Akumulasi Kinerja Tahunan</p>
+                        <h2 className="text-3xl font-semibold tracking-tight leading-none">REKAP TAHUN {selectedYear}</h2>
                     </div>
-                    <div className="flex gap-12 text-center italic">
+                    <div className="flex gap-12 text-center">
                         <div>
-                           <p className="text-indigo-200 text-[8px] font-black uppercase mb-1">RATA-RATA CKP</p>
-                           <p className="text-4xl font-black tracking-tighter">{dashboardStats.myYearly}</p>
+                           <p className="text-indigo-200 text-[8px] font-semibold mb-1">RATA-RATA CKP</p>
+                           <p className="text-4xl font-semibold tracking-tight">{dashboardStats.myYearly}</p>
                         </div>
                         <div className="border-l border-indigo-500 pl-12">
-                           <p className="text-indigo-200 text-[8px] font-black uppercase mb-1">TOTAL KJK TAHUNAN</p>
-                           <p className={`text-2xl font-black italic mt-1 ${timeToMinutes(dashboardStats.myYearlyKJK) === 0 ? 'text-green-300' : 'text-red-300'}`}>
+                           <p className="text-indigo-200 text-[8px] font-semibold mb-1">Total KJK Tahunan</p>
+                           <p className={`text-2xl font-semibold mt-1 ${timeToMinutes(dashboardStats.myYearlyKJK) === 0 ? 'text-green-300' : 'text-red-300'}`}>
                               {formatKJKDisplay(dashboardStats.myYearlyKJK)}
                            </p>
                         </div>
@@ -1802,53 +1802,53 @@ const exportRekapKJKTahunan = async () => {
          {/* === START: MODUL PEGAWAI PRIMA (HANYA BAGIAN INI YANG DIUBAH) === */}
 {/* === MODUL PEGAWAI PRIMA (START) === */}
 {activeTab === 'prima' && (
-  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 italic space-y-10 pb-20">
+  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-10 pb-20">
     
     {/* 1. BAGIAN ADMIN & PIMPINAN (TOP 3 & MONITORING) */}
     {['admin', 'pimpinan'].includes(user.role) && (
-      <div className="bg-slate-900 p-8 md:p-12 rounded-[3rem] md:rounded-[4rem] text-white shadow-2xl border border-slate-800 relative overflow-hidden italic">
+      <div className="bg-slate-900 p-8 md:p-12 rounded-xl md:rounded-2xl text-white shadow-md border border-slate-800 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 blur-[100px] -z-10"></div>
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12 italic text-center md:text-left">
-          <div className="italic text-center md:text-left">
-            <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter flex items-center justify-center md:justify-start gap-4 italic">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12 text-center md:text-left">
+          <div className="text-center md:text-left">
+            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight flex items-center justify-center md:justify-start gap-4">
               <Trophy className="text-amber-500" size={32} /> 
               Top 3 Kandidat Pegawai prima
             </h2>
-            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-2 italic">{(voteWindow.period || currentTW).toUpperCase()} {voteWindow.evalYear || selectedYear}</p>
+            <p className="text-slate-400 text-[10px] font-semibold mt-2">{(voteWindow.period || currentTW).toUpperCase()} {voteWindow.evalYear || selectedYear}</p>
           </div>
 
           {user.role === 'admin' && (
             <div className="flex flex-wrap justify-center gap-3">
-              <button onClick={exportKertasKerjaPrima} className="flex items-center gap-3 bg-green-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic"><FileSpreadsheet size={16}/> Kertas Kerja</button>
+              <button onClick={exportKertasKerjaPrima} className="flex items-center gap-3 bg-green-600 text-white px-6 py-3 rounded-2xl font-semibold text-[10px] shadow-lg"><FileSpreadsheet size={16}/> Kertas Kerja</button>
               {/* Tombol Publish - Muncul jika belum dipublish */}
 {!publishStatus[`${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`]?.isPublished ? (
-  <button onClick={handlePublish} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic">
+  <button onClick={handlePublish} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-semibold text-[10px] shadow-lg">
     <Megaphone size={16}/> Publish Pengumuman
   </button>
 ) : (
   /* Tombol Batal Publish - Muncul jika sudah dipublish */
-  <button onClick={handleUnpublish} className="flex items-center gap-3 bg-red-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg italic">
+  <button onClick={handleUnpublish} className="flex items-center gap-3 bg-red-600 text-white px-6 py-3 rounded-2xl font-semibold text-[10px] shadow-lg">
     <X size={16}/> Batalkan Pengumuman
   </button>
 )}
-              <button onClick={() => handleResetVotes()} className="flex items-center gap-3 bg-red-50/10 text-red-500 px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-red-500 hover:text-white transition-all italic border border-red-500/20"><Trash2 size={16}/> Reset Voting</button>
+              <button onClick={() => handleResetVotes()} className="flex items-center gap-3 bg-red-50/10 text-red-500 px-6 py-3 rounded-2xl font-semibold text-[10px] hover:bg-red-500 hover:text-white transition-all border border-red-500/20"><Trash2 size={16}/> Reset Voting</button>
             </div>
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 italic mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
           {leaderboardData.slice(0, 3).map((staff, index) => {
             const isWinner = winners.some(w => w.username === staff.username && w.period === (voteWindow.period || currentTW) && w.year === (voteWindow.evalYear || selectedYear));
             return (
-              <div key={index} className={`relative p-8 rounded-[2.5rem] border-2 flex flex-col items-center text-center transition-all italic ${isWinner ? 'border-amber-500 bg-slate-800/50 shadow-[0_0_30px_rgba(245,158,11,0.1)]' : 'border-slate-800 bg-slate-900/50'}`}>
+              <div key={index} className={`relative p-8 rounded-2xl border-2 flex flex-col items-center text-center transition-all ${isWinner ? 'border-amber-500 bg-slate-800/50 shadow-[0_0_30px_rgba(245,158,11,0.1)]' : 'border-slate-800 bg-slate-900/50'}`}>
                 {index === 0 && <div className="absolute -top-4 -right-4 bg-amber-500 text-slate-900 w-12 h-12 rounded-full flex items-center justify-center shadow-lg transform rotate-12"><Star size={24} fill="currentColor"/></div>}
-                <div className="w-24 h-24 rounded-[2rem] overflow-hidden mb-6 border-4 border-slate-800 shadow-xl bg-slate-800">
+                <div className="w-24 h-24 rounded-xl overflow-hidden mb-6 border-4 border-slate-800 shadow-md bg-slate-800">
                   {staff.photoURL ? <img src={staff.photoURL} className="w-full h-full object-cover" alt={staff.name} /> : <div className="w-full h-full flex items-center justify-center text-indigo-400"><User size={40}/></div>}
                 </div>
-                <p className="font-black text-white uppercase italic text-sm tracking-tighter mb-1">{staff.name}</p>
-                <p className="text-indigo-400 font-black text-3xl italic mb-6 tracking-tighter">{staff.finalScore}</p>
+                <p className="font-semibold text-white text-sm tracking-tight mb-1">{staff.name}</p>
+                <p className="text-indigo-400 font-semibold text-3xl mb-6 tracking-tight">{staff.finalScore}</p>
                 {user.role === 'pimpinan' && (
-                  <button onClick={() => handleSetWinner(staff)} className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all italic ${isWinner ? 'bg-amber-500 text-slate-900 shadow-lg' : 'bg-white text-slate-900 border border-slate-200 hover:bg-amber-500 hover:text-slate-900'}`}>
+                  <button onClick={() => handleSetWinner(staff)} className={`w-full py-4 rounded-2xl font-semibold text-[10px] transition-all ${isWinner ? 'bg-amber-500 text-slate-900 shadow-lg' : 'bg-white text-slate-900 border border-slate-200 hover:bg-amber-500 hover:text-slate-900'}`}>
                     {isWinner ? "🏆 PEMENANG TERPILIH" : "TETAPKAN PEMENANG"}
                   </button>
                 )}
@@ -1859,18 +1859,18 @@ const exportRekapKJKTahunan = async () => {
 
         {/* MONITORING PARTISIPASI (KHUSUS ADMIN) */}
         {user.role === 'admin' && (
-          <div className="mt-12 pt-12 border-t border-slate-800 italic">
-            <div className="flex items-center gap-4 mb-8 italic">
+          <div className="mt-12 pt-12 border-t border-slate-800">
+            <div className="flex items-center gap-4 mb-8">
               <ClipboardCheck size={24} className="text-indigo-400" />
-              <h3 className="font-black uppercase text-sm tracking-tighter italic">Monitoring Partisipasi</h3>
+              <h3 className="font-semibold text-sm tracking-tight">Monitoring Partisipasi</h3>
             </div>
-            <div className="overflow-x-auto italic">
-              <table className="w-full text-left italic border-collapse">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-700 text-[9px] font-black text-slate-500 uppercase tracking-widest italic">
-                    <th className="pb-4 italic">Nama Pegawai</th>
-                    <th className="pb-4 text-center italic">Progres Voting</th>
-                    <th className="pb-4 text-center italic">Status</th>
+                  <tr className="border-b border-slate-700 text-[9px] font-semibold text-slate-500">
+                    <th className="pb-4">Nama Pegawai</th>
+                    <th className="pb-4 text-center">Progres Voting</th>
+                    <th className="pb-4 text-center">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1879,16 +1879,16 @@ const exportRekapKJKTahunan = async () => {
                     const totalRekan = users.filter(u => !['admin', 'pimpinan'].includes(u.role)).length - 1;
                     const isComplete = votesDone >= totalRekan;
                     return (
-                      <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/20 italic">
-                        <td className="py-4 font-black uppercase text-[10px] italic">{staff.name}</td>
-                        <td className="py-4 text-center italic font-bold text-slate-400 text-[10px]">{votesDone} / {totalRekan} Rekan</td>
-                        <td className="py-4 text-center italic">
+                      <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/20">
+                        <td className="py-4 font-semibold text-[10px]">{staff.name}</td>
+                        <td className="py-4 text-center font-bold text-slate-400 text-[10px]">{votesDone} / {totalRekan} Rekan</td>
+                        <td className="py-4 text-center">
                           <div className="flex flex-col items-center gap-2">
-                            <span className={`text-[8px] font-black uppercase px-3 py-1 rounded-full ${isComplete ? 'bg-green-500/10 text-green-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                            <span className={`text-[8px] font-semibold px-3 py-1 rounded-full ${isComplete ? 'bg-green-500/10 text-green-400' : 'bg-amber-500/10 text-amber-400'}`}>
                               {isComplete ? "Lengkap" : "Proses"}
                             </span>
                             {user.role === 'admin' && votesDone > 0 && (
-                              <button onClick={() => handleResetVotes(null, staff.username)} className="text-[7px] font-black text-red-500 hover:text-red-700 underline uppercase italic">Reset Penilaian Saya</button>
+                              <button onClick={() => handleResetVotes(null, staff.username)} className="text-[7px] font-semibold text-red-500 hover:text-red-700 underline">Reset Penilaian Saya</button>
                             )}
                           </div>
                         </td>
@@ -1905,23 +1905,23 @@ const exportRekapKJKTahunan = async () => {
 
     {/* 2. BAGIAN PEGAWAI (VOTING / PENGUMUMAN) */}
     {user.role !== 'admin' && user.role !== 'pimpinan' && (
-      <div className="bg-white p-8 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] shadow-sm border border-slate-100 italic">
+      <div className="bg-white p-8 md:p-12 rounded-2xl md:rounded-2xl shadow-sm border border-slate-100">
         {publishStatus[`${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`]?.isPublished ? (
           <div className="animate-reveal-winner py-10 text-center">
             <Trophy className="mx-auto text-amber-500 mb-8" size={80} />
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-16 italic">Penghargaan Atas Dedikasi & Integritas Tinggi</p>
+            <p className="text-[10px] font-semibold text-slate-400 tracking-[0.3em] mb-16">Penghargaan Atas Dedikasi & Integritas Tinggi</p>
             {winners.filter(w => w.period === (voteWindow.period || currentTW) && w.year === (voteWindow.evalYear || selectedYear)).map((w, idx) => (
               <div key={idx} className="relative group max-w-sm mx-auto mb-20">
-                <div className="shine-effect animate-glow-pulse bg-slate-900 p-12 rounded-[4rem] text-white italic border border-amber-500/30 relative z-10 shadow-2xl">
+                <div className="shine-effect animate-glow-pulse bg-slate-900 p-12 rounded-2xl text-white border border-amber-500/30 relative z-10 shadow-md">
                   <div className="relative w-40 h-40 rounded-full overflow-hidden mx-auto mb-8 border-4 border-amber-500 bg-slate-800">
                     {w.photoURL ? <img src={w.photoURL} alt={w.name} className="w-full h-full object-cover"/> : <User size={60} className="mx-auto mt-10 text-slate-600"/>}
                   </div>
-                  <p className="font-black uppercase text-2xl italic tracking-tighter leading-tight mb-2">{w.name}</p>
-                  <p className="text-indigo-400 font-black uppercase text-[10px] tracking-[0.2em] mb-8">{w.jabatan}</p>
+                  <p className="font-semibold text-2xl tracking-tight leading-tight mb-2">{w.name}</p>
+                  <p className="text-indigo-400 font-semibold text-[10px] tracking-[0.2em] mb-8">{w.jabatan}</p>
                 </div>
                 <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-20 w-max">
-                  <div className="bg-gradient-to-r from-amber-300 via-amber-500 to-amber-300 px-10 py-4 rounded-2xl shadow-xl border-2 border-white/50">
-                    <span className="text-slate-900 font-black uppercase italic text-[11px] tracking-[0.2em]">🏆 PEGAWAI PRIMA {(w.period || currentTW).toUpperCase()} 🏆</span>
+                  <div className="bg-gradient-to-r from-amber-300 via-amber-500 to-amber-300 px-10 py-4 rounded-2xl shadow-md border-2 border-white/50">
+                    <span className="text-slate-900 font-semibold text-[11px] tracking-[0.2em]">🏆 PEGAWAI PRIMA {(w.period || currentTW).toUpperCase()} 🏆</span>
                   </div>
                 </div>
               </div>
@@ -1929,26 +1929,26 @@ const exportRekapKJKTahunan = async () => {
           </div>
         ) : (voteWindow.active || ['admin', 'pimpinan'].includes(user.role)) ? (
           <>
-            <div className="flex items-center gap-6 mb-12 italic text-left">
-              <div className="bg-indigo-50 p-5 rounded-[2rem] text-indigo-600"><Award size={40}/></div>
-              <div className="italic">
-                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">Penilaian Pegawai Prima {voteWindow.period.toUpperCase()} {voteWindow.evalYear}</h2>
-                <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1 italic">Beri Nilai Objektif Rekan Kerja Anda</p>
+            <div className="flex items-center gap-6 mb-12 text-left">
+              <div className="bg-indigo-50 p-5 rounded-xl text-indigo-600"><Award size={40}/></div>
+              <div className="">
+                <h2 className="text-2xl font-semibold text-slate-900 tracking-tight">Penilaian Pegawai Prima {voteWindow.period.toUpperCase()} {voteWindow.evalYear}</h2>
+                <p className="text-slate-400 text-[10px] font-semibold mt-1">Beri Nilai Objektif Rekan Kerja Anda</p>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 italic">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {users.filter(u => u.username !== user.username && !['admin', 'pimpinan'].includes(u.role) && (u.status || 'aktif').toLowerCase() !== 'nonaktif').map((staff, idx) => {
                 const hasVoted = nilai360.some(v => v.reviewerId === user.username && v.targetUserId === staff.username && v.period === voteWindow.period && v.year === voteWindow.evalYear);
                 return (
-                  <div key={idx} className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 flex flex-col items-center text-center italic">
-                    <div className="w-20 h-20 rounded-[1.5rem] overflow-hidden mb-6 bg-white border">
+                  <div key={idx} className="bg-slate-50 p-8 rounded-2xl border border-slate-100 flex flex-col items-center text-center">
+                    <div className="w-20 h-20 rounded-lg overflow-hidden mb-6 bg-white border">
                       {staff.photoURL ? <img src={staff.photoURL} alt={staff.name} className="w-full h-full object-cover" /> : <User size={32} className="text-slate-300 mt-6"/>}
                     </div>
-                    <p className="font-black text-slate-800 uppercase italic text-xs mb-6">{staff.name}</p>
+                    <p className="font-semibold text-slate-800 text-xs mb-6">{staff.name}</p>
                     {hasVoted ? (
-                      <div className="w-full py-4 bg-green-50 text-green-600 rounded-2xl font-black text-[10px] uppercase italic text-center">Selesai</div>
+                      <div className="w-full py-4 bg-green-50 text-green-600 rounded-2xl font-semibold text-[10px] text-center">Selesai</div>
                     ) : (
-                      <button onClick={() => { setSelectedStaffForVote(staff); setshowPenilaianModal(true); }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase italic">Nilai Rekan</button>
+                      <button onClick={() => { setSelectedStaffForVote(staff); setshowPenilaianModal(true); }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-semibold text-[10px]">Nilai Rekan</button>
                     )}
                   </div>
                 );
@@ -1956,10 +1956,10 @@ const exportRekapKJKTahunan = async () => {
             </div>
           </>
         ) : (
-  <div className="flex flex-col items-center italic py-20 text-center">
+  <div className="flex flex-col items-center py-20 text-center">
     <Clock size={64} className="text-indigo-400 mb-8 animate-pulse"/>
-    <h3 className="text-2xl font-black uppercase text-indigo-600 italic">Masa Voting Ditutup</h3>
-    <p className="text-[10px] text-slate-400 font-bold uppercase mt-2">Gunakan pilihan Bulan/Tahun di atas untuk melihat rekapitulasi riwayat nilai triwulan sebelumnya</p>
+    <h3 className="text-2xl font-semibold text-indigo-600">Masa Voting Ditutup</h3>
+    <p className="text-[10px] text-slate-400 font-bold mt-2">Gunakan pilihan Bulan/Tahun di atas untuk melihat rekapitulasi riwayat nilai triwulan sebelumnya</p>
   </div>
 )}
       </div>
@@ -1969,32 +1969,32 @@ const exportRekapKJKTahunan = async () => {
 {/* === MODUL PEGAWAI PRIMA (END) - SEKARANG TERKUNCI RAPAT === */}
 
           {activeTab === 'kjk_management' && user.role === 'admin' && (
-            <div className="animate-in slide-in-from-bottom-4 duration-500 italic mb-10">
-                <div className="bg-white rounded-[2.5rem] shadow-sm border p-8 md:p-12 mb-8 text-center md:text-left">
-                    <div className="flex flex-col md:flex-row items-center gap-8 italic">
-                        <div className="w-24 h-24 rounded-3xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-inner">
+            <div className="animate-in slide-in-from-bottom-4 duration-500 mb-10">
+                <div className="bg-white rounded-2xl shadow-sm border p-8 md:p-12 mb-8 text-center md:text-left">
+                    <div className="flex flex-col md:flex-row items-center gap-8">
+                        <div className="w-24 h-24 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-inner">
                             <FileSpreadsheet size={40} />
                         </div>
-                        <div className="flex-1 italic">
-                            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter mb-2 italic">Upload Data KJK Bulanan</h2>
-                            <p className="text-[11px] text-slate-400 font-bold uppercase italic mb-6">Import data Kekurangan Jam Kerja pegawai dari Excel (Format: No | Nama | KJK hh:mm)</p>
-                            <label className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] cursor-pointer inline-flex items-center gap-3 transition-all active:scale-95 shadow-lg italic">
+                        <div className="flex-1">
+                            <h2 className="text-2xl font-semibold text-slate-800 tracking-tight mb-2">Upload Data KJK Bulanan</h2>
+                            <p className="text-[11px] text-slate-400 font-bold mb-6">Import data Kekurangan Jam Kerja pegawai dari Excel (Format: No | Nama | KJK hh:mm)</p>
+                            <label className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-semibold text-[10px] cursor-pointer inline-flex items-center gap-3 transition-all active:scale-95 shadow-lg">
                                 <Plus size={16}/> Pilih File Excel
                                 <input type="file" accept=".xlsx, .xls" onChange={handleUploadKJK} className="hidden" />
                             </label>
             <button 
   type="button"
   onClick={exportRekapKJKTahunan}
-  className="bg-green-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] inline-flex items-center gap-3 transition-all active:scale-95 shadow-lg italic ml-3"
+  className="bg-green-600 text-white px-8 py-4 rounded-2xl font-semibold text-[10px] inline-flex items-center gap-3 transition-all active:scale-95 shadow-lg ml-3"
 >
   <Download size={16}/> Cetak Rekap KJK Tahunan
 </button>
                         </div>
                     </div>
                 </div>
-                <div className="hidden md:block bg-white rounded-[2.5rem] shadow-sm border overflow-hidden p-0 italic">
-                    <table className="w-full text-left italic text-xs border-collapse">
-                        <thead className="bg-slate-100 border-b text-[9px] font-black text-slate-500 uppercase tracking-widest italic sticky top-0 z-20">
+                <div className="hidden md:block bg-white rounded-2xl shadow-sm border overflow-hidden p-0">
+                    <table className="w-full text-left text-xs border-collapse">
+                        <thead className="bg-slate-100 border-b text-[9px] font-semibold text-slate-500 sticky top-0 z-20">
                             <tr>
                                 <th className="p-4 w-12 text-center">No</th>
                                 <th className="p-4">Nama Pegawai</th>
@@ -2003,21 +2003,21 @@ const exportRekapKJKTahunan = async () => {
                                 <th className="p-4 text-center">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 italic">
+                        <tbody className="divide-y divide-slate-100">
                             {kjkData.filter(k => k.month === selectedMonth && k.year === selectedYear).length === 0 ? (
-                                <tr><td colSpan="5" className="p-10 text-center text-slate-400 font-bold uppercase text-[10px] italic">Belum ada data KJK terupload periode ini</td></tr>
+                                <tr><td colSpan="5" className="p-10 text-center text-slate-400 font-bold text-[10px]">Belum ada data KJK terupload periode ini</td></tr>
                             ) : (
                                 kjkData.filter(k => k.month === selectedMonth && k.year === selectedYear).map((k, idx) => (
-                                    <tr key={k.id} className="hover:bg-slate-50 italic">
+                                    <tr key={k.id} className="hover:bg-slate-50">
                                         <td className="p-4 font-bold text-slate-400 text-center">{idx + 1}</td>
-                                        <td className="p-4 font-black text-slate-800 uppercase italic">{k.nama}</td>
-                                        <td className="p-4 text-center font-bold text-slate-500 uppercase italic">{selectedMonth} / {selectedYear}</td>
+                                        <td className="p-4 font-semibold text-slate-800">{k.nama}</td>
+                                        <td className="p-4 text-center font-bold text-slate-500">{selectedMonth} / {selectedYear}</td>
                                         <td className="p-4 text-center">
-                                            <span className={`font-black uppercase text-[10px] px-3 py-1 rounded-full ${timeToMinutes(k.kjkValue) === 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                                            <span className={`font-semibold text-[10px] px-3 py-1 rounded-full ${timeToMinutes(k.kjkValue) === 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
                                                 {formatKJKDisplay(k.kjkValue)}
                                             </span>
                                         </td>
-                                        <td className="p-4 text-center italic">
+                                        <td className="p-4 text-center">
                                             <button onClick={() => deleteDoc(doc(db, "kjk", k.id))} className="text-red-400 hover:text-red-600 transition-all"><Trash2 size={16}/></button>
                                         </td>
                                     </tr>
@@ -2028,11 +2028,11 @@ const exportRekapKJKTahunan = async () => {
                 </div>
                 <div className="md:hidden space-y-4">
                     {kjkData.filter(k => k.month === selectedMonth && k.year === selectedYear).map((k, idx) => (
-                        <div key={k.id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 flex justify-between items-center italic">
-                            <div className="italic">
-                                <p className="text-[10px] font-black text-indigo-600 uppercase italic mb-1">#{idx+1} - {selectedMonth}/{selectedYear}</p>
-                                <h3 className="font-black text-slate-800 uppercase text-xs italic">{k.nama}</h3>
-                                <p className={`text-[10px] font-black uppercase mt-2 italic ${timeToMinutes(k.kjkValue) === 0 ? 'text-green-600' : 'text-red-400'}`}>
+                        <div key={k.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center">
+                            <div className="">
+                                <p className="text-[10px] font-semibold text-indigo-600 mb-1">#{idx+1} - {selectedMonth}/{selectedYear}</p>
+                                <h3 className="font-semibold text-slate-800 text-xs">{k.nama}</h3>
+                                <p className={`text-[10px] font-semibold mt-2 ${timeToMinutes(k.kjkValue) === 0 ? 'text-green-600' : 'text-red-400'}`}>
                                     KJK: {formatKJKDisplay(k.kjkValue)}
                                 </p>
                             </div>
@@ -2044,18 +2044,18 @@ const exportRekapKJKTahunan = async () => {
           )}
 
           {activeTab === 'bukti_dukung' && (
-            <div className="animate-in slide-in-from-bottom-4 duration-500 italic mb-10">
+            <div className="animate-in slide-in-from-bottom-4 duration-500 mb-10">
                 {['admin', 'pimpinan', 'ketua'].includes(user.role) && (
-                  <div className="md:hidden flex flex-col gap-3 mb-6 not-italic">
-                    <select className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-black text-[12px] text-slate-600 shadow-sm italic outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
+                  <div className="md:hidden flex flex-col gap-3 mb-6">
+                    <select className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-semibold text-[12px] text-slate-600 shadow-sm outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
                       <option value="Semua">Data Saya</option>
                      {users.filter(u => !['admin', 'pimpinan'].includes(u.role) && u.status !== 'nonaktif' && u.status !== 'Nonaktif').map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                     </select>
                   </div>
                 )}
-                <div className="hidden md:block bg-white rounded-[2.5rem] shadow-sm border overflow-hidden p-0 italic">
-                  <table className="w-full text-left italic text-xs border-collapse">
-                    <thead className="bg-slate-100 border-b text-[9px] font-black text-slate-500 uppercase tracking-widest italic sticky top-0 z-20">
+                <div className="hidden md:block bg-white rounded-2xl shadow-sm border overflow-hidden p-0">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-slate-100 border-b text-[9px] font-semibold text-slate-500 sticky top-0 z-20">
                       <tr>
                         <th className="p-4 w-12 text-center">No</th>
                         <th className="p-4">Uraian Pekerjaan</th>
@@ -2063,25 +2063,25 @@ const exportRekapKJKTahunan = async () => {
                         <th className="p-4 text-center">Link Bukti Dukung (Google Drive)</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 italic">
+                    <tbody className="divide-y divide-slate-100">
                       {currentFilteredReports.length === 0 ? (
-                        <tr><td colSpan="4" className="p-10 text-center text-slate-400 font-bold uppercase text-[10px] italic">Tidak ada data untuk periode ini</td></tr>
+                        <tr><td colSpan="4" className="p-10 text-center text-slate-400 font-bold text-[10px]">Tidak ada data untuk periode ini</td></tr>
                       ) : (
                         currentFilteredReports.map((r, idx) => (
-                          <tr key={r.id} className="hover:bg-slate-50 transition-all italic group">
+                          <tr key={r.id} className="hover:bg-slate-50 transition-all group">
                             <td className="p-4 font-bold text-slate-400 text-center">{idx + 1}</td>
-                            <td className="p-4"><p className="font-black text-[12px] text-slate-800 uppercase tracking-tight leading-none mb-1 italic">{r.title}</p><span className="text-indigo-600 text-[8px] font-black uppercase bg-indigo-50 px-2 py-0.5 rounded-lg italic">{r.userName}</span></td>
+                            <td className="p-4"><p className="font-semibold text-[12px] text-slate-800 tracking-tight leading-none mb-1">{r.title}</p><span className="text-indigo-600 text-[8px] font-semibold bg-indigo-50 px-2 py-0.5 rounded-lg">{r.userName}</span></td>
                             <td className="p-4 text-center">
-                               <span className={`text-[8px] font-black uppercase px-2 py-1 rounded-md ${r.status === 'selesai' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>{r.status.replace('_', ' ')}</span>
+                               <span className={`text-[8px] font-semibold px-2 py-1 rounded-md ${r.status === 'selesai' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>{r.status.replace('_', ' ')}</span>
                             </td>
                             <td className="p-4">
-                               <div className="flex flex-col md:flex-row items-center gap-2 italic">
+                               <div className="flex flex-col md:flex-row items-center gap-2">
                                   {r.userId === user.username ? (
                                     <div className="flex items-center gap-2 w-full max-md:max-w-md">
                                        <input 
                                          type="url" 
                                          placeholder="Paste Link Drive..." 
-                                         className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-[10px] italic"
+                                         className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-[10px]"
                                          value={tempLinks[r.id] || r.linkDrive || ''}
                                          onChange={(e) => setTempLinks({...tempLinks, [r.id]: e.target.value})}
                                        />
@@ -2090,8 +2090,8 @@ const exportRekapKJKTahunan = async () => {
                                   ) : null}
                                   {r.linkDrive && (
                                       <div className="flex items-center gap-2">
-                                          <a href={r.linkDrive} target="_blank" rel="noopener noreferrer" className="p-3 bg-green-50 text-green-600 rounded-xl flex items-center gap-2 font-black text-[10px] uppercase shadow-sm"><ExternalLink size={14}/> Buka</a>
-                                          <button onClick={() => {navigator.clipboard.writeText(r.linkDrive); alert("Link berhasil disalin!");}} className="p-3 bg-slate-100 text-slate-600 rounded-xl flex items-center gap-2 font-black text-[10px] uppercase shadow-sm"><Copy size={14}/> Salin</button>
+                                          <a href={r.linkDrive} target="_blank" rel="noopener noreferrer" className="p-3 bg-green-50 text-green-600 rounded-xl flex items-center gap-2 font-semibold text-[10px] shadow-sm"><ExternalLink size={14}/> Buka</a>
+                                          <button onClick={() => {navigator.clipboard.writeText(r.linkDrive); alert("Link berhasil disalin!");}} className="p-3 bg-slate-100 text-slate-600 rounded-xl flex items-center gap-2 font-semibold text-[10px] shadow-sm"><Copy size={14}/> Salin</button>
                                       </div>
                                   )}
                                </div>
@@ -2104,25 +2104,25 @@ const exportRekapKJKTahunan = async () => {
                 </div>
                 <div className="md:hidden space-y-4">
                   {currentFilteredReports.length === 0 ? (
-                    <div className="bg-white p-10 rounded-[2.5rem] border border-dashed border-slate-200 text-center italic">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Tidak ada data lapor</p>
+                    <div className="bg-white p-10 rounded-2xl border border-dashed border-slate-200 text-center">
+                        <p className="text-[10px] font-semibold text-slate-400">Tidak ada data lapor</p>
                     </div>
                   ) : (
                     currentFilteredReports.map((r, idx) => (
-                      <div key={r.id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 italic">
-                         <div className="flex justify-between items-center mb-4 italic">
-                            <span className="text-[10px] font-black text-indigo-600 uppercase italic">No. {idx + 1}</span>
-                            <span className={`text-[8px] font-black uppercase px-2 py-1 rounded-md ${r.status === 'selesai' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>{r.status.replace('_', ' ')}</span>
+                      <div key={r.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                         <div className="flex justify-between items-center mb-4">
+                            <span className="text-[10px] font-semibold text-indigo-600">No. {idx + 1}</span>
+                            <span className={`text-[8px] font-semibold px-2 py-1 rounded-md ${r.status === 'selesai' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>{r.status.replace('_', ' ')}</span>
                          </div>
-                         <h3 className="font-black text-slate-800 uppercase text-xs leading-tight mb-2 italic">{r.title}</h3>
-                         <p className="text-[9px] text-indigo-600 font-bold mb-6 italic uppercase">Oleh: {r.userName}</p>
-                         <div className="space-y-4 pt-4 border-t italic">
+                         <h3 className="font-semibold text-slate-800 text-xs leading-tight mb-2">{r.title}</h3>
+                         <p className="text-[9px] text-indigo-600 font-bold mb-6">Oleh: {r.userName}</p>
+                         <div className="space-y-4 pt-4 border-t">
                             {r.userId === user.username && (
-                               <div className="flex items-center gap-2 italic">
+                               <div className="flex items-center gap-2">
                                   <input 
                                     type="url" 
                                     placeholder="Paste Link Drive..." 
-                                    className="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-[10px] italic"
+                                    className="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-[10px]"
                                     value={tempLinks[r.id] || r.linkDrive || ''}
                                     onChange={(e) => setTempLinks({...tempLinks, [r.id]: e.target.value})}
                                   />
@@ -2130,9 +2130,9 @@ const exportRekapKJKTahunan = async () => {
                                </div>
                             )}
                             {r.linkDrive && (
-                               <div className="grid grid-cols-2 gap-3 italic">
-                                  <a href={r.linkDrive} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 p-4 bg-green-50 text-green-600 rounded-2xl font-black text-[10px] uppercase shadow-sm italic"><ExternalLink size={16}/> Buka</a>
-                                  <button onClick={() => {navigator.clipboard.writeText(r.linkDrive); alert("Link berhasil disalin!");}} className="flex items-center justify-center gap-2 p-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-[10px] uppercase shadow-sm italic"><Copy size={16}/> Salin</button>
+                               <div className="grid grid-cols-2 gap-3">
+                                  <a href={r.linkDrive} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 p-4 bg-green-50 text-green-600 rounded-2xl font-semibold text-[10px] shadow-sm"><ExternalLink size={16}/> Buka</a>
+                                  <button onClick={() => {navigator.clipboard.writeText(r.linkDrive); alert("Link berhasil disalin!");}} className="flex items-center justify-center gap-2 p-4 bg-slate-100 text-slate-600 rounded-2xl font-semibold text-[10px] shadow-sm"><Copy size={16}/> Salin</button>
                                </div>
                             )}
                          </div>
@@ -2144,18 +2144,18 @@ const exportRekapKJKTahunan = async () => {
           )}
 
         {activeTab === 'users' && (
-            <div className="italic mb-10">
-              <div className="bg-white rounded-[2.5rem] shadow-sm border overflow-hidden p-6 italic mb-6">
-                <table className="w-full text-left text-xs italic">
+            <div className="mb-10">
+              <div className="bg-white rounded-2xl shadow-sm border overflow-hidden p-6 mb-6">
+                <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="bg-slate-50 border-b text-[9px] font-black text-slate-400 uppercase italic">
+                    <tr className="bg-slate-50 border-b text-[9px] font-semibold text-slate-400">
                       <th className="p-4">Pegawai</th>
                       <th className="p-4 text-center">Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
                     {users.filter(u => u.status !== 'nonaktif').map((u) => (
-                      <tr key={u.firestoreId} className="border-b hover:bg-slate-50 italic">
+                      <tr key={u.firestoreId} className="border-b hover:bg-slate-50">
                         {/* KOLOM 1: INFO PEGAWAI */}
                         <td className="p-4 flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0">
@@ -2168,9 +2168,9 @@ const exportRekapKJKTahunan = async () => {
                             )}
                           </div>
                           <div>
-                            <p className="font-black text-slate-800 uppercase tracking-tighter leading-none">{u.name}</p>
+                            <p className="font-semibold text-slate-800 tracking-tight leading-none">{u.name}</p>
                             <p className="text-indigo-500 text-[8px] font-bold mt-1">
-                              @{u.username} | {u.role} | <span className="uppercase">{u.status || 'aktif'}</span>
+                              @{u.username} | {u.role} | <span className="">{u.status || 'aktif'}</span>
                             </p>
                           </div>
                         </td>
@@ -2195,7 +2195,7 @@ const exportRekapKJKTahunan = async () => {
                                 }); 
                                 setShowUserModal(true); 
                               }} 
-                              className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"
+                              className="p-2 bg-indigo-50 text-indigo-600 rounded-xl"
                               title="Edit"
                             >
                               <Edit3 size={14}/>
@@ -2216,7 +2216,7 @@ const exportRekapKJKTahunan = async () => {
                                   alert(`Status ${u.name} diperbarui.`);
                                 }
                               }} 
-                              className={`p-2 rounded-xl italic ${u.status === 'nonaktif' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}
+                              className={`p-2 rounded-xl ${u.status === 'nonaktif' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}
                               title={u.status === 'nonaktif' ? "Aktifkan" : "Nonaktifkan"}
                             >
                               {u.status === 'nonaktif' ? <UserPlus size={14}/> : <ShieldCheck size={14}/>}
@@ -2230,7 +2230,7 @@ const exportRekapKJKTahunan = async () => {
                                   deleteDoc(doc(db, "users", u.firestoreId));
                                 }
                               }} 
-                              className="p-2 bg-red-50 text-red-400 rounded-xl italic"
+                              className="p-2 bg-red-50 text-red-400 rounded-xl"
                               title="Hapus"
                             >
                               <Trash2 size={14}/>
@@ -2241,21 +2241,21 @@ const exportRekapKJKTahunan = async () => {
                     ))}
                   </tbody>
                 </table>
-                <button onClick={() => { resetUserForm(); setShowUserModal(true); }} className="mt-4 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 italic">
+                <button onClick={() => { resetUserForm(); setShowUserModal(true); }} className="mt-4 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-semibold text-[10px] flex items-center gap-2">
                   <UserPlus size={14}/> Tambah Pegawai
                 </button>
               </div>
 
               {user.role === 'admin' && (
-                <div className="bg-white rounded-[2.5rem] shadow-sm border p-8 flex flex-col md:flex-row items-center gap-8 italic">
-                    <div className="w-32 h-32 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group">
+                <div className="bg-white rounded-2xl shadow-sm border p-8 flex flex-col md:flex-row items-center gap-8">
+                    <div className="w-32 h-32 rounded-xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group">
                        {appSettings.logoURL ? ( <img src={appSettings.logoURL} className="w-full h-full object-contain p-2" alt="App Logo" /> ) : ( <ImageIcon size={32} className="text-slate-300" /> )}
                        <input type="file" accept="image/png, image/jpeg" onChange={handleLogoUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
                     </div>
-                    <div className="flex-1 text-center md:text-left italic">
-                       <h4 className="font-black text-slate-800 uppercase tracking-tighter mb-1 italic">Logo Aplikasi Global</h4>
-                       <p className="text-[10px] text-slate-400 font-bold uppercase italic mb-4">Ganti logo pada halaman Login dan Sidebar untuk semua user</p>
-                       <label className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] cursor-pointer inline-block transition-all active:scale-95 italic">Pilih Logo Baru</label>
+                    <div className="flex-1 text-center md:text-left">
+                       <h4 className="font-semibold text-slate-800 tracking-tight mb-1">Logo Aplikasi Global</h4>
+                       <p className="text-[10px] text-slate-400 font-bold mb-4">Ganti logo pada halaman Login dan Sidebar untuk semua user</p>
+                       <label className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-semibold text-[10px] cursor-pointer inline-block transition-all active:scale-95">Pilih Logo Baru</label>
                     </div>
                 </div>
               )}
@@ -2263,13 +2263,13 @@ const exportRekapKJKTahunan = async () => {
           )}
 
           {(activeTab === 'laporan' || activeTab === 'penilaian') && (
-            <div className="italic">
+            <div className="">
               {/* MODIFIKASI: Penempatan Tombol Kontrol Penilaian di Mode Desktop */}
               {activeTab === 'penilaian' && filterStaffName !== 'Semua' && (
-                <div className="hidden md:flex items-center gap-4 mb-6 bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 animate-in fade-in italic">
-                    <div className="flex-1 italic">
-                      <p className="text-[10px] font-black text-slate-400 uppercase italic mb-1">Manajemen Penilaian</p>
-                      <h4 className="font-black text-slate-800 uppercase text-xs italic">Kontrol CKP: {filterStaffName}</h4>
+                <div className="hidden md:flex items-center gap-4 mb-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-in fade-in">
+                    <div className="flex-1">
+                      <p className="text-[10px] font-semibold text-slate-400 mb-1">Manajemen Penilaian</p>
+                      <h4 className="font-semibold text-slate-800 text-xs">Kontrol CKP: {filterStaffName}</h4>
                     </div>
                     <div className="flex items-center gap-3">
   {/* TOMBOL BARU: Nilai Terpilih (Hanya muncul jika ada yang dicentang) */}
@@ -2294,20 +2294,20 @@ const exportRekapKJKTahunan = async () => {
           setSelectedReportIds([]); // Menghapus centangan setelah selesai
         } catch (err) { alert("Gagal menilai."); }
       }}
-      className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg animate-bounce italic"
+      className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-semibold text-[10px] shadow-lg animate-bounce"
     >
       <CheckCircle2 size={16}/> Nilai Terpilih ({selectedReportIds.length})
     </button>
   )}
 
   {/* TOMBOL LAMA: Nilai Semua */}
-  <button onClick={handleNilaiSemua} className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-md transition-all active:scale-95 italic">
+  <button onClick={handleNilaiSemua} className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-2xl font-semibold text-[10px] shadow-md transition-all active:scale-95">
     <Zap size={16}/> Nilai Semua
   </button>
 
   {/* TOMBOL LAMA: Kembalikan CKP (Khusus Admin/Pimpinan) */}
   {['admin', 'pimpinan'].includes(user.role) && (
-    <button onClick={handleReturnAllReports} className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 px-6 py-3 rounded-2xl font-black uppercase text-[10px] transition-all active:scale-95 italic border border-slate-200">
+    <button onClick={handleReturnAllReports} className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 px-6 py-3 rounded-2xl font-semibold text-[10px] transition-all active:scale-95 border border-slate-200">
       <RotateCcw size={16}/> Kembalikan Seluruh CKP
     </button>
   )}
@@ -2315,9 +2315,9 @@ const exportRekapKJKTahunan = async () => {
                 </div>
               )}
 
-              <div className="hidden md:block bg-white rounded-[2.5rem] shadow-sm border p-0 overflow-hidden italic mb-10">
-                <table className="w-full text-left italic text-xs border-collapse">
-                  <thead className="bg-slate-100 border-b text-[9px] font-black text-slate-500 uppercase tracking-widest italic sticky top-0 z-20">
+              <div className="hidden md:block bg-white rounded-2xl shadow-sm border p-0 overflow-hidden mb-10">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-slate-100 border-b text-[9px] font-semibold text-slate-500 sticky top-0 z-20">
                     <tr>
   <th className="p-4 w-10 text-center">
     <input 
@@ -2334,11 +2334,11 @@ const exportRekapKJKTahunan = async () => {
       }}
     />
   </th>
-        <th className="p-4 w-12 text-center italic">No</th><th className="p-4 italic">Uraian Pekerjaan</th><th className="p-4 w-24 text-center italic">Satuan</th><th className="p-4 text-center w-28 italic">Volume</th><th className="p-4 text-center w-16 italic">Cap%</th><th className="p-4 text-center w-16 italic text-amber-600">Ketua</th><th className="p-4 text-center w-16 italic text-indigo-600">Pimp</th><th className="p-4 text-center w-24 italic">Aksi</th></tr>
+        <th className="p-4 w-12 text-center">No</th><th className="p-4">Uraian Pekerjaan</th><th className="p-4 w-24 text-center">Satuan</th><th className="p-4 text-center w-28">Volume</th><th className="p-4 text-center w-16">Cap%</th><th className="p-4 text-center w-16 text-amber-600">Ketua</th><th className="p-4 text-center w-16 text-indigo-600">Pimp</th><th className="p-4 text-center w-24">Aksi</th></tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 italic">
+                  <tbody className="divide-y divide-slate-100">
                     {currentFilteredReports.map((r, idx) => (
-                     <tr key={r.id} className={`${selectedReportIds.includes(r.id) ? 'bg-indigo-50' : 'hover:bg-slate-50'} transition-all italic group`}>
+                     <tr key={r.id} className={`${selectedReportIds.includes(r.id) ? 'bg-indigo-50' : 'hover:bg-slate-50'} transition-all group`}>
   {/* KOLOM CHECKBOX PER BARIS */}
   <td className="p-4 text-center">
     <input 
@@ -2356,17 +2356,17 @@ const exportRekapKJKTahunan = async () => {
     />
   </td>
                         <td className="p-4 font-bold text-slate-400 text-center">{idx + 1}</td>
-                        <td className="p-4 italic"><p className="font-black text-[12px] text-slate-800 uppercase tracking-tight leading-none mb-1 italic">{r.title}</p><span className="text-indigo-600 text-[8px] font-black uppercase bg-indigo-50 px-2 py-0.5 rounded-lg italic">{r.userName}</span></td>
-                        <td className="p-4 text-center font-bold text-slate-500 uppercase text-[10px] italic">{r.satuan || '-'}</td>
-                        <td className="p-4 text-center font-black italic">{r.realisasi} / {r.target}</td>
-                        <td className="p-4 text-center font-black text-indigo-600 italic">{((r.realisasi/r.target)*100).toFixed(0)}%</td>
-                        <td className="p-4 text-center font-black text-slate-300 text-lg italic"><div className="relative group inline-block">{r.nilaiKetua || '-'}{user.role === 'admin' && activeTab === 'penilaian' && r.nilaiKetua > 0 && (<button onClick={() => clearGrade(r.id, 'nilaiKetua')} className="absolute -top-1 -right-3 text-red-400 opacity-0 group-hover:opacity-100 italic"><Trash2 size={10}/></button>)}</div></td>
-                        <td className="p-4 text-center font-black text-indigo-600 text-lg italic"><div className="relative group inline-block">{r.nilaiPimpinan || '-'}{user.role === 'admin' && activeTab === 'penilaian' && r.nilaiPimpinan > 0 && (<button onClick={() => clearGrade(r.id, 'nilaiPimpinan')} className="absolute -top-1 -right-3 text-red-400 opacity-0 group-hover:opacity-100 italic"><Trash2 size={10}/></button>)}</div></td>
-                        <td className="p-4 text-center italic">
-                          <div className="flex justify-center gap-1 italic">
+                        <td className="p-4"><p className="font-semibold text-[12px] text-slate-800 tracking-tight leading-none mb-1">{r.title}</p><span className="text-indigo-600 text-[8px] font-semibold bg-indigo-50 px-2 py-0.5 rounded-lg">{r.userName}</span></td>
+                        <td className="p-4 text-center font-bold text-slate-500 text-[10px]">{r.satuan || '-'}</td>
+                        <td className="p-4 text-center font-semibold">{r.realisasi} / {r.target}</td>
+                        <td className="p-4 text-center font-semibold text-indigo-600">{((r.realisasi/r.target)*100).toFixed(0)}%</td>
+                        <td className="p-4 text-center font-semibold text-slate-300 text-lg"><div className="relative group inline-block">{r.nilaiKetua || '-'}{user.role === 'admin' && activeTab === 'penilaian' && r.nilaiKetua > 0 && (<button onClick={() => clearGrade(r.id, 'nilaiKetua')} className="absolute -top-1 -right-3 text-red-400 opacity-0 group-hover:opacity-100"><Trash2 size={10}/></button>)}</div></td>
+                        <td className="p-4 text-center font-semibold text-indigo-600 text-lg"><div className="relative group inline-block">{r.nilaiPimpinan || '-'}{user.role === 'admin' && activeTab === 'penilaian' && r.nilaiPimpinan > 0 && (<button onClick={() => clearGrade(r.id, 'nilaiPimpinan')} className="absolute -top-1 -right-3 text-red-400 opacity-0 group-hover:opacity-100"><Trash2 size={10}/></button>)}</div></td>
+                        <td className="p-4 text-center">
+                          <div className="flex justify-center gap-1">
                             {/* MODIFIKASI: Pimpinan bisa edit isian pegawai */}
                             {(activeTab === 'laporan' && r.status === 'pending') || (activeTab === 'penilaian' && user.role === 'pimpinan') ? (
-                              <button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl italic"><Edit3 size={14}/></button>
+                              <button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-xl"><Edit3 size={14}/></button>
                             ) : null}
 
                             {activeTab === 'laporan' && r.status === 'pending' && (
@@ -2381,24 +2381,24 @@ const exportRekapKJKTahunan = async () => {
   }
   await deleteDoc(doc(db, "reports", r.id));
 }
-                                }} className="p-2 bg-red-50 text-red-400 rounded-xl italic"><Trash2 size={14}/></button>
+                                }} className="p-2 bg-red-50 text-red-400 rounded-xl"><Trash2 size={14}/></button>
                             )}
 
                             {activeTab === 'penilaian' && (
-                              <div className="flex gap-1 items-center italic">
+                              <div className="flex gap-1 items-center">
                                 {r.status === 'pending' ? (
-                                  <div className="bg-red-50 text-red-500 px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic border border-red-100 animate-pulse">
+                                  <div className="bg-red-50 text-red-500 px-3 py-1.5 rounded-xl text-[8px] font-semibold border border-red-100 animate-pulse">
                                     Belum Kirim
                                   </div>
                                 ) : (
                                   <>
                                     {['ketua', 'admin'].includes(user.role) && (
-                                      <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">
+                                      <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-semibold shadow-sm">
                                         Ketua
                                       </button>
                                     )}
                                     {['pimpinan', 'admin'].includes(user.role) && (
-                                      <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-black uppercase italic shadow-sm">
+                                      <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-semibold shadow-sm">
                                         Pimp
                                       </button>
                                     )}
@@ -2417,17 +2417,17 @@ const exportRekapKJKTahunan = async () => {
               {/* VIEW MOBILE */}
               <div className="md:hidden space-y-4 pb-12">
                 {activeTab === 'penilaian' && (
-                  <div className="flex flex-col gap-3 mb-4 not-italic">
-                    <select className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-black text-[10px] text-slate-600 shadow-sm italic outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
+                  <div className="flex flex-col gap-3 mb-4">
+                    <select className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-semibold text-[10px] text-slate-600 shadow-sm outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
                       <option value="Semua">Pilih Pegawai</option>
                      {users.filter(u => !['admin', 'pimpinan'].includes(u.role) && u.status !== 'nonaktif' && u.status !== 'Nonaktif').map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                     </select>
                     
                     {filterStaffName !== 'Semua' && (
-                      <div className="grid grid-cols-2 gap-3 italic">
-                        <button onClick={handleNilaiSemua} className="bg-amber-500 text-white p-4 rounded-2xl font-black uppercase text-[9px] shadow-md italic">Nilai Semua</button>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button onClick={handleNilaiSemua} className="bg-amber-500 text-white p-4 rounded-2xl font-semibold text-[9px] shadow-md">Nilai Semua</button>
                         {['admin', 'pimpinan'].includes(user.role) && (
-                          <button onClick={handleReturnAllReports} className="bg-slate-100 text-slate-600 p-4 rounded-2xl font-black uppercase text-[9px] shadow-sm italic border">Kembalikan Semua</button>
+                          <button onClick={handleReturnAllReports} className="bg-slate-100 text-slate-600 p-4 rounded-2xl font-semibold text-[9px] shadow-sm border">Kembalikan Semua</button>
                         )}
                       </div>
                     )}
@@ -2435,15 +2435,15 @@ const exportRekapKJKTahunan = async () => {
                 )}
 
                 {currentFilteredReports.length === 0 ? (
-                  <div className="bg-white p-10 rounded-[2.5rem] border border-dashed border-slate-200 text-center italic">
+                  <div className="bg-white p-10 rounded-2xl border border-dashed border-slate-200 text-center">
                     <AlertCircle className="mx-auto text-slate-300 mb-2" size={32} />
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Belum ada data laporan</p>
+                    <p className="text-[10px] font-semibold text-slate-400">Belum ada data laporan</p>
                   </div>
                 ) : (
                   currentFilteredReports.map((r, idx) => (
-                    <div key={r.id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 italic">
-                      <div className="flex justify-between items-start mb-2 italic">
-                        <span className="text-[10px] font-black text-indigo-600 uppercase italic">#{idx + 1} - {r.satuan}</span>
+                    <div key={r.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-[10px] font-semibold text-indigo-600">#{idx + 1} - {r.satuan}</span>
                         <div className="flex gap-2">
                           {(activeTab === 'laporan' && r.status === 'pending') || (activeTab === 'penilaian' && user.role === 'pimpinan') ? (
                               <button onClick={() => { setIsEditing(true); setCurrentReportId(r.id); setNewReport({title: r.title, target: r.target, realisasi: r.realisasi, satuan: r.satuan, keterangan: r.keterangan || ''}); setShowReportModal(true); }} className="text-indigo-400"><Edit3 size={18}/></button>
@@ -2465,16 +2465,16 @@ const exportRekapKJKTahunan = async () => {
                           )}
                         </div>
                       </div>
-                      <h3 className="font-black text-slate-800 uppercase text-xs leading-tight mb-2 italic">{r.title}</h3>
-                      <p className="text-[9px] text-indigo-600 font-bold mb-4 italic uppercase">Oleh: {r.userName}</p>
-                      <div className="grid grid-cols-2 gap-4 border-t pt-4 italic">
-                        <div className="text-center"><p className="text-[8px] text-slate-400 uppercase font-black italic">Target/Real</p><p className="font-black text-[10px] italic">{r.realisasi} / {r.target}</p></div>
-                        <div className="text-center"><p className="text-[8px] text-slate-400 uppercase font-black italic">Ketua/Pimp</p><p className="font-black text-[10px] italic text-indigo-600">{r.nilaiKetua} / {r.nilaiPimpinan}</p></div>
+                      <h3 className="font-semibold text-slate-800 text-xs leading-tight mb-2">{r.title}</h3>
+                      <p className="text-[9px] text-indigo-600 font-bold mb-4">Oleh: {r.userName}</p>
+                      <div className="grid grid-cols-2 gap-4 border-t pt-4">
+                        <div className="text-center"><p className="text-[8px] text-slate-400 font-semibold">Target/Real</p><p className="font-semibold text-[10px]">{r.realisasi} / {r.target}</p></div>
+                        <div className="text-center"><p className="text-[8px] text-slate-400 font-semibold">Ketua/Pimp</p><p className="font-semibold text-[10px] text-indigo-600">{r.nilaiKetua} / {r.nilaiPimpinan}</p></div>
                       </div>
                       {activeTab === 'penilaian' && (r.status === 'dikirim' || r.status === 'dinilai_ketua' || r.status === 'selesai' || user.role === 'admin') && (
-                        <div className="flex gap-2 mt-4 italic">
-                          {['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="flex-1 py-3 bg-amber-400 text-white rounded-xl text-[9px] font-black uppercase shadow-sm italic">Nilai Ketua</button>}
-                          {['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase shadow-sm italic">Nilai Pimp</button>}
+                        <div className="flex gap-2 mt-4">
+                          {['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="flex-1 py-3 bg-amber-400 text-white rounded-xl text-[9px] font-semibold shadow-sm">Nilai Ketua</button>}
+                          {['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-[9px] font-semibold shadow-sm">Nilai Pimp</button>}
                         </div>
                       )}
                     </div>
@@ -2486,27 +2486,27 @@ const exportRekapKJKTahunan = async () => {
         </div>
         
         {/* NAVIGASI BAWAH MOBILE */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-4 pb-6 flex justify-around items-center z-[50] shadow-[0_-4px_12px_rgba(0,0,0,0.05)] not-italic">
-          <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-300'}`}><LayoutDashboard size={24}/><span className="text-[8px] font-black uppercase">Home</span></button>
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-4 pb-6 flex justify-around items-center z-[50] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+          <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-300'}`}><LayoutDashboard size={24}/><span className="text-[8px] font-semibold">Home</span></button>
           {user.role === 'admin' ? (
             <>
-              <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button>
-              <button onClick={() => setActiveTab('prima')} className={`flex flex-col items-center gap-1 ${activeTab === 'prima' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">prima</span></button>
-  <button onClick={() => setActiveTab('bakira')} className={`flex flex-col items-center gap-1 ${activeTab === 'bakira' ? 'text-indigo-600' : 'text-slate-300'}`}><Camera size={24}/><span className="text-[8px] font-black uppercase">BAKIRA</span></button>
-              <button onClick={() => setActiveTab('users')} className={`flex flex-col items-center gap-1 ${activeTab === 'users' ? 'text-indigo-600' : 'text-slate-300'}`}><Users size={24}/><span className="text-[8px] font-black uppercase">Pegawai</span></button>
+              <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-semibold">Nilai</span></button>
+              <button onClick={() => setActiveTab('prima')} className={`flex flex-col items-center gap-1 ${activeTab === 'prima' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-semibold">prima</span></button>
+  <button onClick={() => setActiveTab('bakira')} className={`flex flex-col items-center gap-1 ${activeTab === 'bakira' ? 'text-indigo-600' : 'text-slate-300'}`}><Camera size={24}/><span className="text-[8px] font-semibold">BAKIRA</span></button>
+              <button onClick={() => setActiveTab('users')} className={`flex flex-col items-center gap-1 ${activeTab === 'users' ? 'text-indigo-600' : 'text-slate-300'}`}><Users size={24}/><span className="text-[8px] font-semibold">Pegawai</span></button>
             </>
           ) : user.role === 'pimpinan' ? (
             <>
-              <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center gap-1 ${activeTab === 'agenda' ? 'text-indigo-600' : 'text-slate-300'}`}><CalendarIcon size={24}/><span className="text-[8px] font-black uppercase">Agenda</span></button>
-              <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button>
-              <button onClick={() => setActiveTab('prima')} className={`flex flex-col items-center gap-1 ${activeTab === 'prima' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">prima</span></button>
+              <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center gap-1 ${activeTab === 'agenda' ? 'text-indigo-600' : 'text-slate-300'}`}><CalendarIcon size={24}/><span className="text-[8px] font-semibold">Agenda</span></button>
+              <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-semibold">Nilai</span></button>
+              <button onClick={() => setActiveTab('prima')} className={`flex flex-col items-center gap-1 ${activeTab === 'prima' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-semibold">prima</span></button>
             </>
           ) : (
             <>
-              <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center gap-1 ${activeTab === 'agenda' ? 'text-indigo-600' : 'text-slate-300'}`}><CalendarIcon size={24}/><span className="text-[8px] font-black uppercase">Agenda</span></button>
-              <button onClick={() => setActiveTab('laporan')} className={`flex flex-col items-center gap-1 ${activeTab === 'laporan' ? 'text-indigo-600' : 'text-slate-300'}`}><FileText size={24}/><span className="text-[8px] font-black uppercase">Entri</span></button>
-              {user.role === 'ketua' && <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-black uppercase">Nilai</span></button>}
-              <button onClick={() => setActiveTab('prima')} className={`flex flex-col items-center gap-1 ${activeTab === 'prima' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-black uppercase">prima</span></button>
+              <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center gap-1 ${activeTab === 'agenda' ? 'text-indigo-600' : 'text-slate-300'}`}><CalendarIcon size={24}/><span className="text-[8px] font-semibold">Agenda</span></button>
+              <button onClick={() => setActiveTab('laporan')} className={`flex flex-col items-center gap-1 ${activeTab === 'laporan' ? 'text-indigo-600' : 'text-slate-300'}`}><FileText size={24}/><span className="text-[8px] font-semibold">Entri</span></button>
+              {user.role === 'ketua' && <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-semibold">Nilai</span></button>}
+              <button onClick={() => setActiveTab('prima')} className={`flex flex-col items-center gap-1 ${activeTab === 'prima' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-semibold">prima</span></button>
             </>
           )}
         </div>
@@ -2524,13 +2524,13 @@ const exportRekapKJKTahunan = async () => {
 
       {/* MODAL BARU: INPUT AGENDA */}
       {showAgendaModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[130] font-sans italic text-center">
-          <form onSubmit={handleAddAgenda} className="bg-white w-full max-md:max-w-md rounded-[3rem] p-10 shadow-2xl relative italic">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[130] font-sans text-center">
+          <form onSubmit={handleAddAgenda} className="bg-white w-full max-md:max-w-md rounded-xl p-10 shadow-md relative">
             <button type="button" onClick={() => setShowAgendaModal(false)} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400"><X size={20}/></button>
             <CalendarIcon size={40} className="text-indigo-600 mb-6 mx-auto" />
-            <h3 className="text-xl font-black uppercase italic mb-8">Catat Agenda: {newAgenda.date}</h3>
-            <div className="space-y-4 italic">
-              <textarea required placeholder="Apa yang Anda kerjakan?" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic h-32 resize-none" value={newAgenda.taskName} onChange={e => setNewAgenda({...newAgenda, taskName: e.target.value})} />
+            <h3 className="text-xl font-semibold mb-8">Catat Agenda: {newAgenda.date}</h3>
+            <div className="space-y-4">
+              <textarea required placeholder="Apa yang Anda kerjakan?" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-semibold text-center border border-slate-100 h-32 resize-none" value={newAgenda.taskName} onChange={e => setNewAgenda({...newAgenda, taskName: e.target.value})} />
               <div 
                 className={`flex items-center justify-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer ${newAgenda.isLembur ? 'bg-amber-500 border-amber-600 text-white shadow-md' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
                 onClick={() => setNewAgenda({...newAgenda, isLembur: !newAgenda.isLembur})}
@@ -2541,29 +2541,29 @@ const exportRekapKJKTahunan = async () => {
                   checked={newAgenda.isLembur} 
                   onChange={(e) => setNewAgenda({...newAgenda, isLembur: e.target.checked})} 
                 />
-                <span className={`text-[10px] font-black uppercase italic tracking-widest ${newAgenda.isLembur ? 'text-white' : 'text-slate-500'}`}>Kategori Lembur / Hari Libur</span>
+                <span className={`text-[10px] font-semibold ${newAgenda.isLembur ? 'text-white' : 'text-slate-500'}`}>Kategori Lembur / Hari Libur</span>
               </div>
-              <div className="grid grid-cols-2 gap-4 italic text-center">
-                <input required type="number" placeholder="Volume" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic" value={newAgenda.volume} onChange={e => setNewAgenda({...newAgenda, volume: e.target.value})} />
-                <input required type="text" placeholder="Satuan" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center border border-slate-100 italic" value={newAgenda.satuan} onChange={e => setNewAgenda({...newAgenda, satuan: e.target.value})} />
+              <div className="grid grid-cols-2 gap-4 text-center">
+                <input required type="number" placeholder="Volume" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-semibold text-center border border-slate-100" value={newAgenda.volume} onChange={e => setNewAgenda({...newAgenda, volume: e.target.value})} />
+                <input required type="text" placeholder="Satuan" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-semibold text-center border border-slate-100" value={newAgenda.satuan} onChange={e => setNewAgenda({...newAgenda, satuan: e.target.value})} />
               </div>
             </div>
-            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-5 rounded-2xl shadow-xl uppercase text-[10px] mt-8 italic transition-all active:scale-95">Simpan Catatan</button>
+            <button type="submit" className="w-full bg-indigo-600 text-white font-semibold py-5 rounded-2xl shadow-md text-[10px] mt-8 transition-all active:scale-95">Simpan Catatan</button>
           </form>
         </div>
       )}
 
       {/* MODAL BARU: IMPORT AGENDA KE LAPORAN */}
       {showImportModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[140] font-sans italic">
-          <div className="bg-white w-full max-w-lg rounded-[3rem] p-10 shadow-2xl italic max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-8 italic">
-              <h3 className="font-black uppercase text-sm italic">Pilih Agenda Bulan Ini</h3>
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[140] font-sans">
+          <div className="bg-white w-full max-w-lg rounded-xl p-10 shadow-md max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="font-semibold text-sm">Pilih Agenda Bulan Ini</h3>
               <button onClick={() => setShowImportModal(false)} className="p-2 bg-slate-50 rounded-full text-slate-400"><X size={18}/></button>
             </div>
-            <div className="space-y-3 italic">
+            <div className="space-y-3">
               {agendas.filter(a => a.userId === user.username && !a.isImported && a.date.includes(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`)).length === 0 ? (
-                <p className="text-center py-10 text-slate-400 font-bold text-[10px] uppercase italic">Tidak ada agenda yang tersedia</p>
+                <p className="text-center py-10 text-slate-400 font-bold text-[10px]">Tidak ada agenda yang tersedia</p>
               ) : (
                 agendas.filter(a => a.userId === user.username && !a.isImported && a.date.includes(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`))
                 .sort((a, b) => new Date(a.date) - new Date(b.date))
@@ -2581,11 +2581,11 @@ const exportRekapKJKTahunan = async () => {
                       });
                       setShowImportModal(false);
                     }}
-                    className="p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-600 cursor-pointer italic group transition-all"
+                    className="p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-600 cursor-pointer group transition-all"
                   >
-                    <p className="text-[8px] font-black text-indigo-500 uppercase italic mb-1">{a.date}</p>
-                    <h4 className="font-black text-slate-800 uppercase text-[10px] italic">{a.taskName}</h4>
-                    <p className="text-[9px] text-slate-400 italic">{a.volume} {a.satuan}</p>
+                    <p className="text-[8px] font-semibold text-indigo-500 mb-1">{a.date}</p>
+                    <h4 className="font-semibold text-slate-800 text-[10px]">{a.taskName}</h4>
+                    <p className="text-[9px] text-slate-400">{a.volume} {a.satuan}</p>
                   </div>
                 ))
               )}
@@ -2595,121 +2595,121 @@ const exportRekapKJKTahunan = async () => {
       )}
 
       {showPenilaianModal && selectedStaffForVote && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[110] font-sans italic">
-            <form onSubmit={handleSubmitNilai360} className="bg-white w-full max-w-lg rounded-[3rem] p-10 text-left overflow-y-auto max-h-[90vh] italic relative shadow-2xl">
-              <button type="button" onClick={() => setshowPenilaianModal(false)} className="absolute top-8 right-8 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
-              <div className="text-center mb-10 italic">
-                  <div className="w-24 h-24 rounded-3xl overflow-hidden mx-auto mb-4 border-4 border-white shadow-xl">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[110] font-sans">
+            <form onSubmit={handleSubmitNilai360} className="bg-white w-full max-w-lg rounded-xl p-10 text-left overflow-y-auto max-h-[90vh] relative shadow-md">
+              <button type="button" onClick={() => setshowPenilaianModal(false)} className="absolute top-8 right-8 p-3 bg-slate-50 rounded-full text-slate-400"><X size={20}/></button>
+              <div className="text-center mb-10">
+                  <div className="w-24 h-24 rounded-xl overflow-hidden mx-auto mb-4 border-4 border-white shadow-md">
                     {selectedStaffForVote.photoURL ? <img src={selectedStaffForVote.photoURL} alt={selectedStaffForVote.name} className="w-full h-full object-cover" /> : <div className="bg-slate-100 w-full h-full flex items-center justify-center text-slate-300"><User size={40}/></div>}
                   </div>
-                  <h3 className="font-black uppercase text-slate-800 italic leading-none">{selectedStaffForVote.name}</h3>
-                  <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-4 italic">Periode {voteWindow.period.toUpperCase()} {voteWindow.evalYear}</p>
+                  <h3 className="font-semibold text-slate-800 leading-none">{selectedStaffForVote.name}</h3>
+                  <p className="text-[10px] font-bold text-indigo-600 mt-4">Periode {voteWindow.period.toUpperCase()} {voteWindow.evalYear}</p>
               </div>
               
-              <div className="space-y-10 italic">
-                  <div className="space-y-4 italic text-left">
-                    <div className="flex justify-between items-center italic"><label className="text-[10px] font-black uppercase text-indigo-600 italic">1. Kinerja</label><span className="font-black text-3xl text-slate-800">{voteData.kinerja}</span></div>
-                    <p className="text-[8px] text-slate-400 font-bold uppercase italic leading-tight">Menilai ketepatan waktu, kualitas hasil kerja, dan pencapaian target laporan bulanan rekan.</p>
+              <div className="space-y-10">
+                  <div className="space-y-4 text-left">
+                    <div className="flex justify-between items-center"><label className="text-[10px] font-semibold text-indigo-600">1. Kinerja</label><span className="font-semibold text-3xl text-slate-800">{voteData.kinerja}</span></div>
+                    <p className="text-[8px] text-slate-400 font-bold leading-tight">Menilai ketepatan waktu, kualitas hasil kerja, dan pencapaian target laporan bulanan rekan.</p>
                     <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.kinerja} onChange={e => setVoteData({...voteData, kinerja: Number(e.target.value)})} />
                   </div>
-                  <div className="space-y-4 italic text-left">
-                    <div className="flex justify-between items-center italic"><label className="text-[10px] font-black uppercase text-indigo-600 italic">2. Perilaku</label><span className="font-black text-3xl text-slate-800">{voteData.perilaku}</span></div>
-                    <p className="text-[8px] text-slate-400 font-bold uppercase italic leading-tight">Menilai etika, kerja sama tim, integritas, dan sikap profesional rekan selama bekerja.</p>
+                  <div className="space-y-4 text-left">
+                    <div className="flex justify-between items-center"><label className="text-[10px] font-semibold text-indigo-600">2. Perilaku</label><span className="font-semibold text-3xl text-slate-800">{voteData.perilaku}</span></div>
+                    <p className="text-[8px] text-slate-400 font-bold leading-tight">Menilai etika, kerja sama tim, integritas, dan sikap profesional rekan selama bekerja.</p>
                     <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.perilaku} onChange={e => setVoteData({...voteData, perilaku: Number(e.target.value)})} />
                   </div>
-                  <div className="space-y-4 italic text-left">
-                    <div className="flex justify-between items-center italic"><label className="text-[10px] font-black uppercase text-indigo-600 italic">3. Inovasi</label><span className="font-black text-3xl text-slate-800">{voteData.inovasi}</span></div>
-                    <p className="text-[8px] text-slate-400 font-bold uppercase italic leading-tight">Menilai inisiatif rekan dalam memberikan ide baru atau solusi kreatif untuk mempermudah pekerjaan.</p>
+                  <div className="space-y-4 text-left">
+                    <div className="flex justify-between items-center"><label className="text-[10px] font-semibold text-indigo-600">3. Inovasi</label><span className="font-semibold text-3xl text-slate-800">{voteData.inovasi}</span></div>
+                    <p className="text-[8px] text-slate-400 font-bold leading-tight">Menilai inisiatif rekan dalam memberikan ide baru atau solusi kreatif untuk mempermudah pekerjaan.</p>
                     <input type="range" min="1" max="10" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={voteData.inovasi} onChange={e => setVoteData({...voteData, inovasi: Number(e.target.value)})} />
                   </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-12 italic">
-                  <button type="button" onClick={() => setshowPenilaianModal(false)} className="py-5 rounded-2xl font-black uppercase text-[10px] bg-slate-50 text-slate-400 italic">Batal</button>
-                  <button type="submit" className="py-5 rounded-2xl font-black uppercase text-[10px] bg-indigo-600 text-white shadow-xl italic shadow-indigo-200">Kirim Penilaian</button>
+              <div className="grid grid-cols-2 gap-4 mt-12">
+                  <button type="button" onClick={() => setshowPenilaianModal(false)} className="py-5 rounded-2xl font-semibold text-[10px] bg-slate-50 text-slate-400">Batal</button>
+                  <button type="submit" className="py-5 rounded-2xl font-semibold text-[10px] bg-indigo-600 text-white shadow-md shadow-indigo-200">Kirim Penilaian</button>
               </div>
             </form>
         </div>
       )}
 
       {showPasswordModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[110] font-sans italic">
-          <form onSubmit={handleUpdatePassword} className="bg-white w-full max-md:max-w-md rounded-[3rem] p-10 shadow-2xl relative italic">
-            <button type="button" onClick={() => setShowPasswordModal(false)} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[110] font-sans">
+          <form onSubmit={handleUpdatePassword} className="bg-white w-full max-md:max-w-md rounded-xl p-10 shadow-md relative">
+            <button type="button" onClick={() => setShowPasswordModal(false)} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400"><X size={20}/></button>
             <KeyRound size={40} className="text-indigo-600 mb-6" />
-            <h3 className="text-2xl font-black uppercase tracking-tighter mb-2 text-slate-800 italic text-center">Ganti Password</h3>
-            <div className="space-y-4 italic mt-8">
+            <h3 className="text-2xl font-semibold tracking-tight mb-2 text-slate-800 text-center">Ganti Password</h3>
+            <div className="space-y-4 mt-8">
                <div className="relative">
-                 <input required type={showCurrentPass ? "text" : "password"} placeholder="Password Saat Ini" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 pr-14 italic text-center" value={newPasswordData.current} onChange={e => setNewPasswordData({...newPasswordData, current: e.target.value})} />
+                 <input required type={showCurrentPass ? "text" : "password"} placeholder="Password Saat Ini" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-semibold text-slate-800 border border-slate-100 pr-14 text-center" value={newPasswordData.current} onChange={e => setNewPasswordData({...newPasswordData, current: e.target.value})} />
                  <button type="button" onClick={() => setShowCurrentPass(!showCurrentPass)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400">{showCurrentPass ? <EyeOff size={20}/> : <Eye size={20}/>}</button>
                </div>
                <div className="relative">
-                 <input required type={showNewPass ? "text" : "password"} placeholder="Password Baru" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 pr-14 italic text-center" value={newPasswordData.new} onChange={e => setNewPasswordData({...newPasswordData, new: e.target.value})} />
+                 <input required type={showNewPass ? "text" : "password"} placeholder="Password Baru" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-semibold text-slate-800 border border-slate-100 pr-14 text-center" value={newPasswordData.new} onChange={e => setNewPasswordData({...newPasswordData, new: e.target.value})} />
                  <button type="button" onClick={() => setShowNewPass(!showNewPass)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400">{showNewPass ? <EyeOff size={20}/> : <Eye size={20}/>}</button>
                </div>
             </div>
-            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-6 rounded-2xl shadow-xl uppercase tracking-widest text-[10px] mt-8 italic transition-all active:scale-95 text-center">Update Password</button>
+            <button type="submit" className="w-full bg-indigo-600 text-white font-semibold py-6 rounded-2xl shadow-md text-[10px] mt-8 transition-all active:scale-95 text-center">Update Password</button>
           </form>
         </div>
       )}
 
       {showUserModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[110] font-sans italic text-center">
-          <form onSubmit={handleAddOrEditUser} className="bg-white w-full max-w-xl rounded-[3rem] p-12 shadow-2xl relative italic">
-            <button type="button" onClick={() => { setShowUserModal(false); resetUserForm(); }} className="absolute top-8 right-8 p-4 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
-            <h3 className="text-2xl font-black uppercase tracking-tighter mb-8 text-slate-800 italic text-center">{isEditingUser ? "Edit Akun Pegawai" : "Tambah Pegawai"}</h3>
-            <div className="space-y-4 italic">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[110] font-sans text-center">
+          <form onSubmit={handleAddOrEditUser} className="bg-white w-full max-w-xl rounded-xl p-12 shadow-md relative">
+            <button type="button" onClick={() => { setShowUserModal(false); resetUserForm(); }} className="absolute top-8 right-8 p-4 bg-slate-50 rounded-full text-slate-400"><X size={20}/></button>
+            <h3 className="text-2xl font-semibold tracking-tight mb-8 text-slate-800 text-center">{isEditingUser ? "Edit Akun Pegawai" : "Tambah Pegawai"}</h3>
+            <div className="space-y-4">
                 <div className="flex flex-col items-center mb-6">
-                   <div className="w-24 h-24 rounded-3xl bg-slate-100 border-2 border-dashed border-slate-300 overflow-hidden flex items-center justify-center relative group">
+                   <div className="w-24 h-24 rounded-xl bg-slate-100 border-2 border-dashed border-slate-300 overflow-hidden flex items-center justify-center relative group">
                       {newUser.photoURL ? ( <img src={newUser.photoURL} className="w-full h-full object-cover" alt="Pegawai" /> ) : ( <Camera size={28} className="text-slate-300" /> )}
                       <input type="file" accept="image/*" onChange={handlePhotoUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
                    </div>
-                   <p className="text-[9px] font-black text-indigo-600 uppercase mt-2 italic text-center">Klik untuk Upload Foto</p>
+                   <p className="text-[9px] font-semibold text-indigo-600 mt-2 text-center">Klik untuk Upload Foto</p>
                 </div>
-                <input required type="text" placeholder="Nama Lengkap" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic text-center" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} />
-                <div className="grid grid-cols-2 gap-4 italic text-center">
-                    <input required type="text" placeholder="Username" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic text-center" value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} />
+                <input required type="text" placeholder="Nama Lengkap" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-semibold text-slate-700 border border-slate-100 text-center" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} />
+                <div className="grid grid-cols-2 gap-4 text-center">
+                    <input required type="text" placeholder="Username" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-semibold text-slate-700 border border-slate-100 text-center" value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} />
                     <div className="relative">
-                      <input required type={showAdminPass ? "text" : "password"} placeholder="Password" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 pr-14 italic text-center" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
+                      <input required type={showAdminPass ? "text" : "password"} placeholder="Password" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-semibold text-slate-700 border border-slate-100 pr-14 text-center" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
                       <button type="button" onClick={() => setShowAdminPass(!showAdminPass)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400">{showAdminPass ? <EyeOff size={18}/> : <Eye size={18}/>}</button>
                     </div>
                 </div>
-                <input type="text" placeholder="Jabatan" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-700 border border-slate-100 italic text-center" value={newUser.jabatan} onChange={e => setNewUser({...newUser, jabatan: e.target.value})} />
-                <select className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-black text-slate-600 border border-slate-100 italic text-center" value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
+                <input type="text" placeholder="Jabatan" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-semibold text-slate-700 border border-slate-100 text-center" value={newUser.jabatan} onChange={e => setNewUser({...newUser, jabatan: e.target.value})} />
+                <select className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-semibold text-slate-600 border border-slate-100 text-center" value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
                     <option value="pegawai">Pegawai</option><option value="ketua">Ketua Tim</option><option value="pimpinan">Pimpinan</option><option value="admin">Admin</option>
                 </select>
-                <button type="submit" className="w-full bg-indigo-600 text-white font-black py-6 rounded-2xl shadow-xl uppercase tracking-widest text-[10px] mt-6 italic transition-all active:scale-95 text-center">Simpan</button>
+                <button type="submit" className="w-full bg-indigo-600 text-white font-semibold py-6 rounded-2xl shadow-md text-[10px] mt-6 transition-all active:scale-95 text-center">Simpan</button>
             </div>
           </form>
         </div>
       )}
 
       {showReportModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[120] font-sans italic text-center">
-          <form onSubmit={handleSubmitReport} className="bg-white w-full max-w-2xl rounded-[3rem] p-8 md:p-12 shadow-2xl relative italic max-h-[90vh] overflow-y-auto">
-            <button type="button" onClick={() => { resetReportForm(); setShowReportModal(false); }} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400 italic"><X size={20}/></button>
-            <h3 className="text-2xl font-black uppercase tracking-tighter mb-8 text-slate-800 italic text-center">{isEditing ? "Update Pekerjaan" : (activeTab === 'penilaian' ? "Entri Anggota" : "Entri Pekerjaan Saya")}</h3>
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[120] font-sans text-center">
+          <form onSubmit={handleSubmitReport} className="bg-white w-full max-w-2xl rounded-xl p-8 md:p-12 shadow-md relative max-h-[90vh] overflow-y-auto">
+            <button type="button" onClick={() => { resetReportForm(); setShowReportModal(false); }} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400"><X size={20}/></button>
+            <h3 className="text-2xl font-semibold tracking-tight mb-8 text-slate-800 text-center">{isEditing ? "Update Pekerjaan" : (activeTab === 'penilaian' ? "Entri Anggota" : "Entri Pekerjaan Saya")}</h3>
             
             {/* BUTTON IMPORT DARI AGENDA */}
             {activeTab === 'laporan' && !isEditing && (
               <button 
                 type="button" 
                 onClick={() => setShowImportModal(true)}
-                className="mb-8 w-full py-4 border-2 border-dashed border-indigo-200 rounded-2xl text-indigo-600 font-black uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-indigo-50 transition-all italic"
+                className="mb-8 w-full py-4 border-2 border-dashed border-indigo-200 rounded-2xl text-indigo-600 font-semibold text-[10px] flex items-center justify-center gap-2 hover:bg-indigo-50 transition-all"
               >
                 <Zap size={16}/> Ambil Data Dari Agenda Harian
               </button>
             )}
 
-            <div className="space-y-4 italic text-center">
-               {activeTab === 'penilaian' && !isEditing && ( <select required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-indigo-600 border border-slate-100 italic text-center" value={newReport.targetUser} onChange={e => setNewReport({...newReport, targetUser: e.target.value})}> <option value="">-- Pilih Nama Pegawai --</option> {users.filter(u => !['admin', 'pimpinan'].includes(u.role) && u.status !== 'nonaktif' && u.status !== 'Nonaktif').map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)} </select> )}
-               <textarea required placeholder="Uraian Pekerjaan" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center h-32 resize-none" value={newReport.title} onChange={e => setNewReport({...newReport, title: e.target.value})} />
-               <div className="grid grid-cols-2 gap-4 italic text-center"> <input required type="number" placeholder="Target" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" value={newReport.target} onChange={e => setNewReport({...newReport, target: e.target.value})} /> <input required type="number" placeholder="Realisasi" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" value={newReport.realisasi} onChange={e => setNewReport({...newReport, realisasi: e.target.value})} /> </div>
-               <input list="satuan-list" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 italic text-center" placeholder="Satuan" value={newReport.satuan} onChange={e => setNewReport({...newReport, satuan: e.target.value})} />
+            <div className="space-y-4 text-center">
+               {activeTab === 'penilaian' && !isEditing && ( <select required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-semibold text-indigo-600 border border-slate-100 text-center" value={newReport.targetUser} onChange={e => setNewReport({...newReport, targetUser: e.target.value})}> <option value="">-- Pilih Nama Pegawai --</option> {users.filter(u => !['admin', 'pimpinan'].includes(u.role) && u.status !== 'nonaktif' && u.status !== 'Nonaktif').map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)} </select> )}
+               <textarea required placeholder="Uraian Pekerjaan" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-semibold text-slate-800 border border-slate-100 text-center h-32 resize-none" value={newReport.title} onChange={e => setNewReport({...newReport, title: e.target.value})} />
+               <div className="grid grid-cols-2 gap-4 text-center"> <input required type="number" placeholder="Target" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-semibold text-slate-800 border border-slate-100 text-center" value={newReport.target} onChange={e => setNewReport({...newReport, target: e.target.value})} /> <input required type="number" placeholder="Realisasi" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-semibold text-slate-800 border border-slate-100 text-center" value={newReport.realisasi} onChange={e => setNewReport({...newReport, realisasi: e.target.value})} /> </div>
+               <input list="satuan-list" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-semibold text-slate-800 border border-slate-100 text-center" placeholder="Satuan" value={newReport.satuan} onChange={e => setNewReport({...newReport, satuan: e.target.value})} />
                <datalist id="satuan-list"><option value="Dokumen"/><option value="Kegiatan"/><option value="Laporan"/><option value="Paket"/></datalist>
-               <textarea className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold h-24 resize-none text-slate-600 border border-slate-100 italic text-center" placeholder="Keterangan..." value={newReport.keterangan} onChange={e => setNewReport({...newReport, keterangan: e.target.value})} />
+               <textarea className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold h-24 resize-none text-slate-600 border border-slate-100 text-center" placeholder="Keterangan..." value={newReport.keterangan} onChange={e => setNewReport({...newReport, keterangan: e.target.value})} />
             </div>
-            <button type="submit" className="w-full bg-indigo-600 text-white font-black py-6 rounded-2xl shadow-xl uppercase tracking-widest text-xs mt-8 italic transition-all active:scale-95 text-center">Simpan Data</button>
+            <button type="submit" className="w-full bg-indigo-600 text-white font-semibold py-6 rounded-2xl shadow-md text-xs mt-8 transition-all active:scale-95 text-center">Simpan Data</button>
           </form>
         </div>
       )}
