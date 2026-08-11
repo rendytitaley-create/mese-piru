@@ -723,9 +723,11 @@ setPersistence(auth, browserSessionPersistence);
   };
 
   const exportToExcel = async () => {
-    if (filterStaffName === 'Semua' && user.role !== 'pegawai') { alert("Pilih satu nama pegawai terlebih dahulu untuk mencetak CKP."); return; }
+    // Tab Entri Pekerjaan selalu tentang laporan milik pengguna yang sedang login,
+    // apapun perannya — tidak boleh bergantung pada dropdown "Data Saya" milik tab Penilaian Anggota.
+    if (activeTab !== 'laporan' && filterStaffName === 'Semua' && user.role !== 'pegawai') { alert("Pilih satu nama pegawai terlebih dahulu untuk mencetak CKP."); return; }
     // Di dalam exportToExcel:
-const targetStaff = user.role === 'pegawai' ? user : users.find(u => u.name === filterStaffName);
+const targetStaff = activeTab === 'laporan' ? user : (user.role === 'pegawai' ? user : users.find(u => u.name === filterStaffName));
 
 // 1. Ambil semua orang yang perannya 'pimpinan'
 const daftarPimpinan = users.filter(u => u.role === 'pimpinan');
@@ -747,8 +749,8 @@ if (!pimpinanTerpilih) {
 }
 const pimpinan = pimpinanTerpilih;
     const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-    // Rekap Triwulan/Tahunan hanya berlaku untuk tab Entri Pekerjaan (mengikuti pilihan periode di header)
-    const isRekapGabungan = activeTab === 'laporan' && periodType !== 'monthly';
+    // Rekap Triwulan/Tahunan berlaku untuk tab Entri Pekerjaan & Penilaian Anggota (mengikuti pilihan periode di header)
+    const isRekapGabungan = (activeTab === 'laporan' || activeTab === 'penilaian') && periodType !== 'monthly';
     const monthsIncluded = isRekapGabungan ? getMonthsForPeriod(periodType, selectedMonth) : [selectedMonth];
     const firstMonthIdx = monthsIncluded[0];
     const lastMonthIdx = monthsIncluded[monthsIncluded.length - 1];
@@ -1281,13 +1283,13 @@ const exportRekapKJKTahunan = async () => {
   };
 
   const currentFilteredReports = useMemo(() => {
-    // Khusus tab Entri Pekerjaan: hormati pilihan periode (Bulanan/Triwulan/Tahunan) di header,
+    // Tab Entri Pekerjaan & Penilaian Anggota: hormati pilihan periode (Bulanan/Triwulan/Tahunan) di header,
     // supaya bisa merekap beberapa bulan sekaligus. Tab lain tetap 1 bulan seperti semula.
-    const monthsToInclude = activeTab === 'laporan' ? getMonthsForPeriod(periodType, selectedMonth) : [selectedMonth];
+    const isRekapTab = activeTab === 'laporan' || activeTab === 'penilaian';
+    const monthsToInclude = isRekapTab ? getMonthsForPeriod(periodType, selectedMonth) : [selectedMonth];
     let res = reports.filter(r => monthsToInclude.includes(r.month) && r.year === selectedYear);
     if (activeTab === 'laporan') {
       res = res.filter(r => r.userId === user.username);
-      res = [...res].sort((a, b) => a.month - b.month);
     }
     if (activeTab === 'bukti_dukung') {
        if (user.role === 'pegawai') {
@@ -1302,6 +1304,9 @@ const exportRekapKJKTahunan = async () => {
     }
     if (activeTab === 'penilaian' && filterStaffName !== 'Semua') { 
       res = res.filter(r => r.userName === filterStaffName); 
+    }
+    if (isRekapTab) {
+      res = [...res].sort((a, b) => a.month - b.month);
     }
     return res;
   }, [reports, user, selectedMonth, selectedYear, filterStaffName, activeTab, periodType]);
@@ -1466,7 +1471,7 @@ const exportRekapKJKTahunan = async () => {
              <button onClick={() => setShowPasswordModal(true)} className="md:hidden p-2 text-indigo-600 bg-white rounded-lg shadow-sm border border-slate-200"><KeyRound size={20}/></button>
              <button onClick={() => {localStorage.clear(); window.location.reload();}} className="md:hidden p-2 text-red-500 bg-white rounded-lg shadow-sm border border-slate-200"><LogOut size={20}/></button>
              <div className="hidden md:flex items-center gap-2.5">
-               {(activeTab === 'dashboard' && ['admin', 'pimpinan'].includes(user.role)) || activeTab === 'laporan' ? (
+               {(activeTab === 'dashboard' && ['admin', 'pimpinan'].includes(user.role)) || activeTab === 'laporan' || activeTab === 'penilaian' ? (
                  <select className="bg-slate-800 text-white border-none rounded-lg px-3 py-2 text-xs font-medium outline-none cursor-pointer" value={periodType} onChange={e => setPeriodType(e.target.value)}>
                     <option value="monthly">Bulanan</option>
                     <option value="tw1">Triwulan I</option>
@@ -2431,7 +2436,7 @@ const exportRekapKJKTahunan = async () => {
                   <tbody className="divide-y divide-slate-100">
                     {currentFilteredReports.map((r, idx) => (
                      <React.Fragment key={r.id}>
-                     {activeTab === 'laporan' && periodType !== 'monthly' && (idx === 0 || r.month !== currentFilteredReports[idx - 1].month) && (
+                     {(activeTab === 'laporan' || activeTab === 'penilaian') && periodType !== 'monthly' && (idx === 0 || r.month !== currentFilteredReports[idx - 1].month) && (
                        <tr>
                          <td colSpan={8} className="px-4 py-2.5 bg-indigo-50 text-[10px] font-semibold text-indigo-700">
                            {["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"][r.month - 1]} {r.year}
@@ -2543,7 +2548,7 @@ const exportRekapKJKTahunan = async () => {
                 ) : (
                   currentFilteredReports.map((r, idx) => (
                     <React.Fragment key={r.id}>
-                    {activeTab === 'laporan' && periodType !== 'monthly' && (idx === 0 || r.month !== currentFilteredReports[idx - 1].month) && (
+                    {(activeTab === 'laporan' || activeTab === 'penilaian') && periodType !== 'monthly' && (idx === 0 || r.month !== currentFilteredReports[idx - 1].month) && (
                       <p className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-4 py-2 rounded-lg mt-2 first:mt-0">
                         {["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"][r.month - 1]} {r.year}
                       </p>
