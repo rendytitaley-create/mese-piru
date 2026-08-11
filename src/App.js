@@ -747,12 +747,23 @@ if (!pimpinanTerpilih) {
 }
 const pimpinan = pimpinanTerpilih;
     const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-    const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+    // Rekap Triwulan/Tahunan hanya berlaku untuk tab Entri Pekerjaan (mengikuti pilihan periode di header)
+    const isRekapGabungan = activeTab === 'laporan' && periodType !== 'monthly';
+    const monthsIncluded = isRekapGabungan ? getMonthsForPeriod(periodType, selectedMonth) : [selectedMonth];
+    const firstMonthIdx = monthsIncluded[0];
+    const lastMonthIdx = monthsIncluded[monthsIncluded.length - 1];
+    const lastDay = new Date(selectedYear, lastMonthIdx, 0).getDate();
+    const periodeLabel = isRekapGabungan
+      ? `1 ${monthNames[firstMonthIdx - 1]} - ${lastDay} ${monthNames[lastMonthIdx - 1]} ${selectedYear}`
+      : `1 - ${lastDay} ${monthNames[selectedMonth - 1]} ${selectedYear}`;
+    const periodeFileTag = isRekapGabungan
+      ? (periodType === 'yearly' ? 'Tahunan' : `Triwulan-${{ tw1: 'I', tw2: 'II', tw3: 'III', tw4: 'IV' }[periodType]}`)
+      : monthNames[selectedMonth - 1];
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('CKP');
     sheet.mergeCells('A2:H2'); const titleCell = sheet.getCell('A2'); titleCell.value = `Capaian Kinerja Pegawai Tahun ${selectedYear}`; titleCell.font = { bold: true, size: 12 }; titleCell.alignment = { horizontal: 'center' };
     const setInfo = (row, label, value) => { sheet.getCell(`A${row}`).value = label; sheet.getCell(`B${row}`).value = `: ${value}`; sheet.getCell(`A${row}`).font = { bold: true }; };
-    setInfo(4, 'Unit Kerja', 'BPS Kab. Seram Bagian Barat'); setInfo(5, 'Nama', targetStaff?.name || ''); setInfo(6, 'Jabatan', targetStaff?.jabatan || ''); setInfo(7, 'Periode', `1 - ${lastDay} ${monthNames[selectedMonth-1]} ${selectedYear}`);
+    setInfo(4, 'Unit Kerja', 'BPS Kab. Seram Bagian Barat'); setInfo(5, 'Nama', targetStaff?.name || ''); setInfo(6, 'Jabatan', targetStaff?.jabatan || ''); setInfo(7, 'Periode', periodeLabel);
     sheet.mergeCells('A9:A10'); sheet.getCell('A9').value = 'No'; sheet.mergeCells('B9:B10'); sheet.getCell('B9').value = 'Uraian Kegiatan'; sheet.mergeCells('C9:C10'); sheet.getCell('C9').value = 'Satuan'; sheet.mergeCells('D9:F9'); sheet.getCell('D9').value = 'Kuantitas'; sheet.getCell('D10').value = 'Target'; sheet.getCell('E10').value = 'Realisasi'; sheet.getCell('F10').value = '%'; sheet.mergeCells('G9:G10'); sheet.getCell('G9').value = 'Tingkat Kualitas (%)'; sheet.mergeCells('H9:H10'); sheet.getCell('H9').value = 'Keterangan';
     const headerCells = ['A9','B9','C9','D9','G9','H9','D10','E10','F10']; headerCells.forEach(c => { const cell = sheet.getCell(c); cell.fill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFE0E0E0'} }; cell.font = { bold: true }; cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; });
     sheet.getColumn(1).width = 8.2; sheet.getColumn(2).width = 60; sheet.getColumn(3).width = 15; sheet.getColumn(4).width = 7.07; sheet.getColumn(5).width = 7.07; sheet.getColumn(6).width = 7.07; sheet.getColumn(7).width = 10; sheet.getColumn(8).width = 45;
@@ -772,10 +783,10 @@ const pimpinan = pimpinanTerpilih;
     sheet.mergeCells(`A${curRow}:E${curRow}`); const ckpLabel = sheet.getCell(`A${curRow}`); ckpLabel.value = 'Capaian Kinerja Pegawai (CKP)'; ckpLabel.font = { bold: true }; ckpLabel.alignment = { horizontal: 'center', vertical: 'middle' };
     sheet.mergeCells(`F${curRow}:G${curRow}`); const cellFinal = sheet.getCell(`F${curRow}`); cellFinal.value = Math.round((avgKuan + avgKual) / 2); cellFinal.font = { bold: true }; cellFinal.alignment = { horizontal: 'center', vertical: 'middle' };
     for (let i = 1; i <= 8; i++) { sheet.getRow(curRow).getCell(i).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; }
-    curRow += 2; sheet.mergeCells(`F${curRow}:H${curRow}`); const tglCell = sheet.getCell(`F${curRow}`); tglCell.value = `Penilaian Kinerja : ${lastDay} ${monthNames[selectedMonth-1]} ${selectedYear}`; tglCell.alignment = { horizontal: 'center' };
+    curRow += 2; sheet.mergeCells(`F${curRow}:H${curRow}`); const tglCell = sheet.getCell(`F${curRow}`); tglCell.value = `Penilaian Kinerja : ${periodeLabel}`; tglCell.alignment = { horizontal: 'center' };
     curRow += 2; sheet.mergeCells(`F${curRow}:H${curRow}`); const pimpLabel = sheet.getCell(`F${curRow}`); pimpLabel.value = 'Pejabat Penilai,'; pimpLabel.alignment = { horizontal: 'center' };
     curRow += 4; sheet.mergeCells(`F${curRow}:H${curRow}`); const pimpNameCell = sheet.getCell(`F${curRow}`); pimpNameCell.value = pimpinan.name; pimpNameCell.font = { bold: true, underline: true }; pimpNameCell.alignment = { horizontal: 'center' };
-    const buffer = await workbook.xlsx.writeBuffer(); saveAs(new Blob([buffer]), `CKP_${targetStaff?.name}_${monthNames[selectedMonth-1]}.xlsx`);
+    const buffer = await workbook.xlsx.writeBuffer(); saveAs(new Blob([buffer]), `CKP_${targetStaff?.name}_${periodeFileTag}_${selectedYear}.xlsx`);
   };
 
   const currentTW = useMemo(() => {
@@ -1259,10 +1270,24 @@ const exportRekapKJKTahunan = async () => {
     } catch (err) { alert("Gagal mengirim voting."); }
   };
 
+  // Helper: daftar bulan yang termasuk dalam periode terpilih (dipakai untuk rekap Triwulan/Tahunan)
+  const getMonthsForPeriod = (period, singleMonth) => {
+    if (period === 'tw1') return [1, 2, 3];
+    if (period === 'tw2') return [4, 5, 6];
+    if (period === 'tw3') return [7, 8, 9];
+    if (period === 'tw4') return [10, 11, 12];
+    if (period === 'yearly') return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    return [singleMonth];
+  };
+
   const currentFilteredReports = useMemo(() => {
-    let res = reports.filter(r => r.month === selectedMonth && r.year === selectedYear);
+    // Khusus tab Entri Pekerjaan: hormati pilihan periode (Bulanan/Triwulan/Tahunan) di header,
+    // supaya bisa merekap beberapa bulan sekaligus. Tab lain tetap 1 bulan seperti semula.
+    const monthsToInclude = activeTab === 'laporan' ? getMonthsForPeriod(periodType, selectedMonth) : [selectedMonth];
+    let res = reports.filter(r => monthsToInclude.includes(r.month) && r.year === selectedYear);
     if (activeTab === 'laporan') {
       res = res.filter(r => r.userId === user.username);
+      res = [...res].sort((a, b) => a.month - b.month);
     }
     if (activeTab === 'bukti_dukung') {
        if (user.role === 'pegawai') {
@@ -1279,7 +1304,7 @@ const exportRekapKJKTahunan = async () => {
       res = res.filter(r => r.userName === filterStaffName); 
     }
     return res;
-  }, [reports, user, selectedMonth, selectedYear, filterStaffName, activeTab]);
+  }, [reports, user, selectedMonth, selectedYear, filterStaffName, activeTab, periodType]);
 
   const dashboardStats = useMemo(() => {
     let monthsToInclude = [selectedMonth];
@@ -1441,7 +1466,7 @@ const exportRekapKJKTahunan = async () => {
              <button onClick={() => setShowPasswordModal(true)} className="md:hidden p-2 text-indigo-600 bg-white rounded-lg shadow-sm border border-slate-200"><KeyRound size={20}/></button>
              <button onClick={() => {localStorage.clear(); window.location.reload();}} className="md:hidden p-2 text-red-500 bg-white rounded-lg shadow-sm border border-slate-200"><LogOut size={20}/></button>
              <div className="hidden md:flex items-center gap-2.5">
-               {activeTab === 'dashboard' && ['admin', 'pimpinan'].includes(user.role) && (
+               {(activeTab === 'dashboard' && ['admin', 'pimpinan'].includes(user.role)) || activeTab === 'laporan' ? (
                  <select className="bg-slate-800 text-white border-none rounded-lg px-3 py-2 text-xs font-medium outline-none cursor-pointer" value={periodType} onChange={e => setPeriodType(e.target.value)}>
                     <option value="monthly">Bulanan</option>
                     <option value="tw1">Triwulan I</option>
@@ -1450,7 +1475,7 @@ const exportRekapKJKTahunan = async () => {
                     <option value="tw4">Triwulan IV</option>
                     <option value="yearly">Tahunan</option>
                  </select>
-               )}
+               ) : null}
                {(activeTab === 'penilaian' || activeTab === 'bukti_dukung' || activeTab === 'kjk_management' || activeTab === 'agenda') && ['admin', 'pimpinan', 'ketua'].includes(user.role) && (
                   <>
                     <select className="p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 shadow-sm outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
@@ -2405,7 +2430,15 @@ const exportRekapKJKTahunan = async () => {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {currentFilteredReports.map((r, idx) => (
-                     <tr key={r.id} className={`${selectedReportIds.includes(r.id) ? 'bg-indigo-50' : 'hover:bg-slate-50'} transition-all group`}>
+                     <React.Fragment key={r.id}>
+                     {activeTab === 'laporan' && periodType !== 'monthly' && (idx === 0 || r.month !== currentFilteredReports[idx - 1].month) && (
+                       <tr>
+                         <td colSpan={8} className="px-4 py-2.5 bg-indigo-50 text-[10px] font-semibold text-indigo-700">
+                           {["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"][r.month - 1]} {r.year}
+                         </td>
+                       </tr>
+                     )}
+                     <tr className={`${selectedReportIds.includes(r.id) ? 'bg-indigo-50' : 'hover:bg-slate-50'} transition-all group`}>
   {/* KOLOM CHECKBOX PER BARIS */}
   <td className="p-4 text-center">
     <input 
@@ -2476,6 +2509,7 @@ const exportRekapKJKTahunan = async () => {
                           </div>
                         </td>
                       </tr>
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
@@ -2508,7 +2542,13 @@ const exportRekapKJKTahunan = async () => {
                   </div>
                 ) : (
                   currentFilteredReports.map((r, idx) => (
-                    <div key={r.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <React.Fragment key={r.id}>
+                    {activeTab === 'laporan' && periodType !== 'monthly' && (idx === 0 || r.month !== currentFilteredReports[idx - 1].month) && (
+                      <p className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-4 py-2 rounded-lg mt-2 first:mt-0">
+                        {["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"][r.month - 1]} {r.year}
+                      </p>
+                    )}
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                       <div className="flex justify-between items-start mb-2">
                         <span className="text-[10px] font-semibold text-indigo-600">#{idx + 1} - {r.satuan}</span>
                         <div className="flex gap-2">
@@ -2545,6 +2585,7 @@ const exportRekapKJKTahunan = async () => {
                         </div>
                       )}
                     </div>
+                    </React.Fragment>
                   ))
                 )}
               </div>
