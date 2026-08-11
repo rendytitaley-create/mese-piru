@@ -895,7 +895,7 @@ const pimpinan = pimpinanTerpilih;
     });
 
     return results.sort((a, b) => b.finalScore - a.finalScore);
-  }, [users, reports, kjkData, nilai360, voteWindow, currentTW, selectedYear, bakiraRecords, user?.role]); // Menambahkan user.role agar lulus sensor ESLint saat deploy
+  }, [users, reports, kjkData, nilai360, voteWindow, currentTW, selectedYear, bakiraRecords, user?.role, isKJKForStaff]); // Menambahkan user.role agar lulus sensor ESLint saat deploy
 
   // Data Monitoring Partisipasi Pegawai Prima: hanya pegawai aktif, jumlah rekan juga dihitung dari yang aktif saja
   const primaMonitoringData = useMemo(() => {
@@ -1504,7 +1504,7 @@ const exportRekapKJKTahunan = async () => {
       myKJK,
       isAnyPending: myMonthReports.some(r => r.status === 'pending')
     };
-  }, [reports, users, user, selectedMonth, selectedYear, kjkData, periodType]);
+  }, [reports, users, user, selectedMonth, selectedYear, kjkData, periodType, isKJKForStaff]);
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50 font-sans"><Loader2 className="animate-spin text-indigo-600" size={50} /></div>;
 
