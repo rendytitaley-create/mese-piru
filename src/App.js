@@ -352,6 +352,14 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
     return name.trim().split(" ")[0].toLowerCase();
   };
 
+  // Cocokkan catatan KJK ke seorang pegawai: utamakan userId (stabil, hasil upload versi baru).
+  // Untuk data KJK lama yang diupload sebelum perbaikan ini (belum punya userId), tetap dicocokkan
+  // lewat kata pertama nama sebagai fallback, supaya data lama tidak hilang begitu saja.
+  const isKJKForStaff = (k, staff) => {
+    if (k.userId) return k.userId === staff.username;
+    return getFirstWord(k.nama) === getFirstWord(staff.name);
+  };
+
   const formatKJKDisplay = (timeStr) => {
     if (!timeStr || timeStr === '00:00' || timeStr === '00:00:00') return "Nol KJK";
     const parts = timeStr.split(':').map(Number);
@@ -487,10 +495,16 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
                 }
               }
 
+              // Kaitkan ke ID pegawai (username) yang namanya cocok PERSIS (bukan cuma kata pertama)
+              // dengan salah satu pegawai aktif saat ini -- supaya data KJK tetap terhubung dengan
+              // benar walau ada pegawai lain yang kebetulan nama depannya sama.
+              const matchedUser = users.find(u => u.name?.trim().toLowerCase() === nama.toLowerCase());
+
               const docId = `${selectedYear}_${selectedMonth}_${nama.replace(/\s+/g, '_').toLowerCase()}`;
               const kjkRef = doc(db, "kjk", docId);
               batch.set(kjkRef, {
                 nama,
+                userId: matchedUser ? matchedUser.username : null,
                 kjkValue: kjkVal,
                 month: selectedMonth,
                 year: selectedYear,
@@ -863,7 +877,7 @@ const pimpinan = pimpinanTerpilih;
       
       // 2. KJK (30% dari total nilai)
       const sFirstWord = getFirstWord(s.name);
-      const sKJKs = kjkData.filter(k => getFirstWord(k.nama) === sFirstWord && k.year === targetYear && monthsToInclude.includes(k.month));
+      const sKJKs = kjkData.filter(k => isKJKForStaff(k, s) && k.year === targetYear && monthsToInclude.includes(k.month));
       const totalKJKMins = sKJKs.reduce((acc, curr) => acc + timeToMinutes(curr.kjkValue), 0);
       const kjkScore = Math.max(0, 100 - ((totalKJKMins / 60) * 5));
       
@@ -1187,7 +1201,7 @@ const exportRekapKJKTahunan = async () => {
 
     // Loop 12 Bulan
     for (let m = 1; m <= 12; m++) {
-      const foundKJK = kjkData.find(k => getFirstWord(k.nama) === pFirstWord && k.month === m && k.year === selectedYear);
+      const foundKJK = kjkData.find(k => isKJKForStaff(k, p) && k.month === m && k.year === selectedYear);
       if (foundKJK) {
         rowData.push(foundKJK.kjkValue);
         totalMins += timeToMinutes(foundKJK.kjkValue);
@@ -1420,7 +1434,7 @@ const exportRekapKJKTahunan = async () => {
       }
       
       const sFirstWord = getFirstWord(s.name);
-      const userKJKs = currentKJK.filter(k => getFirstWord(k.nama) === sFirstWord);
+      const userKJKs = currentKJK.filter(k => isKJKForStaff(k, s));
       const totalMins = userKJKs.reduce((acc, curr) => acc + timeToMinutes(curr.kjkValue), 0);
 
       // === MODIFIKASI: Progress Bar Khusus Penilaian Ketua Tim ===
@@ -1450,35 +1464,26 @@ const exportRekapKJKTahunan = async () => {
       return a.kjkMins - b.kjkMins;
     });
 
-    const myReports = periodReports.filter(r => r.userId === user?.username);
-    const myTotal = myReports.length; 
-    const mySelesai = myReports.filter(r => r.status === 'selesai').length;
-    const myDikirim = myReports.filter(r => r.status === 'dikirim' || r.status === 'dinilai_ketua' || r.status === 'selesai').length;
-    
-    const myFirstWord = getFirstWord(user?.name);
-    const myKJKs = currentKJK.filter(k => getFirstWord(k.nama) === myFirstWord);
-    const myTotalMins = myKJKs.reduce((acc, curr) => acc + timeToMinutes(curr.kjkValue), 0);
+    // Kartu "Bulan Ini" milik pegawai HARUS selalu murni bulan yang dipilih (selectedMonth),
+    // TIDAK boleh ikut berubah kalau periodType diganti ke Triwulan/Tahunan di tempat lain --
+    // supaya label "Bulan Ini" selalu sesuai dengan datanya. Karena itu di sini sengaja dihitung
+    // dari data mentah (reports/kjkData) langsung, bukan dari periodReports/currentKJK yang
+    // mengikuti periodType.
+    const myMonthReports = reports.filter(r => r.month === selectedMonth && r.year === selectedYear && r.userId === user?.username);
+    const myTotal = myMonthReports.length; 
+    const mySelesai = myMonthReports.filter(r => r.status === 'selesai').length;
+    const myDikirim = myMonthReports.filter(r => r.status === 'dikirim' || r.status === 'dinilai_ketua' || r.status === 'selesai').length;
+
+    const myMonthKJKs = kjkData.filter(k => k.month === selectedMonth && k.year === selectedYear && isKJKForStaff(k, user));
+    const myTotalMins = myMonthKJKs.reduce((acc, curr) => acc + timeToMinutes(curr.kjkValue), 0);
     const myKJK = minutesToTimeStr(myTotalMins);
 
-    // Nilai kartu pegawai (punya sendiri) = murni nilai akhir dari Pimpinan, mengikuti aturan yang sama
-    // dengan staffSummary di atas: bulan tunggal = rata-rata dari pekerjaan yang sudah selesai dinilai
-    // bulan ini; Triwulan/Tahunan (di sini selalu dihitung penuh 1 tahun) = rata-rata dari BULAN yang
-    // sudah selesai dinilai saja.
-    let myNilaiAkhir;
-    if (monthsToInclude.length > 1) {
-      const myByMonth = {};
-      myReports.forEach(r => { (myByMonth[r.month] = myByMonth[r.month] || []).push(r); });
-      const myCompletedMonthAverages = Object.values(myByMonth)
-        .filter(mr => mr.length > 0 && mr.every(r => r.status === 'selesai'))
-        .map(mr => mr.reduce((a, c) => a + (Number(c.nilaiPimpinan) || 0), 0) / mr.length);
-      myNilaiAkhir = (myCompletedMonthAverages.length > 0 ? (myCompletedMonthAverages.reduce((a, b) => a + b, 0) / myCompletedMonthAverages.length) : 0).toFixed(2);
-    } else {
-      const myGradedReports = myReports.filter(r => r.status === 'selesai');
-      myNilaiAkhir = (myGradedReports.length > 0 ? (myGradedReports.reduce((a, c) => a + (Number(c.nilaiPimpinan) || 0), 0) / myGradedReports.length) : 0).toFixed(2);
-    }
+    // Nilai kartu "Bulan Ini" = murni rata-rata nilai akhir dari Pimpinan untuk pekerjaan bulan ini yang sudah selesai dinilai.
+    const myGradedReports = myMonthReports.filter(r => r.status === 'selesai');
+    const myNilaiAkhir = (myGradedReports.length > 0 ? (myGradedReports.reduce((a, c) => a + (Number(c.nilaiPimpinan) || 0), 0) / myGradedReports.length) : 0).toFixed(2);
 
     const yReports = reports.filter(r => r.year === selectedYear && r.userId === user?.username);
-    const yKJKs = kjkData.filter(k => k.year === selectedYear && getFirstWord(k.nama) === myFirstWord);
+    const yKJKs = kjkData.filter(k => k.year === selectedYear && isKJKForStaff(k, user));
     const yTotalKJKMins = yKJKs.reduce((a,c) => a + timeToMinutes(c.kjkValue), 0);
     // Kartu kumulatif setahun: rata-rata nilai Pimpinan dari BULAN yang sudah selesai dinilai saja
     // (bulan yang belum tuntas dinilai tidak ikut menarik turun nilai kumulatifnya).
@@ -1497,7 +1502,7 @@ const exportRekapKJKTahunan = async () => {
       staffSummary: sortedSummary, 
       myStatus: myTotal === 0 ? "Belum Ada Laporan" : (mySelesai === myTotal ? "Selesai" : (myDikirim === myTotal ? "Menunggu Penilaian" : "Belum Dikirim")),
       myKJK,
-      isAnyPending: myReports.some(r => r.status === 'pending')
+      isAnyPending: myMonthReports.some(r => r.status === 'pending')
     };
   }, [reports, users, user, selectedMonth, selectedYear, kjkData, periodType]);
 
