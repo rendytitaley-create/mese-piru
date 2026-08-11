@@ -847,9 +847,23 @@ const pimpinan = pimpinanTerpilih;
     return results.sort((a, b) => b.finalScore - a.finalScore);
   }, [users, reports, kjkData, nilai360, voteWindow, currentTW, selectedYear, bakiraRecords, user?.role]); // Menambahkan user.role agar lulus sensor ESLint saat deploy
 
+  // Data Monitoring Partisipasi Pegawai Prima: hanya pegawai aktif, jumlah rekan juga dihitung dari yang aktif saja
+  const primaMonitoringData = useMemo(() => {
+    const activePeople = users.filter(u => !['admin', 'pimpinan'].includes(u.role) && (u.status || 'aktif').toLowerCase() !== 'nonaktif');
+    const totalRekan = Math.max(activePeople.length - 1, 0);
+    const rows = activePeople.map(staff => {
+      const votesDone = nilai360.filter(v => v.reviewerId === staff.username && v.period === currentTW && v.year === selectedYear).length;
+      const isComplete = totalRekan === 0 || votesDone >= totalRekan;
+      return { staff, votesDone, totalRekan, isComplete };
+    });
+    // Belum lengkap ditampilkan lebih dulu supaya mudah dipantau, lalu urut nama
+    rows.sort((a, b) => (a.isComplete === b.isComplete ? a.staff.name.localeCompare(b.staff.name) : a.isComplete ? 1 : -1));
+    return rows;
+  }, [users, nilai360, currentTW, selectedYear]);
+
   const exportKertasKerjaPrima = async () => {
-  const period = (voteWindow.period || currentTW).toUpperCase();
-  const year = voteWindow.evalYear || selectedYear;
+  const period = currentTW.toUpperCase();
+  const year = selectedYear;
 
   const daftarPimpinan = users.filter(u => u.role === 'pimpinan');
   let pilihanTeks = "Pilih nama pimpinan untuk Kertas Kerja Prima:\n";
@@ -1172,8 +1186,8 @@ const exportRekapKJKTahunan = async () => {
 };
   
   const handleSetWinner = async (staff) => {
-    const period = voteWindow.period || currentTW;
-    const year = voteWindow.evalYear || selectedYear;
+    const period = currentTW;
+    const year = selectedYear;
     if (!window.confirm(`Tetapkan ${staff.name} sebagai pemenang periode ${period.toUpperCase()} ${year}?`)) return;
     try {
       const winnerRef = doc(db, "winners", `${year}_${period}`);
@@ -1188,8 +1202,8 @@ const exportRekapKJKTahunan = async () => {
   };
 
   const handlePublish = async () => {
-    const period = voteWindow.period || currentTW;
-    const year = voteWindow.evalYear || selectedYear;
+    const period = currentTW;
+    const year = selectedYear;
     if (!window.confirm(`Publish pengumuman pemenang untuk periode ${period.toUpperCase()} ${year}?`)) return;
     try {
         await setDoc(doc(db, "publish_status", `${year}_${period}`), {
@@ -1201,8 +1215,8 @@ const exportRekapKJKTahunan = async () => {
   };
 
   const handleUnpublish = async () => {
-    const period = voteWindow.period || currentTW;
-    const year = voteWindow.evalYear || selectedYear;
+    const period = currentTW;
+    const year = selectedYear;
     if (!window.confirm(`Batalkan publikasi pengumuman periode ${period.toUpperCase()} ${year}? Pengumuman tidak akan terlihat lagi oleh pegawai.`)) return;
     try {
         await deleteDoc(doc(db, "publish_status", `${year}_${period}`));
@@ -1214,8 +1228,8 @@ const exportRekapKJKTahunan = async () => {
   };
 
   const handleResetVotes = async (targetUserId = null, reviewerId = null) => {
-  const period = voteWindow.period || currentTW;
-  const year = voteWindow.evalYear || selectedYear;
+  const period = currentTW;
+  const year = selectedYear;
   
   // Tentukan pesan konfirmasi berdasarkan tombol mana yang diklik
   let msg = "Reset SEMUA data voting periode ini?";
@@ -1911,14 +1925,14 @@ const exportRekapKJKTahunan = async () => {
               <Trophy className="text-amber-500" size={32} /> 
               Top 3 Kandidat Pegawai prima
             </h2>
-            <p className="text-slate-400 text-[10px] font-semibold mt-2">{(voteWindow.period || currentTW).toUpperCase()} {voteWindow.evalYear || selectedYear}</p>
+            <p className="text-slate-400 text-[10px] font-semibold mt-2">{currentTW.toUpperCase()} {selectedYear}</p>
           </div>
 
           {user.role === 'admin' && (
             <div className="flex flex-wrap justify-center gap-3">
               <button onClick={exportKertasKerjaPrima} className="flex items-center gap-3 bg-green-600 text-white px-6 py-3 rounded-2xl font-semibold text-[10px] shadow-lg"><FileSpreadsheet size={16}/> Kertas Kerja</button>
               {/* Tombol Publish - Muncul jika belum dipublish */}
-{!publishStatus[`${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`]?.isPublished ? (
+{!publishStatus[`${selectedYear}_${currentTW}`]?.isPublished ? (
   <button onClick={handlePublish} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-semibold text-[10px] shadow-lg">
     <Megaphone size={16}/> Publish Pengumuman
   </button>
@@ -1935,7 +1949,7 @@ const exportRekapKJKTahunan = async () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
           {leaderboardData.slice(0, 3).map((staff, index) => {
-            const isWinner = winners.some(w => w.username === staff.username && w.period === (voteWindow.period || currentTW) && w.year === (voteWindow.evalYear || selectedYear));
+            const isWinner = winners.some(w => w.username === staff.username && w.period === currentTW && w.year === selectedYear);
             return (
               <div key={index} className={`relative p-8 rounded-2xl border-2 flex flex-col items-center text-center transition-all ${isWinner ? 'border-amber-500 bg-slate-800/50 shadow-[0_0_30px_rgba(245,158,11,0.1)]' : 'border-slate-800 bg-slate-900/50'}`}>
                 {index === 0 && <div className="absolute -top-4 -right-4 bg-amber-500 text-slate-900 w-12 h-12 rounded-full flex items-center justify-center shadow-lg transform rotate-12"><Star size={24} fill="currentColor"/></div>}
@@ -1957,43 +1971,49 @@ const exportRekapKJKTahunan = async () => {
         {/* MONITORING PARTISIPASI (KHUSUS ADMIN) */}
         {user.role === 'admin' && (
           <div className="mt-12 pt-12 border-t border-slate-800">
-            <div className="flex items-center gap-4 mb-8">
-              <ClipboardCheck size={24} className="text-indigo-400" />
-              <h3 className="font-semibold text-sm tracking-tight">Monitoring Partisipasi</h3>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+              <div className="flex items-center gap-4">
+                <ClipboardCheck size={24} className="text-indigo-400" />
+                <div>
+                  <h3 className="font-semibold text-sm tracking-tight">Monitoring Partisipasi</h3>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    {primaMonitoringData.filter(r => r.isComplete).length} dari {primaMonitoringData.length} pegawai aktif sudah menyelesaikan penilaian
+                  </p>
+                </div>
+              </div>
+              <div className="w-full md:w-56 h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-green-500 rounded-full transition-all"
+                  style={{ width: `${primaMonitoringData.length ? Math.round((primaMonitoringData.filter(r => r.isComplete).length / primaMonitoringData.length) * 100) : 0}%` }}
+                ></div>
+              </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-700 text-[9px] font-semibold text-slate-500">
-                    <th className="pb-4">Nama Pegawai</th>
-                    <th className="pb-4 text-center">Progres Voting</th>
-                    <th className="pb-4 text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaderboardData.filter(staff => (staff.status || 'aktif').toLowerCase() !== 'nonaktif').map((staff, idx) => {
-                    const votesDone = nilai360.filter(v => v.reviewerId === staff.username && v.period === (voteWindow.period || currentTW) && v.year === (voteWindow.evalYear || selectedYear)).length;
-                    const totalRekan = users.filter(u => !['admin', 'pimpinan'].includes(u.role)).length - 1;
-                    const isComplete = votesDone >= totalRekan;
-                    return (
-                      <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/20">
-                        <td className="py-4 font-semibold text-[10px]">{staff.name}</td>
-                        <td className="py-4 text-center font-bold text-slate-400 text-[10px]">{votesDone} / {totalRekan} Rekan</td>
-                        <td className="py-4 text-center">
-                          <div className="flex flex-col items-center gap-2">
-                            <span className={`text-[8px] font-semibold px-3 py-1 rounded-full ${isComplete ? 'bg-green-500/10 text-green-400' : 'bg-amber-500/10 text-amber-400'}`}>
-                              {isComplete ? "Lengkap" : "Proses"}
-                            </span>
-                            {user.role === 'admin' && votesDone > 0 && (
-                              <button onClick={() => handleResetVotes(null, staff.username)} className="text-[7px] font-semibold text-red-500 hover:text-red-700 underline">Reset Penilaian Saya</button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="space-y-3">
+              {primaMonitoringData.length === 0 ? (
+                <p className="text-[10px] text-slate-500 text-center py-8">Belum ada pegawai aktif untuk dipantau.</p>
+              ) : (
+                primaMonitoringData.map(({ staff, votesDone, totalRekan, isComplete }, idx) => (
+                  <div key={idx} className="flex items-center gap-4 bg-slate-800/30 border border-slate-800 rounded-xl p-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-3 mb-2">
+                        <p className="font-semibold text-[11px] truncate">{staff.name}</p>
+                        <span className={`shrink-0 text-[8px] font-semibold px-3 py-1 rounded-full ${isComplete ? 'bg-green-500/10 text-green-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                          {isComplete ? "Lengkap" : "Proses"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full transition-all ${isComplete ? 'bg-green-500' : 'bg-amber-500'}`} style={{ width: `${totalRekan ? Math.min(100, Math.round((votesDone / totalRekan) * 100)) : 100}%` }}></div>
+                        </div>
+                        <span className="text-[9px] font-semibold text-slate-400 shrink-0">{votesDone} / {totalRekan} Rekan</span>
+                      </div>
+                    </div>
+                    {votesDone > 0 && (
+                      <button onClick={() => handleResetVotes(null, staff.username)} className="shrink-0 text-[8px] font-semibold text-red-500 hover:text-red-400 underline">Reset</button>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}
@@ -2003,11 +2023,11 @@ const exportRekapKJKTahunan = async () => {
     {/* 2. BAGIAN PEGAWAI (VOTING / PENGUMUMAN) */}
     {user.role !== 'admin' && user.role !== 'pimpinan' && (
       <div className="bg-white p-8 md:p-12 rounded-2xl md:rounded-2xl shadow-sm border border-slate-100">
-        {publishStatus[`${voteWindow.evalYear || selectedYear}_${voteWindow.period || currentTW}`]?.isPublished ? (
+        {publishStatus[`${selectedYear}_${currentTW}`]?.isPublished ? (
           <div className="animate-reveal-winner py-10 text-center">
             <Trophy className="mx-auto text-amber-500 mb-8" size={80} />
             <p className="text-[10px] font-semibold text-slate-400 tracking-[0.3em] mb-16">Penghargaan Atas Dedikasi & Integritas Tinggi</p>
-            {winners.filter(w => w.period === (voteWindow.period || currentTW) && w.year === (voteWindow.evalYear || selectedYear)).map((w, idx) => (
+            {winners.filter(w => w.period === currentTW && w.year === selectedYear).map((w, idx) => (
               <div key={idx} className="relative group max-w-sm mx-auto mb-20">
                 <div className="shine-effect animate-glow-pulse bg-slate-900 p-12 rounded-2xl text-white border border-amber-500/30 relative z-10 shadow-md">
                   <div className="relative w-40 h-40 rounded-full overflow-hidden mx-auto mb-8 border-4 border-amber-500 bg-slate-800">
