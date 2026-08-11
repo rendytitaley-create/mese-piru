@@ -176,6 +176,12 @@ const [bakiraDailyLog, setBakiraDailyLog] = useState({});
 const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   const [bakiraNotulenLink, setBakiraNotulenLink] = useState('');
   const [bakiraRecords, setBakiraRecords] = useState([]);
+  const [kobData, setKobData] = useState([]);
+  const [showKOBModal, setShowKOBModal] = useState(false);
+  const [showKOBImportModal, setShowKOBImportModal] = useState(false);
+  const [isEditingKOB, setIsEditingKOB] = useState(false);
+  const [currentKOBId, setCurrentKOBId] = useState(null);
+  const [newKOB, setNewKOB] = useState({ iku: '', iki: '', satuan: '', target: '', realisasi: '', linkBuktiDukung: '', originalAgendaId: '' });
   const [exportFormat, setExportFormat] = useState('excel');
   const [isKegiatanAda, setIsKegiatanAda] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -202,7 +208,7 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
-  const [newUser, setNewUser] = useState({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '' });
+  const [newUser, setNewUser] = useState({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '', assignedIKU: [] });
 
   const [tempLinks, setTempLinks] = useState({});
 
@@ -275,6 +281,9 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
       const records = snap.docs.map(d => ({ date: d.id, ...d.data() }));
       setBakiraRecords(records);
     });
+    const unsubKOB = onSnapshot(collection(db, "kob"), (snap) => {
+      setKobData(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
 
     // Satu return untuk membersihkan semua listener sekaligus
     return () => { 
@@ -283,6 +292,7 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
       unsubSettings(); 
       unsubKJK(); 
       unsubBakiraRecords(); 
+      unsubKOB();
     };
   }, []);
 
@@ -725,7 +735,7 @@ setPersistence(auth, browserSessionPersistence);
 };
 
   const resetReportForm = () => { setIsEditing(false); setCurrentReportId(null); setNewReport({ title: '', target: '', realisasi: '', satuan: '', keterangan: '', targetUser: '', originalAgendaId: '' }); };
-  const resetUserForm = () => { setIsEditingUser(false); setCurrentUserId(null); setNewUser({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '',status: 'aktif' }); };
+  const resetUserForm = () => { setIsEditingUser(false); setCurrentUserId(null); setNewUser({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '', status: 'aktif', assignedIKU: [] }); };
 
   const handleNilaiSemua = async () => {
     if (filterStaffName === 'Semua') return;
@@ -773,6 +783,39 @@ setPersistence(auth, browserSessionPersistence);
       }
       setShowReportModal(false); resetReportForm();
     } catch (err) { alert("Data berhasil disimpan."); }
+  };
+
+  const resetKOBForm = () => { setIsEditingKOB(false); setCurrentKOBId(null); setNewKOB({ iku: '', iki: '', satuan: '', target: '', realisasi: '', linkBuktiDukung: '', originalAgendaId: '' }); };
+
+  const handleSubmitKOB = async (e) => {
+    e.preventDefault();
+    if (!newKOB.iku) { alert("Pilih IKU terlebih dahulu."); return; }
+    try {
+      if (isEditingKOB && currentKOBId) {
+        await updateDoc(doc(db, "kob", currentKOBId), {
+          iku: newKOB.iku, iki: newKOB.iki, satuan: newKOB.satuan,
+          target: Number(newKOB.target), realisasi: Number(newKOB.realisasi),
+          linkBuktiDukung: newKOB.linkBuktiDukung, updatedAt: serverTimestamp()
+        });
+      } else {
+        await addDoc(collection(db, "kob"), {
+          userId: user.username, userName: user.name,
+          iku: newKOB.iku, iki: newKOB.iki, satuan: newKOB.satuan,
+          target: Number(newKOB.target), realisasi: Number(newKOB.realisasi),
+          linkBuktiDukung: newKOB.linkBuktiDukung,
+          month: selectedMonth, year: selectedYear, createdAt: serverTimestamp()
+        });
+        if (newKOB.originalAgendaId) {
+          await updateDoc(doc(db, "agendas", newKOB.originalAgendaId), { isImported: true });
+        }
+      }
+      setShowKOBModal(false); resetKOBForm();
+    } catch (err) { console.error(err); alert("Gagal menyimpan data KOB."); }
+  };
+
+  const handleDeleteKOB = async (id) => {
+    if (!window.confirm("Hapus baris KOB ini?")) return;
+    try { await deleteDoc(doc(db, "kob", id)); } catch (err) { alert("Gagal menghapus data KOB."); }
   };
 
   const clearGrade = async (reportId, field) => {
@@ -922,6 +965,75 @@ const pimpinan = pimpinanTerpilih;
     const buffer = await workbook.xlsx.writeBuffer(); saveAs(new Blob([buffer]), `CKP_${targetStaff?.name}_${periodeFileTag}_${selectedYear}.xlsx`);
   };
 
+  const exportKOBToExcel = async () => {
+    if (filterStaffName === 'Semua') { alert("Pilih satu nama Ketua Tim terlebih dahulu untuk mencetak KOB."); return; }
+    const targetKetua = users.find(u => u.name === filterStaffName);
+    const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+    const periodeLabel = `1 - ${lastDay} ${monthNames[selectedMonth - 1]} ${selectedYear}`;
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('KOB');
+    sheet.mergeCells('A2:H2'); const titleCell = sheet.getCell('A2'); titleCell.value = `Kinerja Organisasi Bulanan Tahun ${selectedYear}`; titleCell.font = { bold: true, size: 12 }; titleCell.alignment = { horizontal: 'center' };
+    const setInfo = (row, label, value) => { sheet.getCell(`A${row}`).value = label; sheet.getCell(`B${row}`).value = `: ${value}`; sheet.getCell(`A${row}`).font = { bold: true }; };
+    setInfo(4, 'Unit Kerja', 'BPS Kab. Seram Bagian Barat'); setInfo(5, 'Nama Ketua Tim', targetKetua?.name || ''); setInfo(6, 'Jabatan', targetKetua?.jabatan || ''); setInfo(7, 'Periode', periodeLabel);
+
+    sheet.mergeCells('A9:A10'); sheet.getCell('A9').value = 'No'; sheet.mergeCells('B9:B10'); sheet.getCell('B9').value = 'IKU'; sheet.mergeCells('C9:C10'); sheet.getCell('C9').value = 'IKI'; sheet.mergeCells('D9:D10'); sheet.getCell('D9').value = 'Satuan'; sheet.mergeCells('E9:G9'); sheet.getCell('E9').value = 'Kuantitas'; sheet.getCell('E10').value = 'Target'; sheet.getCell('F10').value = 'Realisasi'; sheet.getCell('G10').value = '%'; sheet.mergeCells('H9:H10'); sheet.getCell('H9').value = 'Link Bukti Dukung';
+    const headerCells = ['A9','B9','C9','D9','E9','H9','E10','F10','G10']; headerCells.forEach(c => { const cell = sheet.getCell(c); cell.fill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFE0E0E0'} }; cell.font = { bold: true }; cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; });
+    sheet.getColumn(1).width = 6; sheet.getColumn(2).width = 35; sheet.getColumn(3).width = 35; sheet.getColumn(4).width = 12; sheet.getColumn(5).width = 9; sheet.getColumn(6).width = 9; sheet.getColumn(7).width = 8; sheet.getColumn(8).width = 35;
+
+    const kobRows = kobData.filter(k => k.userId === targetKetua?.username && k.month === selectedMonth && k.year === selectedYear);
+    let curRow = 11; let sumPct = 0; const dataCount = kobRows.length;
+    kobRows.forEach((r, i) => {
+        const row = sheet.getRow(curRow); const pct = r.target > 0 ? (r.realisasi / r.target) * 100 : 0;
+        row.values = [i+1, r.iku, r.iki, r.satuan, r.target, r.realisasi, pct, r.linkBuktiDukung || '']; row.height = 35;
+        row.eachCell({ includeEmpty: true }, (cell, colNum) => { cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; cell.alignment = { vertical: 'middle', wrapText: true, horizontal: (colNum === 2 || colNum === 3 || colNum === 8) ? 'left' : 'center' }; });
+        sumPct += Math.min(pct, 100); curRow++;
+    });
+    const avgPct = dataCount > 0 ? sumPct / dataCount : 0;
+    sheet.mergeCells(`A${curRow}:F${curRow}`); const avgLabel = sheet.getCell(`A${curRow}`); avgLabel.value = 'Rata-Rata Capaian'; avgLabel.font = { bold: true }; avgLabel.alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.mergeCells(`G${curRow}:H${curRow}`); const cellG = sheet.getCell(`G${curRow}`); cellG.value = avgPct; cellG.font = { bold: true }; cellG.alignment = { horizontal: 'center', vertical: 'middle' };
+    for (let i = 1; i <= 8; i++) { sheet.getRow(curRow).getCell(i).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; }
+
+    curRow += 3; sheet.mergeCells(`F${curRow}:H${curRow}`); const tglCell = sheet.getCell(`F${curRow}`); tglCell.value = `${periodeLabel}`; tglCell.alignment = { horizontal: 'center' };
+    curRow += 2; sheet.mergeCells(`F${curRow}:H${curRow}`); const ketuaLabel = sheet.getCell(`F${curRow}`); ketuaLabel.value = 'Ketua Tim,'; ketuaLabel.alignment = { horizontal: 'center' };
+    curRow += 4; sheet.mergeCells(`F${curRow}:H${curRow}`); const ketuaNameCell = sheet.getCell(`F${curRow}`); ketuaNameCell.value = targetKetua?.name || ''; ketuaNameCell.font = { bold: true, underline: true }; ketuaNameCell.alignment = { horizontal: 'center' };
+
+    const buffer = await workbook.xlsx.writeBuffer(); saveAs(new Blob([buffer]), `KOB_${targetKetua?.name}_${monthNames[selectedMonth-1]}_${selectedYear}.xlsx`);
+  };
+
+  const exportKOBToPDF = () => {
+    if (filterStaffName === 'Semua') { alert("Pilih satu nama Ketua Tim terlebih dahulu untuk mencetak KOB."); return; }
+    const targetKetua = users.find(u => u.name === filterStaffName);
+    const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    const kobRows = kobData.filter(k => k.userId === targetKetua?.username && k.month === selectedMonth && k.year === selectedYear);
+
+    const doc = new jsPDF('l', 'mm', 'a4');
+    doc.setFontSize(13); doc.setFont(undefined, 'bold');
+    doc.text(`Kinerja Organisasi Bulanan Tahun ${selectedYear}`, 148.5, 15, { align: 'center' });
+    doc.setFontSize(9); doc.setFont(undefined, 'normal');
+    doc.text(`Unit Kerja: BPS Kab. Seram Bagian Barat`, 14, 24);
+    doc.text(`Nama Ketua Tim: ${targetKetua?.name || ''}`, 14, 29);
+    doc.text(`Jabatan: ${targetKetua?.jabatan || ''}`, 14, 34);
+    doc.text(`Periode: ${monthNames[selectedMonth - 1]} ${selectedYear}`, 14, 39);
+
+    const body = kobRows.map((r, i) => [
+      i + 1, r.iku, r.iki, r.satuan,
+      r.target, r.realisasi,
+      `${(r.target > 0 ? (r.realisasi / r.target) * 100 : 0).toFixed(0)}%`,
+      r.linkBuktiDukung || '-'
+    ]);
+    autoTable(doc, {
+      startY: 44,
+      head: [['No', 'IKU', 'IKI', 'Satuan', 'Target', 'Realisasi', '%', 'Link Bukti Dukung']],
+      body,
+      styles: { fontSize: 8, cellPadding: 2, valign: 'middle' },
+      headStyles: { fillColor: [30, 41, 59], halign: 'center' },
+      columnStyles: { 0: { halign: 'center', cellWidth: 10 }, 4: { halign: 'center' }, 5: { halign: 'center' }, 6: { halign: 'center' } }
+    });
+    doc.save(`KOB_${targetKetua?.name}_${monthNames[selectedMonth-1]}_${selectedYear}.pdf`);
+  };
+
   const currentTW = useMemo(() => {
     if (selectedMonth <= 3) return "tw1";
     if (selectedMonth <= 6) return "tw2";
@@ -992,6 +1104,37 @@ const pimpinan = pimpinanTerpilih;
     rows.sort((a, b) => (a.isComplete === b.isComplete ? a.staff.name.localeCompare(b.staff.name) : a.isComplete ? 1 : -1));
     return rows;
   }, [users, nilai360, currentTW, selectedYear]);
+
+  // Data KOB bulan/tahun terpilih -- untuk role Ketua Tim: milik sendiri saja.
+  // Untuk role admin/pimpinan: mengikuti filter nama pegawai (filterStaffId) yang dipilih di header,
+  // "Semua" berarti gabungan semua Ketua Tim (dipakai untuk panel monitoring).
+  const currentFilteredKOB = useMemo(() => {
+    let res = kobData.filter(k => k.month === selectedMonth && k.year === selectedYear);
+    if (user?.role === 'ketua') {
+      res = res.filter(k => k.userId === user.username);
+    } else if (filterStaffName !== 'Semua') {
+      res = res.filter(k => k.userId === filterStaffId);
+    }
+    return res;
+  }, [kobData, user, selectedMonth, selectedYear, filterStaffName, filterStaffId]);
+
+  // Monitoring progres pengisian KOB tiap Ketua Tim: dibandingkan jumlah IKU yang ditugaskan
+  // dengan jumlah IKU yang sudah punya minimal 1 baris IKI bulan ini.
+  const kobMonitoringData = useMemo(() => {
+    const monthKOB = kobData.filter(k => k.month === selectedMonth && k.year === selectedYear);
+    const ketuaList = users.filter(u => u.role === 'ketua' && (u.status || 'aktif').toLowerCase() !== 'nonaktif');
+    const rows = ketuaList.map(staff => {
+      const assigned = staff.assignedIKU || [];
+      const myKOB = monthKOB.filter(k => k.userId === staff.username);
+      const filledIKU = new Set(myKOB.map(k => k.iku));
+      const totalIKU = assigned.length;
+      const filledCount = assigned.filter(iku => filledIKU.has(iku)).length;
+      const isComplete = totalIKU > 0 && filledCount >= totalIKU;
+      return { staff, totalIKU, filledCount, isComplete };
+    });
+    rows.sort((a, b) => (a.isComplete === b.isComplete ? a.staff.name.localeCompare(b.staff.name) : a.isComplete ? 1 : -1));
+    return rows;
+  }, [kobData, users, selectedMonth, selectedYear]);
 
   // Riwayat semua juara Pegawai Prima yang SUDAH dipublikasikan, lintas triwulan & tahun (tidak terikat Bulan/Tahun yang sedang dipilih)
   const publishedWinnersHistory = useMemo(() => {
@@ -1653,6 +1796,7 @@ const exportRekapKJKTahunan = async () => {
           )}
           <button onClick={() => setActiveTab('bukti_dukung')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bukti_dukung' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}><Link size={18}/> Bukti Dukung</button>
           {['admin', 'pimpinan', 'ketua'].includes(user.role) && (<button onClick={() => setActiveTab('penilaian')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'penilaian' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}><ClipboardCheck size={18}/> Penilaian Anggota</button>)}
+          {['admin', 'pimpinan', 'ketua'].includes(user.role) && (<button onClick={() => setActiveTab('kob')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'kob' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}><BarChart3 size={18}/> KOB</button>)}
           <button onClick={() => setActiveTab('prima')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'prima' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}><Award size={18}/> Pegawai Prima</button>
           <button onClick={() => setActiveTab('bakira')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bakira' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}><Camera size={18}/> BAKIRA</button>
           {user.role === 'admin' && (<button onClick={() => setActiveTab('kjk_management')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'kjk_management' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}><FileSpreadsheet size={18}/> Manajemen KJK</button>)}
@@ -1698,11 +1842,11 @@ const exportRekapKJKTahunan = async () => {
                     <option value="yearly">Tahunan</option>
                  </select>
                ) : null}
-               {(activeTab === 'penilaian' || activeTab === 'bukti_dukung' || activeTab === 'kjk_management' || activeTab === 'agenda') && ['admin', 'pimpinan', 'ketua'].includes(user.role) && (
+               {(activeTab === 'penilaian' || activeTab === 'bukti_dukung' || activeTab === 'kjk_management' || activeTab === 'agenda' || activeTab === 'kob') && ['admin', 'pimpinan', 'ketua'].includes(user.role) && (
                   <>
                     <select className="p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 shadow-sm outline-none" value={filterStaffName} onChange={e => setFilterStaffName(e.target.value)}>
                       <option value="Semua">Data Saya</option>
-                     {users.filter(u => !['admin', 'pimpinan'].includes(u.role) && u.status !== 'nonaktif' && u.status !== 'Nonaktif').map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
+                     {users.filter(u => (activeTab === 'kob' ? u.role === 'ketua' : !['admin', 'pimpinan'].includes(u.role)) && u.status !== 'nonaktif' && u.status !== 'Nonaktif').map(u => <option key={u.firestoreId} value={u.name}>{u.name}</option>)}
                     </select>
                   </>
                 )}
@@ -2528,6 +2672,173 @@ const exportRekapKJKTahunan = async () => {
             </div>
           )}
 
+        {activeTab === 'kob' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+
+            {/* MONITORING PROGRES PENGISIAN KOB -- khusus admin & pimpinan */}
+            {['admin', 'pimpinan'].includes(user.role) && (
+              <div className="bg-slate-900 text-white rounded-2xl p-6 md:p-8 mb-8">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="bg-indigo-500/10 p-3 rounded-xl text-indigo-400"><BarChart3 size={22}/></div>
+                  <div>
+                    <h3 className="font-semibold text-sm tracking-tight">Monitoring Pengisian KOB</h3>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      {kobMonitoringData.filter(r => r.isComplete).length} dari {kobMonitoringData.length} Ketua Tim sudah mengisi lengkap bulan ini
+                    </p>
+                  </div>
+                </div>
+                {kobMonitoringData.length === 0 ? (
+                  <p className="text-[10px] text-slate-500 text-center py-6">Belum ada Ketua Tim aktif yang perlu dipantau.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {kobMonitoringData.map(({ staff, totalIKU, filledCount, isComplete }, idx) => (
+                      <div key={idx} className="flex items-center gap-4 bg-slate-800/30 border border-slate-800 rounded-xl p-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-3 mb-2">
+                            <p className="font-semibold text-[11px] truncate">{staff.name}</p>
+                            <span className={`shrink-0 text-[8px] font-semibold px-3 py-1 rounded-full ${totalIKU === 0 ? 'bg-slate-700 text-slate-400' : isComplete ? 'bg-green-500/10 text-green-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                              {totalIKU === 0 ? "Belum ada IKU" : isComplete ? "Lengkap" : "Proses"}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full transition-all ${isComplete ? 'bg-green-500' : 'bg-amber-500'}`} style={{ width: `${totalIKU ? Math.min(100, Math.round((filledCount / totalIKU) * 100)) : 0}%` }}></div>
+                            </div>
+                            <span className="text-[9px] font-semibold text-slate-400 shrink-0">{filledCount} / {totalIKU} IKU</span>
+                          </div>
+                        </div>
+                        <button onClick={() => setFilterStaffName(staff.name)} className="shrink-0 text-[8px] font-semibold text-indigo-400 hover:text-indigo-300 underline">Lihat</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* PENGISIAN KOB -- Ketua Tim (milik sendiri) */}
+            {user.role === 'ketua' && (
+              (user.assignedIKU || []).length === 0 ? (
+                <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-10 text-center">
+                  <p className="text-[11px] font-semibold text-slate-400">Belum ada IKU yang ditugaskan untuk Anda. Silakan hubungi Admin untuk mengatur IKU di Data Pegawai.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {user.assignedIKU.filter(iku => iku).map((iku, ikuIdx) => {
+                    const rows = currentFilteredKOB.filter(k => k.iku === iku);
+                    return (
+                      <div key={ikuIdx} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8">
+                        <div className="flex items-start justify-between gap-4 mb-6">
+                          <div>
+                            <p className="text-[9px] font-semibold text-indigo-500 mb-1">IKU {ikuIdx + 1}</p>
+                            <h4 className="font-semibold text-slate-800 text-sm">{iku}</h4>
+                          </div>
+                          <button 
+                            onClick={() => { resetKOBForm(); setNewKOB({ iku, iki: '', satuan: '', target: '', realisasi: '', linkBuktiDukung: '', originalAgendaId: '' }); setShowKOBModal(true); }}
+                            className="shrink-0 bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-semibold text-[9px] flex items-center gap-2 shadow-sm"
+                          >
+                            <Plus size={14}/> Tambah IKI
+                          </button>
+                        </div>
+                        {rows.length === 0 ? (
+                          <p className="text-[10px] text-slate-400 text-center py-6 border border-dashed border-slate-200 rounded-xl">Belum ada IKI diisi untuk IKU ini bulan ini.</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {rows.map(r => (
+                              <div key={r.id} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                                <div className="flex items-start justify-between gap-3">
+                                  <p className="font-semibold text-slate-700 text-[11px] flex-1">{r.iki}</p>
+                                  <div className="flex gap-2 shrink-0">
+                                    <button onClick={() => { setIsEditingKOB(true); setCurrentKOBId(r.id); setNewKOB({ iku: r.iku, iki: r.iki, satuan: r.satuan, target: r.target, realisasi: r.realisasi, linkBuktiDukung: r.linkBuktiDukung || '', originalAgendaId: '' }); setShowKOBModal(true); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><Edit3 size={13}/></button>
+                                    <button onClick={() => handleDeleteKOB(r.id)} className="p-2 bg-red-50 text-red-500 rounded-lg"><Trash2 size={13}/></button>
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3 text-[9px] text-slate-500">
+                                  <span>Satuan: <b className="text-slate-700">{r.satuan}</b></span>
+                                  <span>Target: <b className="text-slate-700">{r.target}</b></span>
+                                  <span>Realisasi: <b className="text-slate-700">{r.realisasi}</b></span>
+                                  {r.linkBuktiDukung && (
+                                    <a href={r.linkBuktiDukung.startsWith('http') ? r.linkBuktiDukung : `https://${r.linkBuktiDukung}`} target="_blank" rel="noopener noreferrer" className="text-indigo-500 font-semibold underline">Lihat Bukti Dukung</a>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            )}
+
+            {/* TAMPILAN ADMIN/PIMPINAN: telusuri entri KOB per Ketua Tim (baca saja) */}
+            {['admin', 'pimpinan'].includes(user.role) && (
+              filterStaffName === 'Semua' ? (
+                <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-10 text-center mt-8">
+                  <p className="text-[11px] font-semibold text-slate-400">Pilih nama Ketua Tim pada dropdown "Data Saya" di atas (atau tombol "Lihat" pada monitoring) untuk melihat detail entri KOB-nya.</p>
+                </div>
+              ) : (
+                <div className="space-y-6 mt-8">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <h3 className="font-semibold text-slate-800 text-sm">Detail KOB: {filterStaffName}</h3>
+                    <div className="flex gap-2">
+                      <select 
+                        value={exportFormat} 
+                        onChange={(e) => setExportFormat(e.target.value)}
+                        className="bg-white border border-slate-200 px-3 rounded-xl font-semibold text-[9px] outline-none"
+                      >
+                        <option value="excel">Excel</option>
+                        <option value="pdf">PDF</option>
+                      </select>
+                      <button 
+                        onClick={() => exportFormat === 'excel' ? exportKOBToExcel() : exportKOBToPDF()} 
+                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-[9px] font-semibold flex items-center gap-2 shadow-sm transition-colors"
+                      >
+                        <Download size={13}/> Cetak KOB
+                      </button>
+                    </div>
+                  </div>
+                  {(() => {
+                    const ketuaStaff = users.find(u => u.name === filterStaffName);
+                    const assignedList = (ketuaStaff?.assignedIKU || []).filter(iku => iku);
+                    if (assignedList.length === 0) {
+                      return <p className="text-[10px] text-slate-400 text-center py-6 bg-white border border-dashed border-slate-200 rounded-xl">Ketua Tim ini belum memiliki IKU yang ditugaskan.</p>;
+                    }
+                    return assignedList.map((iku, ikuIdx) => {
+                      const rows = currentFilteredKOB.filter(k => k.iku === iku);
+                      return (
+                        <div key={ikuIdx} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8">
+                          <p className="text-[9px] font-semibold text-indigo-500 mb-1">IKU {ikuIdx + 1}</p>
+                          <h4 className="font-semibold text-slate-800 text-sm mb-4">{iku}</h4>
+                          {rows.length === 0 ? (
+                            <p className="text-[10px] text-slate-400 text-center py-6 border border-dashed border-slate-200 rounded-xl">Belum ada IKI diisi untuk IKU ini bulan ini.</p>
+                          ) : (
+                            <div className="space-y-3">
+                              {rows.map(r => (
+                                <div key={r.id} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                                  <p className="font-semibold text-slate-700 text-[11px]">{r.iki}</p>
+                                  <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3 text-[9px] text-slate-500">
+                                    <span>Satuan: <b className="text-slate-700">{r.satuan}</b></span>
+                                    <span>Target: <b className="text-slate-700">{r.target}</b></span>
+                                    <span>Realisasi: <b className="text-slate-700">{r.realisasi}</b></span>
+                                    {r.linkBuktiDukung && (
+                                      <a href={r.linkBuktiDukung.startsWith('http') ? r.linkBuktiDukung : `https://${r.linkBuktiDukung}`} target="_blank" rel="noopener noreferrer" className="text-indigo-500 font-semibold underline">Lihat Bukti Dukung</a>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              )
+            )}
+          </div>
+        )}
+
         {activeTab === 'users' && (
             <div className="mb-10">
               <div className="bg-white rounded-2xl shadow-sm border overflow-hidden p-6 mb-6">
@@ -2576,7 +2887,8 @@ const exportRekapKJKTahunan = async () => {
                                   role: u.role, 
                                   jabatan: u.jabatan, 
                                   photoURL: u.photoURL || '',
-                                  status: u.status || 'aktif' 
+                                  status: u.status || 'aktif',
+                                  assignedIKU: u.assignedIKU || []
                                 }); 
                                 setShowUserModal(true); 
                               }} 
@@ -2892,6 +3204,7 @@ const exportRekapKJKTahunan = async () => {
           {user.role === 'admin' ? (
             <>
               <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-semibold">Nilai</span></button>
+              <button onClick={() => setActiveTab('kob')} className={`flex flex-col items-center gap-1 ${activeTab === 'kob' ? 'text-indigo-600' : 'text-slate-300'}`}><BarChart3 size={24}/><span className="text-[8px] font-semibold">KOB</span></button>
               <button onClick={() => setActiveTab('prima')} className={`flex flex-col items-center gap-1 ${activeTab === 'prima' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-semibold">prima</span></button>
   <button onClick={() => setActiveTab('bakira')} className={`flex flex-col items-center gap-1 ${activeTab === 'bakira' ? 'text-indigo-600' : 'text-slate-300'}`}><Camera size={24}/><span className="text-[8px] font-semibold">BAKIRA</span></button>
               <button onClick={() => setActiveTab('users')} className={`flex flex-col items-center gap-1 ${activeTab === 'users' ? 'text-indigo-600' : 'text-slate-300'}`}><Users size={24}/><span className="text-[8px] font-semibold">Pegawai</span></button>
@@ -2900,6 +3213,7 @@ const exportRekapKJKTahunan = async () => {
             <>
               <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center gap-1 ${activeTab === 'agenda' ? 'text-indigo-600' : 'text-slate-300'}`}><CalendarIcon size={24}/><span className="text-[8px] font-semibold">Agenda</span></button>
               <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-semibold">Nilai</span></button>
+              <button onClick={() => setActiveTab('kob')} className={`flex flex-col items-center gap-1 ${activeTab === 'kob' ? 'text-indigo-600' : 'text-slate-300'}`}><BarChart3 size={24}/><span className="text-[8px] font-semibold">KOB</span></button>
               <button onClick={() => setActiveTab('prima')} className={`flex flex-col items-center gap-1 ${activeTab === 'prima' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-semibold">prima</span></button>
             </>
           ) : (
@@ -2907,6 +3221,7 @@ const exportRekapKJKTahunan = async () => {
               <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center gap-1 ${activeTab === 'agenda' ? 'text-indigo-600' : 'text-slate-300'}`}><CalendarIcon size={24}/><span className="text-[8px] font-semibold">Agenda</span></button>
               <button onClick={() => setActiveTab('laporan')} className={`flex flex-col items-center gap-1 ${activeTab === 'laporan' ? 'text-indigo-600' : 'text-slate-300'}`}><FileText size={24}/><span className="text-[8px] font-semibold">Entri</span></button>
               {user.role === 'ketua' && <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-semibold">Nilai</span></button>}
+              {user.role === 'ketua' && <button onClick={() => setActiveTab('kob')} className={`flex flex-col items-center gap-1 ${activeTab === 'kob' ? 'text-indigo-600' : 'text-slate-300'}`}><BarChart3 size={24}/><span className="text-[8px] font-semibold">KOB</span></button>}
               <button onClick={() => setActiveTab('prima')} className={`flex flex-col items-center gap-1 ${activeTab === 'prima' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-semibold">prima</span></button>
             </>
           )}
@@ -3030,6 +3345,92 @@ const exportRekapKJKTahunan = async () => {
         </div>
       )}
 
+      {showKOBModal && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[120] font-sans text-center">
+          <form onSubmit={handleSubmitKOB} className="bg-white w-full max-w-2xl rounded-xl p-8 md:p-12 shadow-md relative max-h-[90vh] overflow-y-auto">
+            <button type="button" onClick={() => { resetKOBForm(); setShowKOBModal(false); }} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400"><X size={20}/></button>
+            <h3 className="text-2xl font-semibold tracking-tight mb-2 text-slate-800 text-center">{isEditingKOB ? "Edit Baris KOB" : "Tambah Baris KOB"}</h3>
+            <p className="text-[10px] font-semibold text-indigo-500 mb-8 text-center">IKU: {newKOB.iku}</p>
+
+            {!isEditingKOB && (
+              <button 
+                type="button" 
+                onClick={() => setShowKOBImportModal(true)}
+                className="mb-8 w-full py-4 border-2 border-dashed border-indigo-200 rounded-2xl text-indigo-600 font-semibold text-[10px] flex items-center justify-center gap-2 hover:bg-indigo-50 transition-all"
+              >
+                <FileText size={14}/> Impor dari Agenda Kerja
+              </button>
+            )}
+
+            <div className="space-y-4 text-left">
+              <div>
+                <label className="block text-[9px] font-semibold text-slate-400 mb-2">IKI (Indikator Kinerja Individu)</label>
+                <textarea required rows={2} className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-semibold text-slate-700 border border-slate-100" value={newKOB.iki} onChange={e => setNewKOB({...newKOB, iki: e.target.value})} />
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-[9px] font-semibold text-slate-400 mb-2">Satuan</label>
+                  <input required type="text" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-semibold text-slate-700 border border-slate-100" value={newKOB.satuan} onChange={e => setNewKOB({...newKOB, satuan: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-semibold text-slate-400 mb-2">Target</label>
+                  <input required type="number" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-semibold text-slate-700 border border-slate-100" value={newKOB.target} onChange={e => setNewKOB({...newKOB, target: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-semibold text-slate-400 mb-2">Realisasi</label>
+                  <input required type="number" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-semibold text-slate-700 border border-slate-100" value={newKOB.realisasi} onChange={e => setNewKOB({...newKOB, realisasi: e.target.value})} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[9px] font-semibold text-slate-400 mb-2">Link Bukti Dukung</label>
+                <input type="text" placeholder="https://drive.google.com/..." className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-semibold text-slate-700 border border-slate-100" value={newKOB.linkBuktiDukung} onChange={e => setNewKOB({...newKOB, linkBuktiDukung: e.target.value})} />
+              </div>
+            </div>
+            <button type="submit" className="w-full bg-indigo-600 text-white font-semibold py-6 rounded-2xl shadow-md text-[10px] mt-8 transition-all active:scale-95 text-center">Simpan</button>
+          </form>
+        </div>
+      )}
+
+      {showKOBImportModal && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[140] font-sans">
+          <div className="bg-white w-full max-w-lg rounded-xl p-10 shadow-md max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="font-semibold text-sm">Pilih Agenda Bulan Ini</h3>
+              <button onClick={() => setShowKOBImportModal(false)} className="p-2 bg-slate-50 rounded-full text-slate-400"><X size={18}/></button>
+            </div>
+            <div className="space-y-3">
+              {agendas.filter(a => a.userId === user.username && !a.isImported && !(a.isPekerjaanBersambung && !a.isRangeEndDay) && a.date.includes(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`)).length === 0 ? (
+                <p className="text-center py-10 text-slate-400 font-bold text-[10px]">Tidak ada agenda yang tersedia</p>
+              ) : (
+                agendas.filter(a => a.userId === user.username && !a.isImported && !(a.isPekerjaanBersambung && !a.isRangeEndDay) && a.date.includes(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`))
+                .sort((a, b) => new Date(a.date) - new Date(b.date))
+                .map(a => (
+                  <div 
+                    key={a.id} 
+                    onClick={async () => {
+                      setNewKOB({
+                        ...newKOB, 
+                        iki: a.taskName, 
+                        target: a.volume, 
+                        realisasi: a.volume, 
+                        satuan: a.satuan,
+                        originalAgendaId: a.id 
+                      });
+                      setShowKOBImportModal(false);
+                    }}
+                    className="p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-600 cursor-pointer group transition-all"
+                  >
+                    <p className="text-[8px] font-semibold text-indigo-500 mb-1">{a.date}{a.isRangeEndDay && <span className="text-slate-400"> &middot; hari terakhir</span>}</p>
+                    <h4 className="font-semibold text-slate-800 text-[10px]">{a.taskName}</h4>
+                    <p className="text-[9px] text-slate-400">{a.volume} {a.satuan}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {showPenilaianModal && selectedStaffForVote && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[110] font-sans">
             <form onSubmit={handleSubmitNilai360} className="bg-white w-full max-w-lg rounded-xl p-10 text-left overflow-y-auto max-h-[90vh] relative shadow-md">
@@ -3114,6 +3515,43 @@ const exportRekapKJKTahunan = async () => {
                 <select className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-semibold text-slate-600 border border-slate-100 text-center" value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
                     <option value="pegawai">Pegawai</option><option value="ketua">Ketua Tim</option><option value="pimpinan">Pimpinan</option><option value="admin">Admin</option>
                 </select>
+
+                {newUser.role === 'ketua' && (
+                  <div className="bg-indigo-50 rounded-2xl p-5 text-left space-y-3 border border-indigo-100">
+                    <p className="text-[10px] font-semibold text-indigo-600">Daftar IKU (Indikator Kinerja Utama) untuk Ketua Tim ini</p>
+                    <p className="text-[9px] text-slate-400 leading-relaxed">IKU yang didaftarkan di sini akan otomatis muncul untuk diisi Ketua Tim pada sub menu Kinerja Organisasi Bulanan (KOB).</p>
+                    {(newUser.assignedIKU || []).map((iku, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <input 
+                          type="text" 
+                          placeholder={`IKU ${idx + 1}`}
+                          className="flex-1 p-3 bg-white rounded-xl outline-none text-xs border border-slate-200"
+                          value={iku}
+                          onChange={e => {
+                            const updated = [...newUser.assignedIKU];
+                            updated[idx] = e.target.value;
+                            setNewUser({...newUser, assignedIKU: updated});
+                          }}
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setNewUser({...newUser, assignedIKU: newUser.assignedIKU.filter((_, i) => i !== idx)})} 
+                          className="p-3 bg-red-50 text-red-500 rounded-xl shrink-0"
+                        >
+                          <Trash2 size={14}/>
+                        </button>
+                      </div>
+                    ))}
+                    <button 
+                      type="button" 
+                      onClick={() => setNewUser({...newUser, assignedIKU: [...(newUser.assignedIKU || []), '']})}
+                      className="w-full py-3 border-2 border-dashed border-indigo-200 rounded-xl text-indigo-600 font-semibold text-[9px] flex items-center justify-center gap-2 hover:bg-white transition-all"
+                    >
+                      <Plus size={14}/> Tambah IKU
+                    </button>
+                  </div>
+                )}
+
                 <button type="submit" className="w-full bg-indigo-600 text-white font-semibold py-6 rounded-2xl shadow-md text-[10px] mt-6 transition-all active:scale-95 text-center">Simpan</button>
             </div>
           </form>
