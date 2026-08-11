@@ -1736,12 +1736,12 @@ const exportRekapKJKTahunan = async () => {
         )}
 
  {activeTab === 'bakira' && (
-  <div className="flex flex-col h-[85vh] animate-in fade-in duration-500 p-4 md:p-10">
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 max-w-6xl mx-auto w-full flex flex-col md:flex-row flex-1 overflow-hidden">
+  <div className="flex-1 overflow-y-auto md:overflow-hidden flex flex-col md:h-[85vh] animate-in fade-in duration-500 p-4 md:p-10 pb-28 md:pb-10">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 max-w-6xl mx-auto w-full flex flex-col md:flex-row md:flex-1 md:overflow-hidden">
       
       {/* KIRI: TABEL ABSENSI */}
-      <div className="flex-[2] flex flex-col overflow-hidden border-r border-slate-100">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
+      <div className="flex-[2] flex flex-col md:overflow-hidden border-b md:border-b-0 md:border-r border-slate-100">
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
           <h2 className="text-lg font-semibold tracking-tight">Absensi BAKIRA</h2>
           <input 
             type="date" 
@@ -1751,7 +1751,7 @@ const exportRekapKJKTahunan = async () => {
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="md:flex-1 md:overflow-y-auto">
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50 sticky top-0 z-10 text-[9px] font-semibold text-slate-400">
               <tr><th className="p-4">No</th><th className="p-4">Pegawai</th><th className="p-4">Status</th></tr>
@@ -1795,7 +1795,7 @@ const exportRekapKJKTahunan = async () => {
       </div>
 
       {/* KANAN: PANEL KONTROL */}
-      <div className="flex-1 bg-slate-50 p-8 flex flex-col gap-6">
+      <div className="flex-1 bg-slate-50 p-6 md:p-8 flex flex-col gap-6">
         <button 
           disabled={!['admin', 'pimpinan'].includes(user.role)}
           onClick={() => setIsKegiatanAda(!isKegiatanAda)}
@@ -2141,17 +2141,19 @@ const exportRekapKJKTahunan = async () => {
                         <div className="flex-1">
                             <h2 className="text-2xl font-semibold text-slate-800 tracking-tight mb-2">Upload Data KJK Bulanan</h2>
                             <p className="text-[11px] text-slate-400 font-bold mb-6">Import data Kekurangan Jam Kerja pegawai dari Excel (Format: No | Nama | KJK hh:mm)</p>
-                            <label className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-semibold text-[10px] cursor-pointer inline-flex items-center gap-3 transition-all active:scale-95 shadow-lg">
-                                <Plus size={16}/> Pilih File Excel
-                                <input type="file" accept=".xlsx, .xls" onChange={handleUploadKJK} className="hidden" />
-                            </label>
-            <button 
-  type="button"
-  onClick={exportRekapKJKTahunan}
-  className="bg-green-600 text-white px-8 py-4 rounded-2xl font-semibold text-[10px] inline-flex items-center gap-3 transition-all active:scale-95 shadow-lg ml-3"
->
-  <Download size={16}/> Cetak Rekap KJK Tahunan
-</button>
+                            <div className="flex flex-col sm:flex-row gap-3">
+                              <label className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-semibold text-[10px] cursor-pointer inline-flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg">
+                                  <Plus size={16}/> Pilih File Excel
+                                  <input type="file" accept=".xlsx, .xls" onChange={handleUploadKJK} className="hidden" />
+                              </label>
+                              <button 
+                                type="button"
+                                onClick={exportRekapKJKTahunan}
+                                className="bg-green-600 text-white px-8 py-4 rounded-2xl font-semibold text-[10px] inline-flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg"
+                              >
+                                <Download size={16}/> Cetak Rekap KJK Tahunan
+                              </button>
+                            </div>
                         </div>
                     </div>
                 </div>
