@@ -1337,6 +1337,22 @@ const exportRekapKJKTahunan = async () => {
     return [singleMonth];
   };
 
+  // ID pegawai (username login) bersifat tetap meski nama pegawai diubah admin di kemudian hari.
+  // Semua pencocokan DATA (laporan, agenda) harus pakai ID ini, bukan nama -- supaya riwayat
+  // pekerjaan pegawai tetap terhubung walau namanya berubah. filterStaffName tetap dipakai untuk teks tampilan saja.
+  // Peta ID pegawai -> nama TERKINI, dipakai supaya nama yang ditampilkan pada laporan lama
+  // selalu ikut nama terbaru walau pegawai sudah diganti namanya oleh admin.
+  const currentNameById = useMemo(() => {
+    const map = {};
+    users.forEach(u => { map[u.username] = u.name; });
+    return map;
+  }, [users]);
+
+  const filterStaffId = useMemo(() => {
+    if (filterStaffName === 'Semua') return null;
+    return users.find(u => u.name === filterStaffName)?.username || null;
+  }, [filterStaffName, users]);
+
   const currentFilteredReports = useMemo(() => {
     // Tab Entri Pekerjaan & Penilaian Anggota: hormati pilihan periode (Bulanan/Triwulan/Tahunan) di header,
     // supaya bisa merekap beberapa bulan sekaligus. Tab lain tetap 1 bulan seperti semula.
@@ -1353,18 +1369,18 @@ const exportRekapKJKTahunan = async () => {
           if (filterStaffName === 'Semua') {
              res = res.filter(r => r.userId === user.username);
           } else {
-             res = res.filter(r => r.userName === filterStaffName);
+             res = res.filter(r => r.userId === filterStaffId);
           }
        }
     }
     if (activeTab === 'penilaian' && filterStaffName !== 'Semua') { 
-      res = res.filter(r => r.userName === filterStaffName); 
+      res = res.filter(r => r.userId === filterStaffId); 
     }
     if (isRekapTab) {
       res = [...res].sort((a, b) => a.month - b.month);
     }
     return res;
-  }, [reports, user, selectedMonth, selectedYear, filterStaffName, activeTab, periodType]);
+  }, [reports, user, selectedMonth, selectedYear, filterStaffName, filterStaffId, activeTab, periodType]);
 
   const dashboardStats = useMemo(() => {
     let monthsToInclude = [selectedMonth];
@@ -1620,7 +1636,7 @@ const exportRekapKJKTahunan = async () => {
                   ))}
                   {calendarDays.map((day, idx) => {
                     const currentFullDate = day ? `${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` : null;
-                    const hasAgenda = agendas.filter(a => a.date === currentFullDate && (filterStaffName === 'Semua' ? a.userId === user.username : a.userName === filterStaffName)).length;
+                    const hasAgenda = agendas.filter(a => a.date === currentFullDate && (filterStaffName === 'Semua' ? a.userId === user.username : a.userId === filterStaffId)).length;
                     
                     return (
                       <div 
@@ -1668,14 +1684,14 @@ const exportRekapKJKTahunan = async () => {
 
                 <div className="space-y-3 pb-10">
                   {agendas.filter(a => 
-                    (filterStaffName === 'Semua' ? a.userId === user.username : a.userName === filterStaffName) && 
+                    (filterStaffName === 'Semua' ? a.userId === user.username : a.userId === filterStaffId) && 
                     (selectedCalendarDate ? a.date === selectedCalendarDate : a.date.includes(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`))
                   ).length === 0 ? (
                     <div className="text-center py-10 text-slate-400 font-bold text-[10px] bg-white rounded-xl border border-dashed">Tidak ada catatan</div>
                   ) : (
                     agendas
                       .filter(a => 
-                        (filterStaffName === 'Semua' ? a.userId === user.username : a.userName === filterStaffName) && 
+                        (filterStaffName === 'Semua' ? a.userId === user.username : a.userId === filterStaffId) && 
                         (selectedCalendarDate ? a.date === selectedCalendarDate : a.date.includes(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`))
                       )
                       .sort((a,b) => new Date(b.date) - new Date(a.date))
@@ -2256,7 +2272,7 @@ const exportRekapKJKTahunan = async () => {
                           )}
                           <tr className="hover:bg-slate-50 transition-all group">
                             <td className="p-4 font-bold text-slate-400 text-center">{idx + 1}</td>
-                            <td className="p-4"><p className="font-semibold text-[12px] text-slate-800 tracking-tight leading-none mb-1">{r.title}</p><span className="text-indigo-600 text-[8px] font-semibold bg-indigo-50 px-2 py-0.5 rounded-lg">{r.userName}</span></td>
+                            <td className="p-4"><p className="font-semibold text-[12px] text-slate-800 tracking-tight leading-none mb-1">{r.title}</p><span className="text-indigo-600 text-[8px] font-semibold bg-indigo-50 px-2 py-0.5 rounded-lg">{currentNameById[r.userId] || r.userName}</span></td>
                             <td className="p-4 text-center">
                                <span className={`text-[8px] font-semibold px-2 py-1 rounded-md ${r.status === 'selesai' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>{r.status.replace('_', ' ')}</span>
                             </td>
@@ -2308,7 +2324,7 @@ const exportRekapKJKTahunan = async () => {
                             <span className={`text-[8px] font-semibold px-2 py-1 rounded-md ${r.status === 'selesai' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>{r.status.replace('_', ' ')}</span>
                          </div>
                          <h3 className="font-semibold text-slate-800 text-xs leading-tight mb-2">{r.title}</h3>
-                         <p className="text-[9px] text-indigo-600 font-bold mb-6">Oleh: {r.userName}</p>
+                         <p className="text-[9px] text-indigo-600 font-bold mb-6">Oleh: {currentNameById[r.userId] || r.userName}</p>
                          <div className="space-y-4 pt-4 border-t">
                             {r.userId === user.username && (
                                <div className="flex items-center gap-2">
@@ -2558,7 +2574,7 @@ const exportRekapKJKTahunan = async () => {
     />
   </td>
                         <td className="p-4 font-bold text-slate-400 text-center">{idx + 1}</td>
-                        <td className="p-4"><p className="font-semibold text-[12px] text-slate-800 tracking-tight leading-none mb-1">{r.title}</p><span className="text-indigo-600 text-[8px] font-semibold bg-indigo-50 px-2 py-0.5 rounded-lg">{r.userName}</span></td>
+                        <td className="p-4"><p className="font-semibold text-[12px] text-slate-800 tracking-tight leading-none mb-1">{r.title}</p><span className="text-indigo-600 text-[8px] font-semibold bg-indigo-50 px-2 py-0.5 rounded-lg">{currentNameById[r.userId] || r.userName}</span></td>
                         <td className="p-4 text-center font-bold text-slate-500 text-[10px]">{r.satuan || '-'}</td>
                         <td className="p-4 text-center font-semibold">{r.realisasi} / {r.target}</td>
                         <td className="p-4 text-center font-semibold text-indigo-600">{((r.realisasi/r.target)*100).toFixed(0)}%</td>
@@ -2675,7 +2691,7 @@ const exportRekapKJKTahunan = async () => {
                         </div>
                       </div>
                       <h3 className="font-semibold text-slate-800 text-xs leading-tight mb-2">{r.title}</h3>
-                      <p className="text-[9px] text-indigo-600 font-bold mb-4">Oleh: {r.userName}</p>
+                      <p className="text-[9px] text-indigo-600 font-bold mb-4">Oleh: {currentNameById[r.userId] || r.userName}</p>
                       <div className="grid grid-cols-2 gap-4 border-t pt-4">
                         <div className="text-center"><p className="text-[8px] text-slate-400 font-semibold">Target/Real</p><p className="font-semibold text-[10px]">{r.realisasi} / {r.target}</p></div>
                         <div className="text-center"><p className="text-[8px] text-slate-400 font-semibold">Ketua/Pimp</p><p className="font-semibold text-[10px] text-indigo-600">{r.nilaiKetua} / {r.nilaiPimpinan}</p></div>
