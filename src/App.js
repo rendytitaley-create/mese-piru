@@ -1285,7 +1285,7 @@ const exportRekapKJKTahunan = async () => {
   const currentFilteredReports = useMemo(() => {
     // Tab Entri Pekerjaan & Penilaian Anggota: hormati pilihan periode (Bulanan/Triwulan/Tahunan) di header,
     // supaya bisa merekap beberapa bulan sekaligus. Tab lain tetap 1 bulan seperti semula.
-    const isRekapTab = activeTab === 'laporan' || activeTab === 'penilaian';
+    const isRekapTab = ['laporan', 'penilaian', 'bukti_dukung'].includes(activeTab);
     const monthsToInclude = isRekapTab ? getMonthsForPeriod(periodType, selectedMonth) : [selectedMonth];
     let res = reports.filter(r => monthsToInclude.includes(r.month) && r.year === selectedYear);
     if (activeTab === 'laporan') {
@@ -1471,7 +1471,7 @@ const exportRekapKJKTahunan = async () => {
              <button onClick={() => setShowPasswordModal(true)} className="md:hidden p-2 text-indigo-600 bg-white rounded-lg shadow-sm border border-slate-200"><KeyRound size={20}/></button>
              <button onClick={() => {localStorage.clear(); window.location.reload();}} className="md:hidden p-2 text-red-500 bg-white rounded-lg shadow-sm border border-slate-200"><LogOut size={20}/></button>
              <div className="hidden md:flex items-center gap-2.5">
-               {(activeTab === 'dashboard' && ['admin', 'pimpinan'].includes(user.role)) || activeTab === 'laporan' || activeTab === 'penilaian' ? (
+               {(activeTab === 'dashboard' && ['admin', 'pimpinan'].includes(user.role)) || ['laporan', 'penilaian', 'bukti_dukung'].includes(activeTab) ? (
                  <select className="bg-slate-800 text-white border-none rounded-lg px-3 py-2 text-xs font-medium outline-none cursor-pointer" value={periodType} onChange={e => setPeriodType(e.target.value)}>
                     <option value="monthly">Bulanan</option>
                     <option value="tw1">Triwulan I</option>
@@ -2165,7 +2165,15 @@ const exportRekapKJKTahunan = async () => {
                         <tr><td colSpan="4" className="p-10 text-center text-slate-400 font-bold text-[10px]">Tidak ada data untuk periode ini</td></tr>
                       ) : (
                         currentFilteredReports.map((r, idx) => (
-                          <tr key={r.id} className="hover:bg-slate-50 transition-all group">
+                          <React.Fragment key={r.id}>
+                          {periodType !== 'monthly' && (idx === 0 || r.month !== currentFilteredReports[idx - 1].month) && (
+                            <tr>
+                              <td colSpan={4} className="px-4 py-2.5 bg-indigo-50 text-[10px] font-semibold text-indigo-700">
+                                {["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"][r.month - 1]} {r.year}
+                              </td>
+                            </tr>
+                          )}
+                          <tr className="hover:bg-slate-50 transition-all group">
                             <td className="p-4 font-bold text-slate-400 text-center">{idx + 1}</td>
                             <td className="p-4"><p className="font-semibold text-[12px] text-slate-800 tracking-tight leading-none mb-1">{r.title}</p><span className="text-indigo-600 text-[8px] font-semibold bg-indigo-50 px-2 py-0.5 rounded-lg">{r.userName}</span></td>
                             <td className="p-4 text-center">
@@ -2194,6 +2202,7 @@ const exportRekapKJKTahunan = async () => {
                                </div>
                             </td>
                           </tr>
+                          </React.Fragment>
                         ))
                       )}
                     </tbody>
@@ -2206,7 +2215,13 @@ const exportRekapKJKTahunan = async () => {
                     </div>
                   ) : (
                     currentFilteredReports.map((r, idx) => (
-                      <div key={r.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                      <React.Fragment key={r.id}>
+                      {periodType !== 'monthly' && (idx === 0 || r.month !== currentFilteredReports[idx - 1].month) && (
+                        <p className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-4 py-2 rounded-lg mt-2 first:mt-0">
+                          {["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"][r.month - 1]} {r.year}
+                        </p>
+                      )}
+                      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                          <div className="flex justify-between items-center mb-4">
                             <span className="text-[10px] font-semibold text-indigo-600">No. {idx + 1}</span>
                             <span className={`text-[8px] font-semibold px-2 py-1 rounded-md ${r.status === 'selesai' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>{r.status.replace('_', ' ')}</span>
@@ -2234,6 +2249,7 @@ const exportRekapKJKTahunan = async () => {
                             )}
                          </div>
                       </div>
+                      </React.Fragment>
                     ))
                   )}
                 </div>
