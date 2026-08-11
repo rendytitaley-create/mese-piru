@@ -973,72 +973,97 @@ const pimpinan = pimpinanTerpilih;
   };
 
   const exportKOBToExcel = async () => {
-    if (filterStaffName === 'Semua') { alert("Pilih satu nama Ketua Tim terlebih dahulu untuk mencetak KOB."); return; }
-    const targetKetua = users.find(u => u.name === filterStaffName);
+    // 1. Pilih Pimpinan yang akan tercantum sebagai penanda tangan (sama seperti cetak CKP)
+    const daftarPimpinan = users.filter(u => u.role === 'pimpinan');
+    let pilihanTeks = "Pilih nama pimpinan:\n";
+    daftarPimpinan.forEach((p, i) => { pilihanTeks += `${i + 1}. ${p.name}\n`; });
+    const pilihan = prompt(pilihanTeks + "\nMasukkan angka sesuai urutan:");
+    const pimpinanTerpilih = daftarPimpinan[parseInt(pilihan) - 1];
+    if (!pimpinanTerpilih) { alert("Pilihan tidak valid, cetak dibatalkan."); return; }
+
     const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
     const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
     const periodeLabel = `1 - ${lastDay} ${monthNames[selectedMonth - 1]} ${selectedYear}`;
 
+    // 2. Gabungkan entri KOB seluruh Ketua Tim aktif bulan ini jadi satu daftar
+    const ketuaList = users.filter(u => u.role === 'ketua' && (u.status || 'aktif').toLowerCase() !== 'nonaktif');
+    const combinedRows = [];
+    ketuaList.forEach(ketua => {
+      kobData
+        .filter(k => k.userId === ketua.username && k.month === selectedMonth && k.year === selectedYear)
+        .forEach(r => combinedRows.push({ ...r, ketuaName: ketua.name }));
+    });
+
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('KOB');
-    sheet.mergeCells('A2:H2'); const titleCell = sheet.getCell('A2'); titleCell.value = `Kinerja Organisasi Bulanan Tahun ${selectedYear}`; titleCell.font = { bold: true, size: 12 }; titleCell.alignment = { horizontal: 'center' };
+    sheet.mergeCells('A2:I2'); const titleCell = sheet.getCell('A2'); titleCell.value = `Kinerja Organisasi Bulanan Tahun ${selectedYear}`; titleCell.font = { bold: true, size: 12 }; titleCell.alignment = { horizontal: 'center' };
     const setInfo = (row, label, value) => { sheet.getCell(`A${row}`).value = label; sheet.getCell(`B${row}`).value = `: ${value}`; sheet.getCell(`A${row}`).font = { bold: true }; };
-    setInfo(4, 'Unit Kerja', 'BPS Kab. Seram Bagian Barat'); setInfo(5, 'Nama Ketua Tim', targetKetua?.name || ''); setInfo(6, 'Jabatan', targetKetua?.jabatan || ''); setInfo(7, 'Periode', periodeLabel);
+    setInfo(4, 'Unit Kerja', 'BPS Kab. Seram Bagian Barat'); setInfo(5, 'Nama', pimpinanTerpilih.name); setInfo(6, 'Jabatan', pimpinanTerpilih.jabatan || ''); setInfo(7, 'Periode', periodeLabel);
 
-    sheet.mergeCells('A9:A10'); sheet.getCell('A9').value = 'No'; sheet.mergeCells('B9:B10'); sheet.getCell('B9').value = 'IKU'; sheet.mergeCells('C9:C10'); sheet.getCell('C9').value = 'IKI'; sheet.mergeCells('D9:D10'); sheet.getCell('D9').value = 'Satuan'; sheet.mergeCells('E9:G9'); sheet.getCell('E9').value = 'Kuantitas'; sheet.getCell('E10').value = 'Target'; sheet.getCell('F10').value = 'Realisasi'; sheet.getCell('G10').value = '%'; sheet.mergeCells('H9:H10'); sheet.getCell('H9').value = 'Link Bukti Dukung';
-    const headerCells = ['A9','B9','C9','D9','E9','H9','E10','F10','G10']; headerCells.forEach(c => { const cell = sheet.getCell(c); cell.fill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFE0E0E0'} }; cell.font = { bold: true }; cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; });
-    sheet.getColumn(1).width = 6; sheet.getColumn(2).width = 35; sheet.getColumn(3).width = 35; sheet.getColumn(4).width = 12; sheet.getColumn(5).width = 9; sheet.getColumn(6).width = 9; sheet.getColumn(7).width = 8; sheet.getColumn(8).width = 35;
+    sheet.mergeCells('A9:A10'); sheet.getCell('A9').value = 'No'; sheet.mergeCells('B9:B10'); sheet.getCell('B9').value = 'Ketua Tim'; sheet.mergeCells('C9:C10'); sheet.getCell('C9').value = 'IKU'; sheet.mergeCells('D9:D10'); sheet.getCell('D9').value = 'IKI'; sheet.mergeCells('E9:E10'); sheet.getCell('E9').value = 'Satuan'; sheet.mergeCells('F9:H9'); sheet.getCell('F9').value = 'Kuantitas'; sheet.getCell('F10').value = 'Target'; sheet.getCell('G10').value = 'Realisasi'; sheet.getCell('H10').value = '%'; sheet.mergeCells('I9:I10'); sheet.getCell('I9').value = 'Link Bukti Dukung';
+    const headerCells = ['A9','B9','C9','D9','E9','F9','I9','F10','G10','H10']; headerCells.forEach(c => { const cell = sheet.getCell(c); cell.fill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFE0E0E0'} }; cell.font = { bold: true }; cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; });
+    sheet.getColumn(1).width = 6; sheet.getColumn(2).width = 22; sheet.getColumn(3).width = 30; sheet.getColumn(4).width = 30; sheet.getColumn(5).width = 12; sheet.getColumn(6).width = 9; sheet.getColumn(7).width = 9; sheet.getColumn(8).width = 8; sheet.getColumn(9).width = 32;
 
-    const kobRows = kobData.filter(k => k.userId === targetKetua?.username && k.month === selectedMonth && k.year === selectedYear);
-    let curRow = 11; let sumPct = 0; const dataCount = kobRows.length;
-    kobRows.forEach((r, i) => {
+    let curRow = 11; let sumPct = 0; const dataCount = combinedRows.length;
+    combinedRows.forEach((r, i) => {
         const row = sheet.getRow(curRow); const pct = r.target > 0 ? (r.realisasi / r.target) * 100 : 0;
-        row.values = [i+1, r.iku, r.iki, r.satuan, r.target, r.realisasi, pct, r.linkBuktiDukung || '']; row.height = 35;
-        row.eachCell({ includeEmpty: true }, (cell, colNum) => { cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; cell.alignment = { vertical: 'middle', wrapText: true, horizontal: (colNum === 2 || colNum === 3 || colNum === 8) ? 'left' : 'center' }; });
+        row.values = [i+1, r.ketuaName, r.iku, r.iki, r.satuan, r.target, r.realisasi, pct, r.linkBuktiDukung || '']; row.height = 35;
+        row.eachCell({ includeEmpty: true }, (cell, colNum) => { cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; cell.alignment = { vertical: 'middle', wrapText: true, horizontal: [2,3,4,9].includes(colNum) ? 'left' : 'center' }; });
         sumPct += Math.min(pct, 100); curRow++;
     });
     const avgPct = dataCount > 0 ? sumPct / dataCount : 0;
-    sheet.mergeCells(`A${curRow}:F${curRow}`); const avgLabel = sheet.getCell(`A${curRow}`); avgLabel.value = 'Rata-Rata Capaian'; avgLabel.font = { bold: true }; avgLabel.alignment = { horizontal: 'center', vertical: 'middle' };
-    sheet.mergeCells(`G${curRow}:H${curRow}`); const cellG = sheet.getCell(`G${curRow}`); cellG.value = avgPct; cellG.font = { bold: true }; cellG.alignment = { horizontal: 'center', vertical: 'middle' };
-    for (let i = 1; i <= 8; i++) { sheet.getRow(curRow).getCell(i).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; }
+    sheet.mergeCells(`A${curRow}:G${curRow}`); const avgLabel = sheet.getCell(`A${curRow}`); avgLabel.value = 'Rata-Rata Capaian'; avgLabel.font = { bold: true }; avgLabel.alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.mergeCells(`H${curRow}:I${curRow}`); const cellH = sheet.getCell(`H${curRow}`); cellH.value = avgPct; cellH.font = { bold: true }; cellH.alignment = { horizontal: 'center', vertical: 'middle' };
+    for (let i = 1; i <= 9; i++) { sheet.getRow(curRow).getCell(i).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; }
 
-    curRow += 3; sheet.mergeCells(`F${curRow}:H${curRow}`); const tglCell = sheet.getCell(`F${curRow}`); tglCell.value = `${periodeLabel}`; tglCell.alignment = { horizontal: 'center' };
-    curRow += 2; sheet.mergeCells(`F${curRow}:H${curRow}`); const ketuaLabel = sheet.getCell(`F${curRow}`); ketuaLabel.value = 'Ketua Tim,'; ketuaLabel.alignment = { horizontal: 'center' };
-    curRow += 4; sheet.mergeCells(`F${curRow}:H${curRow}`); const ketuaNameCell = sheet.getCell(`F${curRow}`); ketuaNameCell.value = targetKetua?.name || ''; ketuaNameCell.font = { bold: true, underline: true }; ketuaNameCell.alignment = { horizontal: 'center' };
+    curRow += 3; sheet.mergeCells(`G${curRow}:I${curRow}`); const tglCell = sheet.getCell(`G${curRow}`); tglCell.value = `${periodeLabel}`; tglCell.alignment = { horizontal: 'center' };
+    curRow += 2; sheet.mergeCells(`G${curRow}:I${curRow}`); const pimpLabel = sheet.getCell(`G${curRow}`); pimpLabel.value = 'Pimpinan,'; pimpLabel.alignment = { horizontal: 'center' };
+    curRow += 4; sheet.mergeCells(`G${curRow}:I${curRow}`); const pimpNameCell = sheet.getCell(`G${curRow}`); pimpNameCell.value = pimpinanTerpilih.name; pimpNameCell.font = { bold: true, underline: true }; pimpNameCell.alignment = { horizontal: 'center' };
 
-    const buffer = await workbook.xlsx.writeBuffer(); saveAs(new Blob([buffer]), `KOB_${targetKetua?.name}_${monthNames[selectedMonth-1]}_${selectedYear}.xlsx`);
+    const buffer = await workbook.xlsx.writeBuffer(); saveAs(new Blob([buffer]), `KOB_Gabungan_${monthNames[selectedMonth-1]}_${selectedYear}.xlsx`);
   };
 
   const exportKOBToPDF = () => {
-    if (filterStaffName === 'Semua') { alert("Pilih satu nama Ketua Tim terlebih dahulu untuk mencetak KOB."); return; }
-    const targetKetua = users.find(u => u.name === filterStaffName);
+    const daftarPimpinan = users.filter(u => u.role === 'pimpinan');
+    let pilihanTeks = "Pilih nama pimpinan:\n";
+    daftarPimpinan.forEach((p, i) => { pilihanTeks += `${i + 1}. ${p.name}\n`; });
+    const pilihan = prompt(pilihanTeks + "\nMasukkan angka sesuai urutan:");
+    const pimpinanTerpilih = daftarPimpinan[parseInt(pilihan) - 1];
+    if (!pimpinanTerpilih) { alert("Pilihan tidak valid, cetak dibatalkan."); return; }
+
     const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-    const kobRows = kobData.filter(k => k.userId === targetKetua?.username && k.month === selectedMonth && k.year === selectedYear);
+    const ketuaList = users.filter(u => u.role === 'ketua' && (u.status || 'aktif').toLowerCase() !== 'nonaktif');
+    const combinedRows = [];
+    ketuaList.forEach(ketua => {
+      kobData
+        .filter(k => k.userId === ketua.username && k.month === selectedMonth && k.year === selectedYear)
+        .forEach(r => combinedRows.push({ ...r, ketuaName: ketua.name }));
+    });
 
     const doc = new jsPDF('l', 'mm', 'a4');
     doc.setFontSize(13); doc.setFont(undefined, 'bold');
     doc.text(`Kinerja Organisasi Bulanan Tahun ${selectedYear}`, 148.5, 15, { align: 'center' });
     doc.setFontSize(9); doc.setFont(undefined, 'normal');
     doc.text(`Unit Kerja: BPS Kab. Seram Bagian Barat`, 14, 24);
-    doc.text(`Nama Ketua Tim: ${targetKetua?.name || ''}`, 14, 29);
-    doc.text(`Jabatan: ${targetKetua?.jabatan || ''}`, 14, 34);
+    doc.text(`Nama: ${pimpinanTerpilih.name}`, 14, 29);
+    doc.text(`Jabatan: ${pimpinanTerpilih.jabatan || ''}`, 14, 34);
     doc.text(`Periode: ${monthNames[selectedMonth - 1]} ${selectedYear}`, 14, 39);
 
-    const body = kobRows.map((r, i) => [
-      i + 1, r.iku, r.iki, r.satuan,
+    const body = combinedRows.map((r, i) => [
+      i + 1, r.ketuaName, r.iku, r.iki, r.satuan,
       r.target, r.realisasi,
       `${(r.target > 0 ? (r.realisasi / r.target) * 100 : 0).toFixed(0)}%`,
       r.linkBuktiDukung || '-'
     ]);
     autoTable(doc, {
       startY: 44,
-      head: [['No', 'IKU', 'IKI', 'Satuan', 'Target', 'Realisasi', '%', 'Link Bukti Dukung']],
+      head: [['No', 'Ketua Tim', 'IKU', 'IKI', 'Satuan', 'Target', 'Realisasi', '%', 'Link Bukti Dukung']],
       body,
       styles: { fontSize: 8, cellPadding: 2, valign: 'middle' },
       headStyles: { fillColor: [30, 41, 59], halign: 'center' },
-      columnStyles: { 0: { halign: 'center', cellWidth: 10 }, 4: { halign: 'center' }, 5: { halign: 'center' }, 6: { halign: 'center' } }
+      columnStyles: { 0: { halign: 'center', cellWidth: 10 }, 5: { halign: 'center' }, 6: { halign: 'center' }, 7: { halign: 'center' } }
     });
-    doc.save(`KOB_${targetKetua?.name}_${monthNames[selectedMonth-1]}_${selectedYear}.pdf`);
+    doc.save(`KOB_Gabungan_${monthNames[selectedMonth-1]}_${selectedYear}.pdf`);
   };
 
   const currentTW = useMemo(() => {
@@ -2694,13 +2719,31 @@ const exportRekapKJKTahunan = async () => {
             {/* MONITORING PROGRES PENGISIAN KOB -- khusus admin & pimpinan */}
             {['admin', 'pimpinan'].includes(user.role) && (
               <div className="bg-slate-900 text-white rounded-2xl p-6 md:p-8 mb-8">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="bg-indigo-500/10 p-3 rounded-xl text-indigo-400"><BarChart3 size={22}/></div>
-                  <div>
-                    <h3 className="font-semibold text-sm tracking-tight">Monitoring Pengisian KOB</h3>
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      {kobMonitoringData.filter(r => r.isComplete).length} dari {kobMonitoringData.length} Ketua Tim sudah mengisi lengkap bulan ini
-                    </p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-indigo-500/10 p-3 rounded-xl text-indigo-400"><BarChart3 size={22}/></div>
+                    <div>
+                      <h3 className="font-semibold text-sm tracking-tight">Monitoring Pengisian KOB</h3>
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        {kobMonitoringData.filter(r => r.isComplete).length} dari {kobMonitoringData.length} Ketua Tim sudah mengisi lengkap bulan ini
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <select 
+                      value={exportFormat} 
+                      onChange={(e) => setExportFormat(e.target.value)}
+                      className="bg-slate-800 border border-slate-700 text-white px-3 rounded-xl font-semibold text-[9px] outline-none"
+                    >
+                      <option value="excel">Excel</option>
+                      <option value="pdf">PDF</option>
+                    </select>
+                    <button 
+                      onClick={() => exportFormat === 'excel' ? exportKOBToExcel() : exportKOBToPDF()} 
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-[9px] font-semibold flex items-center gap-2 shadow-sm transition-colors shrink-0"
+                    >
+                      <Download size={13}/> Cetak KOB (Gabungan)
+                    </button>
                   </div>
                 </div>
                 {kobMonitoringData.length === 0 ? (
@@ -2801,25 +2844,7 @@ const exportRekapKJKTahunan = async () => {
                 </div>
               ) : (
                 <div className="space-y-6 mt-8">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <h3 className="font-semibold text-slate-800 text-sm">Detail KOB: {filterStaffName}</h3>
-                    <div className="flex gap-2">
-                      <select 
-                        value={exportFormat} 
-                        onChange={(e) => setExportFormat(e.target.value)}
-                        className="bg-white border border-slate-200 px-3 rounded-xl font-semibold text-[9px] outline-none"
-                      >
-                        <option value="excel">Excel</option>
-                        <option value="pdf">PDF</option>
-                      </select>
-                      <button 
-                        onClick={() => exportFormat === 'excel' ? exportKOBToExcel() : exportKOBToPDF()} 
-                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-[9px] font-semibold flex items-center gap-2 shadow-sm transition-colors"
-                      >
-                        <Download size={13}/> Cetak KOB
-                      </button>
-                    </div>
-                  </div>
+                  <h3 className="font-semibold text-slate-800 text-sm">Detail KOB: {filterStaffName}</h3>
                   {(() => {
                     const ketuaStaff = users.find(u => u.name === filterStaffName);
                     const assignedList = (ketuaStaff?.assignedIKU || []).filter(iku => iku);
