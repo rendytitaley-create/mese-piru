@@ -88,7 +88,58 @@ function getFirstWord(name) {
 function isKJKForStaff(k, staff) {
   if (!staff) return false;
   if (k.userId) return k.userId === staff.username;
+  // Fallback untuk data KJK lama (diupload sebelum ada penautan userId): coba cocokkan nama
+  // LENGKAP dulu (lebih akurat), baru turun ke kata pertama nama sebagai upaya terakhir.
+  const kName = (k.nama || '').trim().toLowerCase();
+  const staffName = (staff.name || '').trim().toLowerCase();
+  if (kName && staffName && kName === staffName) return true;
   return getFirstWord(k.nama) === getFirstWord(staff.name);
+}
+
+// Helper global: daftar bulan yang termasuk dalam periode terpilih.
+// - 'monthly'           -> hanya bulan yang dipilih
+// - 'tw1'..'tw4'        -> HANYA triwulan itu sendiri (tidak kumulatif dengan triwulan sebelumnya)
+// - 'tw1_kum'..'tw4_kum'-> KUMULATIF dari Januari sampai akhir triwulan yang dipilih
+// - 'yearly'            -> seluruh 1 tahun (Jan-Des)
+function getMonthsForPeriod(period, singleMonth) {
+  if (period === 'tw1') return [1, 2, 3];
+  if (period === 'tw2') return [4, 5, 6];
+  if (period === 'tw3') return [7, 8, 9];
+  if (period === 'tw4') return [10, 11, 12];
+  if (period === 'tw1_kum') return [1, 2, 3];
+  if (period === 'tw2_kum') return [1, 2, 3, 4, 5, 6];
+  if (period === 'tw3_kum') return [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  if (period === 'tw4_kum') return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  if (period === 'yearly') return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  return [singleMonth];
+}
+
+// Label tampilan yang mudah dibaca untuk tiap jenis periode.
+function getPeriodLabel(period) {
+  const labels = {
+    monthly: 'Bulanan',
+    tw1: 'Triwulan I (Jan-Mar)',
+    tw2: 'Triwulan II (Apr-Jun)',
+    tw3: 'Triwulan III (Jul-Sep)',
+    tw4: 'Triwulan IV (Okt-Des)',
+    tw1_kum: 'Triwulan I Kumulatif (Jan-Mar)',
+    tw2_kum: 'Triwulan II Kumulatif (Jan-Jun)',
+    tw3_kum: 'Triwulan III Kumulatif (Jan-Sep)',
+    tw4_kum: 'Triwulan IV Kumulatif (Jan-Des)',
+    yearly: 'Tahunan (Jan-Des)',
+  };
+  return labels[period] || period;
+}
+
+// Versi singkat dari getPeriodLabel, untuk konteks ruang terbatas seperti label kecil di kartu pegawai.
+function getPeriodShortLabel(period) {
+  const labels = {
+    monthly: 'Bulanan',
+    tw1: 'TW1', tw2: 'TW2', tw3: 'TW3', tw4: 'TW4',
+    tw1_kum: 'TW1-Kum', tw2_kum: 'TW2-Kum', tw3_kum: 'TW3-Kum', tw4_kum: 'TW4-Kum',
+    yearly: 'Tahunan',
+  };
+  return labels[period] || period;
 }
 
 const app = initializeApp(firebaseConfig);
@@ -460,6 +511,35 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
     return { active: false, period: null };
   }, []);
 
+  // Perbaiki data KJK lama (diupload sebelum fitur penautan userId ada) supaya ikut tertaut ke
+  // ID pegawai yang benar -- tanpa perlu upload ulang file Excel per bulan satu-satu.
+  const handleRepairKJKLinks = async () => {
+    const unlinked = kjkData.filter(k => !k.userId);
+    if (unlinked.length === 0) {
+      alert("Semua data KJK sudah tertaut dengan baik ke ID pegawai. Tidak ada yang perlu diperbaiki.");
+      return;
+    }
+    if (!window.confirm(`Ditemukan ${unlinked.length} catatan KJK lama yang belum tertaut ID pegawai. Coba perbaiki sekarang?`)) return;
+    try {
+      const batch = writeBatch(db);
+      let fixedCount = 0;
+      unlinked.forEach(k => {
+        const kName = (k.nama || '').trim().toLowerCase();
+        const matched = users.find(u => (u.name || '').trim().toLowerCase() === kName)
+          || users.find(u => getFirstWord(u.name) === getFirstWord(k.nama));
+        if (matched) {
+          batch.update(doc(db, "kjk", k.id), { userId: matched.username });
+          fixedCount++;
+        }
+      });
+      await batch.commit();
+      alert(`Berhasil menautkan ${fixedCount} dari ${unlinked.length} catatan KJK lama. ${unlinked.length - fixedCount > 0 ? `Sisanya (${unlinked.length - fixedCount}) tidak ditemukan nama pegawai yang cocok -- kemungkinan nama di file Excel berbeda dengan Data Pegawai saat ini.` : ''}`);
+    } catch (err) {
+      console.error(err);
+      alert("Gagal memperbaiki tautan data KJK.");
+    }
+  };
+
   const handleUploadKJK = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -800,8 +880,8 @@ if (!pimpinanTerpilih) {
 }
 const pimpinan = pimpinanTerpilih;
     const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-    // Rekap Triwulan/Tahunan berlaku untuk tab Entri Pekerjaan & Penilaian Anggota (mengikuti pilihan periode di header)
-    const isRekapGabungan = (activeTab === 'laporan' || activeTab === 'penilaian') && periodType !== 'monthly';
+    // Rekap Triwulan/Tahunan berlaku untuk tab Entri Pekerjaan, Penilaian Anggota & Bukti Dukung (mengikuti pilihan periode di header)
+    const isRekapGabungan = ['laporan', 'penilaian', 'bukti_dukung'].includes(activeTab) && periodType !== 'monthly';
     const monthsIncluded = isRekapGabungan ? getMonthsForPeriod(periodType, selectedMonth) : [selectedMonth];
     const firstMonthIdx = monthsIncluded[0];
     const lastMonthIdx = monthsIncluded[monthsIncluded.length - 1];
@@ -810,7 +890,7 @@ const pimpinan = pimpinanTerpilih;
       ? `1 ${monthNames[firstMonthIdx - 1]} - ${lastDay} ${monthNames[lastMonthIdx - 1]} ${selectedYear}`
       : `1 - ${lastDay} ${monthNames[selectedMonth - 1]} ${selectedYear}`;
     const periodeFileTag = isRekapGabungan
-      ? (periodType === 'yearly' ? 'Tahunan' : `Triwulan-${{ tw1: 'I', tw2: 'II', tw3: 'III', tw4: 'IV' }[periodType]}`)
+      ? getPeriodShortLabel(periodType).replace(/\s+/g, '')
       : monthNames[selectedMonth - 1];
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('CKP');
@@ -1342,16 +1422,6 @@ const exportRekapKJKTahunan = async () => {
     } catch (err) { alert("Gagal mengirim voting."); }
   };
 
-  // Helper: daftar bulan yang termasuk dalam periode terpilih (dipakai untuk rekap Triwulan/Tahunan)
-  const getMonthsForPeriod = (period, singleMonth) => {
-    if (period === 'tw1') return [1, 2, 3];
-    if (period === 'tw2') return [4, 5, 6];
-    if (period === 'tw3') return [7, 8, 9];
-    if (period === 'tw4') return [10, 11, 12];
-    if (period === 'yearly') return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-    return [singleMonth];
-  };
-
   // ID pegawai (username login) bersifat tetap meski nama pegawai diubah admin di kemudian hari.
   // Semua pencocokan DATA (laporan, agenda) harus pakai ID ini, bukan nama -- supaya riwayat
   // pekerjaan pegawai tetap terhubung walau namanya berubah. filterStaffName tetap dipakai untuk teks tampilan saja.
@@ -1398,12 +1468,7 @@ const exportRekapKJKTahunan = async () => {
   }, [reports, user, selectedMonth, selectedYear, filterStaffName, filterStaffId, activeTab, periodType]);
 
   const dashboardStats = useMemo(() => {
-    let monthsToInclude = [selectedMonth];
-    if (periodType === 'tw1') monthsToInclude = [1, 2, 3];
-    else if (periodType === 'tw2') monthsToInclude = [4, 5, 6];
-    else if (periodType === 'tw3') monthsToInclude = [7, 8, 9];
-    else if (periodType === 'tw4') monthsToInclude = [10, 11, 12];
-    else if (periodType === 'yearly') monthsToInclude = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    const monthsToInclude = getMonthsForPeriod(periodType, selectedMonth);
 
     const periodReports = reports.filter(r => monthsToInclude.includes(r.month) && r.year === selectedYear);
     const currentKJK = kjkData.filter(k => monthsToInclude.includes(k.month) && k.year === selectedYear);
@@ -1618,10 +1683,18 @@ const exportRekapKJKTahunan = async () => {
                {(activeTab === 'dashboard' && ['admin', 'pimpinan'].includes(user.role)) || ['laporan', 'penilaian', 'bukti_dukung'].includes(activeTab) ? (
                  <select className="bg-slate-800 text-white border-none rounded-lg px-3 py-2 text-xs font-medium outline-none cursor-pointer" value={periodType} onChange={e => setPeriodType(e.target.value)}>
                     <option value="monthly">Bulanan</option>
-                    <option value="tw1">Triwulan I</option>
-                    <option value="tw2">Triwulan II</option>
-                    <option value="tw3">Triwulan III</option>
-                    <option value="tw4">Triwulan IV</option>
+                    <optgroup label="Per Triwulan (tidak kumulatif)">
+                      <option value="tw1">Triwulan I</option>
+                      <option value="tw2">Triwulan II</option>
+                      <option value="tw3">Triwulan III</option>
+                      <option value="tw4">Triwulan IV</option>
+                    </optgroup>
+                    <optgroup label="Triwulan Kumulatif (s.d. triwulan terpilih)">
+                      <option value="tw1_kum">Triwulan I (Kumulatif)</option>
+                      <option value="tw2_kum">Triwulan II (Kumulatif)</option>
+                      <option value="tw3_kum">Triwulan III (Kumulatif)</option>
+                      <option value="tw4_kum">Triwulan IV (Kumulatif)</option>
+                    </optgroup>
                     <option value="yearly">Tahunan</option>
                  </select>
                ) : null}
@@ -1633,9 +1706,15 @@ const exportRekapKJKTahunan = async () => {
                     </select>
                   </>
                 )}
-               <select className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-600 outline-none shadow-sm cursor-pointer" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
-                 {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
-               </select>
+               {periodType === 'monthly' || !['dashboard', 'laporan', 'penilaian', 'bukti_dukung'].includes(activeTab) ? (
+                 <select className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-600 outline-none shadow-sm cursor-pointer" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
+                   {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
+                 </select>
+               ) : (
+                 <span className="bg-slate-100 text-slate-500 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium" title="Pilihan Bulan tidak berlaku saat Periode diset ke Triwulan/Tahunan">
+                   {getPeriodLabel(periodType)}
+                 </span>
+               )}
                <select className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-600 outline-none shadow-sm cursor-pointer" value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}>
                  {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <option key={y} value={y}>{y}</option>)}
                </select>
@@ -1822,7 +1901,8 @@ const exportRekapKJKTahunan = async () => {
         </div>
 
         <div className="md:flex-1 md:overflow-y-auto">
-          <table className="w-full text-left border-collapse">
+          {/* TABEL - versi desktop */}
+          <table className="w-full text-left border-collapse hidden md:table">
             <thead className="bg-slate-50 sticky top-0 z-10 text-[9px] font-semibold text-slate-400">
               <tr><th className="p-4">No</th><th className="p-4">Pegawai</th><th className="p-4">Status</th></tr>
             </thead>
@@ -1861,6 +1941,42 @@ const exportRekapKJKTahunan = async () => {
               ))}
             </tbody>
           </table>
+
+          {/* KARTU - versi mobile, lebih nyaman disentuh dibanding tabel sempit */}
+          <div className="md:hidden divide-y divide-slate-50">
+            {users
+              .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.' && (u.status || 'aktif').toLowerCase() !== 'nonaktif')
+              .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
+              .map((u, index) => (
+                <div key={u.firestoreId} className="p-4 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="shrink-0 w-6 h-6 rounded-full bg-slate-100 text-slate-400 text-[9px] font-semibold flex items-center justify-center">{index + 1}</span>
+                    <p className="font-semibold text-xs truncate">{u.name}</p>
+                  </div>
+                  <select 
+                    disabled={!['admin', 'pimpinan'].includes(user.role)}
+                    className={`shrink-0 p-3 rounded-xl text-[10px] font-semibold w-32 outline-none border border-slate-100
+ ${bakiraDailyLog[u.username] === 'hadir' ? 'bg-green-100 text-green-700' : ''}
+ ${bakiraDailyLog[u.username] === 'izin' ? 'bg-yellow-100 text-yellow-700' : ''}
+ ${bakiraDailyLog[u.username] === 'sakit' ? 'bg-blue-100 text-blue-700' : ''}
+ ${bakiraDailyLog[u.username] === 'tugas' ? 'bg-purple-100 text-purple-700' : ''}
+ ${bakiraDailyLog[u.username] === 'cuti' ? 'bg-orange-100 text-orange-700' : ''}
+ ${bakiraDailyLog[u.username] === 'alpa' ? 'bg-red-100 text-red-700' : ''}
+ ${!bakiraDailyLog[u.username] ? 'bg-slate-100' : ''}
+ `}
+                    value={bakiraDailyLog[u.username] || 'hadir'}
+                    onChange={(e) => { setBakiraDailyLog({...bakiraDailyLog, [u.username]: e.target.value}); setIsKegiatanAda(true); }}
+                  >
+                    <option value="hadir">Hadir</option>
+                    <option value="izin">Izin</option>
+                    <option value="sakit">Sakit</option>
+                    <option value="tugas">Tugas</option>
+                    <option value="cuti">Cuti</option>
+                    <option value="alpa">Alpa</option>
+                  </select>
+                </div>
+              ))}
+          </div>
         </div>
       </div>
 
@@ -1898,9 +2014,9 @@ const exportRekapKJKTahunan = async () => {
           )}
         </div>
 
-        <div className="mt-auto space-y-4">
+        <div className="mt-auto space-y-4 sticky bottom-0 md:static bg-slate-50 md:bg-transparent pb-2 md:pb-0 -mx-6 md:mx-0 px-6 md:px-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-200 z-10">
           {['admin', 'pimpinan'].includes(user.role) && (
-            <button onClick={handleSaveBakira} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-semibold text-[10px]">Simpan Perubahan</button>
+            <button onClick={handleSaveBakira} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-semibold text-[10px] shadow-lg">Simpan Perubahan</button>
           )}
           <div className="flex gap-2">
             <select 
@@ -1923,24 +2039,35 @@ const exportRekapKJKTahunan = async () => {
     </div>
   </div>
 )}
+        {activeTab !== 'bakira' && (
         <div className="md:hidden px-6 py-4 bg-white border-b flex items-center justify-center gap-4 z-20">
             <span className="text-[10px] font-semibold text-slate-400">Periode:</span>
-            <select className="bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 font-semibold text-[11px] text-indigo-600 outline-none shadow-sm cursor-pointer" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
-                {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
-            </select>
+            {periodType === 'monthly' || !['dashboard', 'laporan', 'penilaian', 'bukti_dukung'].includes(activeTab) ? (
+              <select className="bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 font-semibold text-[11px] text-indigo-600 outline-none shadow-sm cursor-pointer" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
+                  {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
+              </select>
+            ) : (
+              <span className="bg-slate-100 text-slate-500 border border-slate-200 rounded-xl px-2 py-2 font-semibold text-[10px]">{getPeriodLabel(periodType)}</span>
+            )}
             <select className="bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 font-semibold text-[11px] text-indigo-600 outline-none shadow-sm cursor-pointer" value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}>
                 {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <option key={y} value={y}>{y}</option>)}
             </select>
             {activeTab === 'dashboard' && ['admin', 'pimpinan'].includes(user.role) && (
               <select className="bg-slate-900 text-white border-none rounded-xl px-2 py-2 font-semibold text-[10px] shadow-lg outline-none" value={periodType} onChange={e => setPeriodType(e.target.value)}>
                  <option value="monthly">BLN</option>
-                 <option value="tw1">TW1</option><option value="tw2">TW2</option><option value="tw3">TW3</option><option value="tw4">TW4</option>
+                 <optgroup label="Per Triwulan">
+                   <option value="tw1">TW1</option><option value="tw2">TW2</option><option value="tw3">TW3</option><option value="tw4">TW4</option>
+                 </optgroup>
+                 <optgroup label="Triwulan Kumulatif">
+                   <option value="tw1_kum">TW1-Kum</option><option value="tw2_kum">TW2-Kum</option><option value="tw3_kum">TW3-Kum</option><option value="tw4_kum">TW4-Kum</option>
+                 </optgroup>
                  <option value="yearly">THN</option>
               </select>
             )}
         </div>
+        )}
 
-        <div className={`flex-1 overflow-y-auto px-6 md:px-10 pt-8 custom-scrollbar mb-24 md:mb-0 ${activeTab === 'agenda' ? 'hidden' : ''}`}>
+        <div className={`flex-1 overflow-y-auto px-6 md:px-10 pt-8 custom-scrollbar mb-24 md:mb-0 ${activeTab === 'agenda' || activeTab === 'bakira' ? 'hidden' : ''}`}>
           {activeTab === 'dashboard' && (
             <div className="animate-in fade-in duration-500">
               {['admin', 'pimpinan'].includes(user.role) ? (
@@ -1977,11 +2104,11 @@ const exportRekapKJKTahunan = async () => {
 
                       <div className="w-full grid grid-cols-2 gap-4 border-t border-slate-800 pt-6 mt-auto">
                         <div className="text-center">
-                            <p className="text-[9px] font-semibold text-slate-500 mb-1">CKP ({periodType})</p>
+                            <p className="text-[9px] font-semibold text-slate-500 mb-1">CKP ({getPeriodShortLabel(periodType)})</p>
                             <p className="text-3xl font-semibold text-white">{s.nilaiAkhir}</p>
                         </div>
                         <div className="text-center border-l border-slate-800">
-                            <p className="text-[9px] font-semibold text-slate-500 mb-1">KJK ({periodType})</p>
+                            <p className="text-[9px] font-semibold text-slate-500 mb-1">KJK ({getPeriodShortLabel(periodType)})</p>
                             <p className={`text-[11px] font-semibold mt-2 ${s.kjkMins === 0 ? 'text-green-400' : 'text-red-400'}`}>
                                 {s.kjkMins === 0 ? "Sempurna 🌟" : formatKJKDisplay(s.kjkValue)}
                             </p>
@@ -2222,6 +2349,13 @@ const exportRekapKJKTahunan = async () => {
                                 className="bg-green-600 text-white px-8 py-4 rounded-2xl font-semibold text-[10px] inline-flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg"
                               >
                                 <Download size={16}/> Cetak Rekap KJK Tahunan
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={handleRepairKJKLinks}
+                                className="bg-amber-500 text-white px-8 py-4 rounded-2xl font-semibold text-[10px] inline-flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg"
+                              >
+                                <RotateCcw size={16}/> Perbaiki Tautan Data KJK Lama
                               </button>
                             </div>
                         </div>
