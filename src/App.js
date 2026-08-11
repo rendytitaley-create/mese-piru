@@ -1401,9 +1401,23 @@ const exportRekapKJKTahunan = async () => {
       const dikirim = sReports.filter(r => r.status === 'dikirim').length;
       
       let statusText = total === 0 ? "Belum Lapor" : (selesai === total ? "Selesai" : (dikirim > 0 || progress > 0 || selesai > 0 ? "Menunggu Penilaian" : "Belum Dikirim"));
-      const avgCap = total > 0 ? (sReports.reduce((acc, curr) => acc + Math.min((curr.realisasi / curr.target) * 100, 100), 0) / total) : 0;
-      const avgPimp = total > 0 ? (sReports.reduce((acc, curr) => acc + (Number(curr.nilaiPimpinan) || 0), 0) / total) : 0;
-      const score = (avgCap + avgPimp) / 2;
+
+      // Nilai kartu pegawai = murni nilai akhir dari Pimpinan (bukan dicampur/dibagi dengan capaian target).
+      // - Periode 1 bulan: rata-rata nilai Pimpinan dari pekerjaan bulan itu yang SUDAH dinilai (status 'selesai').
+      // - Periode Triwulan/Tahunan: rata-rata dari bulan-bulan yang SUDAH SELESAI dinilai saja (bulan yang belum
+      //   tuntas dinilai tidak ikut menarik turun nilai kumulatifnya).
+      let score;
+      if (monthsToInclude.length > 1) {
+        const byMonth = {};
+        sReports.forEach(r => { (byMonth[r.month] = byMonth[r.month] || []).push(r); });
+        const completedMonthAverages = Object.values(byMonth)
+          .filter(mr => mr.length > 0 && mr.every(r => r.status === 'selesai'))
+          .map(mr => mr.reduce((a, c) => a + (Number(c.nilaiPimpinan) || 0), 0) / mr.length);
+        score = completedMonthAverages.length > 0 ? (completedMonthAverages.reduce((a, b) => a + b, 0) / completedMonthAverages.length) : 0;
+      } else {
+        const gradedReports = sReports.filter(r => r.status === 'selesai');
+        score = gradedReports.length > 0 ? (gradedReports.reduce((a, c) => a + (Number(c.nilaiPimpinan) || 0), 0) / gradedReports.length) : 0;
+      }
       
       const sFirstWord = getFirstWord(s.name);
       const userKJKs = currentKJK.filter(k => getFirstWord(k.nama) === sFirstWord);
@@ -1446,17 +1460,39 @@ const exportRekapKJKTahunan = async () => {
     const myTotalMins = myKJKs.reduce((acc, curr) => acc + timeToMinutes(curr.kjkValue), 0);
     const myKJK = minutesToTimeStr(myTotalMins);
 
+    // Nilai kartu pegawai (punya sendiri) = murni nilai akhir dari Pimpinan, mengikuti aturan yang sama
+    // dengan staffSummary di atas: bulan tunggal = rata-rata dari pekerjaan yang sudah selesai dinilai
+    // bulan ini; Triwulan/Tahunan (di sini selalu dihitung penuh 1 tahun) = rata-rata dari BULAN yang
+    // sudah selesai dinilai saja.
+    let myNilaiAkhir;
+    if (monthsToInclude.length > 1) {
+      const myByMonth = {};
+      myReports.forEach(r => { (myByMonth[r.month] = myByMonth[r.month] || []).push(r); });
+      const myCompletedMonthAverages = Object.values(myByMonth)
+        .filter(mr => mr.length > 0 && mr.every(r => r.status === 'selesai'))
+        .map(mr => mr.reduce((a, c) => a + (Number(c.nilaiPimpinan) || 0), 0) / mr.length);
+      myNilaiAkhir = (myCompletedMonthAverages.length > 0 ? (myCompletedMonthAverages.reduce((a, b) => a + b, 0) / myCompletedMonthAverages.length) : 0).toFixed(2);
+    } else {
+      const myGradedReports = myReports.filter(r => r.status === 'selesai');
+      myNilaiAkhir = (myGradedReports.length > 0 ? (myGradedReports.reduce((a, c) => a + (Number(c.nilaiPimpinan) || 0), 0) / myGradedReports.length) : 0).toFixed(2);
+    }
+
     const yReports = reports.filter(r => r.year === selectedYear && r.userId === user?.username);
     const yKJKs = kjkData.filter(k => k.year === selectedYear && getFirstWord(k.nama) === myFirstWord);
     const yTotalKJKMins = yKJKs.reduce((a,c) => a + timeToMinutes(c.kjkValue), 0);
-    const yAvgCap = yReports.length > 0 ? (yReports.reduce((a,c) => a + Math.min((c.realisasi/c.target)*100, 100), 0) / yReports.length) : 0;
-    const yAvgPimp = yReports.length > 0 ? (yReports.reduce((a,c) => a + (Number(c.nilaiPimpinan)||0), 0) / yReports.length) : 0;
+    // Kartu kumulatif setahun: rata-rata nilai Pimpinan dari BULAN yang sudah selesai dinilai saja
+    // (bulan yang belum tuntas dinilai tidak ikut menarik turun nilai kumulatifnya).
+    const yByMonth = {};
+    yReports.forEach(r => { (yByMonth[r.month] = yByMonth[r.month] || []).push(r); });
+    const yCompletedMonthAverages = Object.values(yByMonth)
+      .filter(mr => mr.length > 0 && mr.every(r => r.status === 'selesai'))
+      .map(mr => mr.reduce((a, c) => a + (Number(c.nilaiPimpinan) || 0), 0) / mr.length);
 
     return { 
       myTotal, 
-      myNilaiAkhir: (myTotal > 0 ? (( (myReports.reduce((a,c)=>a+Math.min((c.realisasi/c.target)*100, 100),0)/myTotal) + (myReports.reduce((a,c)=>a+(Number(c.nilaiPimpinan)||0),0)/myTotal) )/2).toFixed(2) : "0.00"), 
+      myNilaiAkhir, 
       isFinal: (myTotal > 0 && mySelesai === myTotal), 
-      myYearly: (yReports.length > 0 ? ( (yAvgCap + yAvgPimp) / 2 ) : 0).toFixed(2), 
+      myYearly: (yCompletedMonthAverages.length > 0 ? (yCompletedMonthAverages.reduce((a, b) => a + b, 0) / yCompletedMonthAverages.length) : 0).toFixed(2), 
       myYearlyKJK: minutesToTimeStr(yTotalKJKMins),
       staffSummary: sortedSummary, 
       myStatus: myTotal === 0 ? "Belum Ada Laporan" : (mySelesai === myTotal ? "Selesai" : (myDikirim === myTotal ? "Menunggu Penilaian" : "Belum Dikirim")),
