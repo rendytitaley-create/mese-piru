@@ -57,6 +57,16 @@ const firebaseConfig = {
   appId: "1:948735762696:web:43674d0341fc8b05e14cbd"
 };
 
+// Helper global: format objek Date ke "YYYY-MM-DD" berdasarkan tanggal LOKAL perangkat,
+// bukan lewat toISOString() yang mengonversi ke UTC (bisa membuat tanggal mundur 1 hari
+// di zona waktu Indonesia bagian timur/tengah pada dini hari).
+function formatDateLocal(d) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -73,7 +83,7 @@ const PIRUApp = () => {
   const [kjkData, setKjkData] = useState([]); 
   const [appSettings, setAppSettings] = useState({ logoURL: null });
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(formatDateLocal(new Date()));
 const [bakiraDailyLog, setBakiraDailyLog] = useState({});
 const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   const [bakiraNotulenLink, setBakiraNotulenLink] = useState('');
@@ -120,9 +130,9 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   const [agendas, setAgendas] = useState([]);
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [newAgenda, setNewAgenda] = useState({ taskName: '', volume: '', satuan: '', date: new Date().toISOString().split('T')[0], isLembur: false });
+  const [newAgenda, setNewAgenda] = useState({ taskName: '', volume: '', satuan: '', date: formatDateLocal(new Date()), isLembur: false });
   const [agendaEntryMode, setAgendaEntryMode] = useState('single'); // 'single' atau 'range'
-  const [agendaEndDate, setAgendaEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [agendaEndDate, setAgendaEndDate] = useState(formatDateLocal(new Date()));
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null); // Filter klik tanggal
   const [selectedReportIds, setSelectedReportIds] = useState([]); // Untuk menyimpan ID yang dicentang
@@ -219,13 +229,14 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
 
   // === BARU: FUNGSI AGENDA ===
   // Helper: hasilkan daftar tanggal (YYYY-MM-DD) dari startDate s.d endDate, inklusif
+  // Catatan: format manual (bukan toISOString) supaya tidak bergeser akibat konversi ke UTC
   const getDateRangeList = (startStr, endStr) => {
     const list = [];
     let current = new Date(startStr + 'T00:00:00');
     const end = new Date(endStr + 'T00:00:00');
     if (current > end) return list;
     while (current <= end) {
-      list.push(current.toISOString().split('T')[0]);
+      list.push(formatDateLocal(current));
       current.setDate(current.getDate() + 1);
     }
     return list;
@@ -289,7 +300,7 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
       }
       setShowAgendaModal(false);
       setAgendaEntryMode('single');
-      setNewAgenda({ taskName: '', volume: '', satuan: '', date: new Date().toISOString().split('T')[0], isLembur: false });
+      setNewAgenda({ taskName: '', volume: '', satuan: '', date: formatDateLocal(new Date()), isLembur: false });
     } catch (err) { 
       console.error(err);
       alert("Gagal memproses agenda."); 
@@ -1525,7 +1536,7 @@ const exportRekapKJKTahunan = async () => {
                        {selectedCalendarDate && (user.role === 'pegawai' || filterStaffName === 'Semua') && (
                         <button 
                           onClick={() => {
-                            setNewAgenda({...newAgenda, date: selectedCalendarDate});
+                            setNewAgenda({ taskName: '', volume: '', satuan: '', date: selectedCalendarDate, isLembur: false });
                             setAgendaEntryMode('single');
                             setAgendaEndDate(selectedCalendarDate);
                             setShowAgendaModal(true);
@@ -2582,7 +2593,7 @@ const exportRekapKJKTahunan = async () => {
       {showAgendaModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[130] font-sans text-center">
           <form onSubmit={handleAddAgenda} className="bg-white w-full max-md:max-w-md rounded-xl p-10 shadow-md relative">
-            <button type="button" onClick={() => setShowAgendaModal(false)} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400"><X size={20}/></button>
+            <button type="button" onClick={() => { setShowAgendaModal(false); setAgendaEntryMode('single'); setNewAgenda({ taskName: '', volume: '', satuan: '', date: formatDateLocal(new Date()), isLembur: false }); }} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400"><X size={20}/></button>
             <CalendarIcon size={40} className="text-indigo-600 mb-6 mx-auto" />
             <h3 className="text-xl font-semibold mb-6">
               {newAgenda.id ? `Catat Agenda: ${newAgenda.date}` : (agendaEntryMode === 'range' ? 'Catat Agenda Beberapa Hari' : `Catat Agenda: ${newAgenda.date}`)}
