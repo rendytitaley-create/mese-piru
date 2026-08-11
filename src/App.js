@@ -121,6 +121,8 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [newAgenda, setNewAgenda] = useState({ taskName: '', volume: '', satuan: '', date: new Date().toISOString().split('T')[0], isLembur: false });
+  const [agendaEntryMode, setAgendaEntryMode] = useState('single'); // 'single' atau 'range'
+  const [agendaEndDate, setAgendaEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null); // Filter klik tanggal
   const [selectedReportIds, setSelectedReportIds] = useState([]); // Untuk menyimpan ID yang dicentang
@@ -216,10 +218,24 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   }, [user]);
 
   // === BARU: FUNGSI AGENDA ===
+  // Helper: hasilkan daftar tanggal (YYYY-MM-DD) dari startDate s.d endDate, inklusif
+  const getDateRangeList = (startStr, endStr) => {
+    const list = [];
+    let current = new Date(startStr + 'T00:00:00');
+    const end = new Date(endStr + 'T00:00:00');
+    if (current > end) return list;
+    while (current <= end) {
+      list.push(current.toISOString().split('T')[0]);
+      current.setDate(current.getDate() + 1);
+    }
+    return list;
+  };
+
   const handleAddAgenda = async (e) => {
     e.preventDefault();
     try {
       if (newAgenda.id) {
+        // Mode edit selalu satu hari (data yang sudah tersimpan per-hari)
         const agendaRef = doc(db, "agendas", newAgenda.id);
         await updateDoc(agendaRef, {
           taskName: newAgenda.taskName,
@@ -230,6 +246,36 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
           updatedAt: serverTimestamp()
         });
         alert("Agenda berhasil diperbarui.");
+      } else if (agendaEntryMode === 'range') {
+        // Mode rentang tanggal: buat 1 catatan agenda untuk setiap hari dalam rentang
+        const dateList = getDateRangeList(newAgenda.date, agendaEndDate);
+        if (dateList.length === 0) {
+          alert("Tanggal akhir tidak boleh sebelum tanggal mulai.");
+          return;
+        }
+        const batch = writeBatch(db);
+        const lastDateStr = dateList[dateList.length - 1];
+        dateList.forEach(dateStr => {
+          const isLastDay = dateStr === lastDateStr;
+          const ref = doc(collection(db, "agendas"));
+          batch.set(ref, {
+            taskName: newAgenda.taskName,
+            // Volume/Target hanya dicatat di hari terakhir (saat pekerjaan selesai).
+            // Hari-hari sebelumnya dibiarkan kosong karena pekerjaan masih berlangsung.
+            volume: isLastDay ? newAgenda.volume : '',
+            satuan: newAgenda.satuan,
+            date: dateStr,
+            isLembur: newAgenda.isLembur || false,
+            userId: user.username,
+            userName: user.name,
+            isImported: false,
+            isPekerjaanBersambung: true,
+            isRangeEndDay: isLastDay,
+            createdAt: serverTimestamp()
+          });
+        });
+        await batch.commit();
+        alert(`Agenda berhasil ditambahkan untuk ${dateList.length} hari (${newAgenda.date} s.d ${agendaEndDate}).`);
       } else {
         await addDoc(collection(db, "agendas"), {
           ...newAgenda,
@@ -242,6 +288,7 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
         alert("Agenda berhasil ditambahkan.");
       }
       setShowAgendaModal(false);
+      setAgendaEntryMode('single');
       setNewAgenda({ taskName: '', volume: '', satuan: '', date: new Date().toISOString().split('T')[0], isLembur: false });
     } catch (err) { 
       console.error(err);
@@ -1479,6 +1526,8 @@ const exportRekapKJKTahunan = async () => {
                         <button 
                           onClick={() => {
                             setNewAgenda({...newAgenda, date: selectedCalendarDate});
+                            setAgendaEntryMode('single');
+                            setAgendaEndDate(selectedCalendarDate);
                             setShowAgendaModal(true);
                           }} 
                           className="shrink-0 p-3 bg-indigo-600 rounded-xl font-semibold text-[9px] shadow-lg shadow-indigo-900/20 flex items-center gap-2"
@@ -1514,9 +1563,15 @@ const exportRekapKJKTahunan = async () => {
                                 LEMBUR
                               </span>
                             )}
-                            <p className="text-[9px] text-slate-400 font-bold mt-2 bg-slate-50 inline-block px-2 py-1 rounded-lg">
-                              {a.volume} {a.satuan}
-                            </p>
+                            {a.isPekerjaanBersambung && !a.isRangeEndDay ? (
+                              <span className="inline-block mt-2 px-2 py-1 bg-indigo-50 text-indigo-500 text-[9px] font-semibold rounded-lg">
+                                Pekerjaan berlanjut &middot; volume dicatat di hari terakhir
+                              </span>
+                            ) : (
+                              <p className="text-[9px] text-slate-400 font-bold mt-2 bg-slate-50 inline-block px-2 py-1 rounded-lg">
+                                {a.isRangeEndDay && <span className="text-indigo-500">Selesai &middot; </span>}{a.volume} {a.satuan}
+                              </p>
+                            )}
                           </div>
                           <div className="flex flex-col gap-2 shrink-0">
                             {a.isImported && <CheckSquare size={14} className="text-green-500"/>}
@@ -1532,6 +1587,7 @@ const exportRekapKJKTahunan = async () => {
           isLembur: a.isLembur || false,
           id: a.id 
         });
+        setAgendaEntryMode('single');
         setShowAgendaModal(true);
       }} 
       className="text-indigo-400 hover:text-indigo-600 p-1"
@@ -2528,7 +2584,39 @@ const exportRekapKJKTahunan = async () => {
           <form onSubmit={handleAddAgenda} className="bg-white w-full max-md:max-w-md rounded-xl p-10 shadow-md relative">
             <button type="button" onClick={() => setShowAgendaModal(false)} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400"><X size={20}/></button>
             <CalendarIcon size={40} className="text-indigo-600 mb-6 mx-auto" />
-            <h3 className="text-xl font-semibold mb-8">Catat Agenda: {newAgenda.date}</h3>
+            <h3 className="text-xl font-semibold mb-6">
+              {newAgenda.id ? `Catat Agenda: ${newAgenda.date}` : (agendaEntryMode === 'range' ? 'Catat Agenda Beberapa Hari' : `Catat Agenda: ${newAgenda.date}`)}
+            </h3>
+            {!newAgenda.id && (
+              <div className="grid grid-cols-2 gap-2 mb-6 bg-slate-50 p-1.5 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setAgendaEntryMode('single')}
+                  className={`py-2.5 rounded-lg text-xs font-semibold transition-colors ${agendaEntryMode === 'single' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+                >
+                  Satu Hari
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAgendaEntryMode('range'); setAgendaEndDate(newAgenda.date); }}
+                  className={`py-2.5 rounded-lg text-xs font-semibold transition-colors ${agendaEntryMode === 'range' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+                >
+                  Rentang Tanggal
+                </button>
+              </div>
+            )}
+            {!newAgenda.id && agendaEntryMode === 'range' && (
+              <div className="grid grid-cols-2 gap-4 mb-4 text-left">
+                <div>
+                  <label className="text-[10px] font-semibold text-slate-400 block mb-1.5 ml-1">Tanggal Mulai</label>
+                  <input type="date" required className="w-full p-3.5 bg-slate-50 rounded-xl outline-none font-medium text-sm border border-slate-100" value={newAgenda.date} onChange={e => setNewAgenda({...newAgenda, date: e.target.value})} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-semibold text-slate-400 block mb-1.5 ml-1">Tanggal Selesai</label>
+                  <input type="date" required min={newAgenda.date} className="w-full p-3.5 bg-slate-50 rounded-xl outline-none font-medium text-sm border border-slate-100" value={agendaEndDate} onChange={e => setAgendaEndDate(e.target.value)} />
+                </div>
+              </div>
+            )}
             <div className="space-y-4">
               <textarea required placeholder="Apa yang Anda kerjakan?" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-semibold text-center border border-slate-100 h-32 resize-none" value={newAgenda.taskName} onChange={e => setNewAgenda({...newAgenda, taskName: e.target.value})} />
               <div 
@@ -2547,6 +2635,9 @@ const exportRekapKJKTahunan = async () => {
                 <input required type="number" placeholder="Volume" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-semibold text-center border border-slate-100" value={newAgenda.volume} onChange={e => setNewAgenda({...newAgenda, volume: e.target.value})} />
                 <input required type="text" placeholder="Satuan" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-semibold text-center border border-slate-100" value={newAgenda.satuan} onChange={e => setNewAgenda({...newAgenda, satuan: e.target.value})} />
               </div>
+              {!newAgenda.id && agendaEntryMode === 'range' && (
+                <p className="text-[10px] text-slate-400 leading-relaxed px-2">Volume/Target di atas akan dicatat khusus untuk hari terakhir ({agendaEndDate || '-'}), sebagai tanda pekerjaan selesai. Hari-hari sebelumnya hanya mencatat uraian pekerjaan tanpa volume.</p>
+              )}
             </div>
             <button type="submit" className="w-full bg-indigo-600 text-white font-semibold py-5 rounded-2xl shadow-md text-[10px] mt-8 transition-all active:scale-95">Simpan Catatan</button>
           </form>
@@ -2562,10 +2653,10 @@ const exportRekapKJKTahunan = async () => {
               <button onClick={() => setShowImportModal(false)} className="p-2 bg-slate-50 rounded-full text-slate-400"><X size={18}/></button>
             </div>
             <div className="space-y-3">
-              {agendas.filter(a => a.userId === user.username && !a.isImported && a.date.includes(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`)).length === 0 ? (
+              {agendas.filter(a => a.userId === user.username && !a.isImported && !(a.isPekerjaanBersambung && !a.isRangeEndDay) && a.date.includes(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`)).length === 0 ? (
                 <p className="text-center py-10 text-slate-400 font-bold text-[10px]">Tidak ada agenda yang tersedia</p>
               ) : (
-                agendas.filter(a => a.userId === user.username && !a.isImported && a.date.includes(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`))
+                agendas.filter(a => a.userId === user.username && !a.isImported && !(a.isPekerjaanBersambung && !a.isRangeEndDay) && a.date.includes(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`))
                 .sort((a, b) => new Date(a.date) - new Date(b.date))
                 .map(a => (
                   <div 
@@ -2583,7 +2674,7 @@ const exportRekapKJKTahunan = async () => {
                     }}
                     className="p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-600 cursor-pointer group transition-all"
                   >
-                    <p className="text-[8px] font-semibold text-indigo-500 mb-1">{a.date}</p>
+                    <p className="text-[8px] font-semibold text-indigo-500 mb-1">{a.date}{a.isRangeEndDay && <span className="text-slate-400"> &middot; hari terakhir</span>}</p>
                     <h4 className="font-semibold text-slate-800 text-[10px]">{a.taskName}</h4>
                     <p className="text-[9px] text-slate-400">{a.volume} {a.satuan}</p>
                   </div>
