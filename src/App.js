@@ -75,6 +75,21 @@ function formatDateLongID(dateStr) {
   return new Date(y, m - 1, d).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
+function getFirstWord(name) {
+  if (!name) return "";
+  return name.trim().split(" ")[0].toLowerCase();
+}
+
+// Cocokkan catatan KJK ke seorang pegawai: utamakan userId (stabil, hasil upload versi baru).
+// Untuk data KJK lama yang diupload sebelum perbaikan ini (belum punya userId), tetap dicocokkan
+// lewat kata pertama nama sebagai fallback, supaya data lama tidak hilang begitu saja.
+// Ditulis sebagai fungsi level-modul (bukan di dalam komponen) supaya identitasnya stabil
+// dan tidak perlu didaftarkan di dependency array useMemo/useCallback manapun.
+function isKJKForStaff(k, staff) {
+  if (k.userId) return k.userId === staff.username;
+  return getFirstWord(k.nama) === getFirstWord(staff.name);
+}
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -346,19 +361,6 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
     for (let i = 1; i <= daysInMonth; i++) { days.push(i); }
     return days;
   }, [calendarDate]);
-
-  const getFirstWord = (name) => {
-    if (!name) return "";
-    return name.trim().split(" ")[0].toLowerCase();
-  };
-
-  // Cocokkan catatan KJK ke seorang pegawai: utamakan userId (stabil, hasil upload versi baru).
-  // Untuk data KJK lama yang diupload sebelum perbaikan ini (belum punya userId), tetap dicocokkan
-  // lewat kata pertama nama sebagai fallback, supaya data lama tidak hilang begitu saja.
-  const isKJKForStaff = (k, staff) => {
-    if (k.userId) return k.userId === staff.username;
-    return getFirstWord(k.nama) === getFirstWord(staff.name);
-  };
 
   const formatKJKDisplay = (timeStr) => {
     if (!timeStr || timeStr === '00:00' || timeStr === '00:00:00') return "Nol KJK";
@@ -895,7 +897,7 @@ const pimpinan = pimpinanTerpilih;
     });
 
     return results.sort((a, b) => b.finalScore - a.finalScore);
-  }, [users, reports, kjkData, nilai360, voteWindow, currentTW, selectedYear, bakiraRecords, user?.role, isKJKForStaff]); // Menambahkan user.role agar lulus sensor ESLint saat deploy
+  }, [users, reports, kjkData, nilai360, voteWindow, currentTW, selectedYear, bakiraRecords, user?.role]); // Menambahkan user.role agar lulus sensor ESLint saat deploy
 
   // Data Monitoring Partisipasi Pegawai Prima: hanya pegawai aktif, jumlah rekan juga dihitung dari yang aktif saja
   const primaMonitoringData = useMemo(() => {
@@ -1504,7 +1506,7 @@ const exportRekapKJKTahunan = async () => {
       myKJK,
       isAnyPending: myMonthReports.some(r => r.status === 'pending')
     };
-  }, [reports, users, user, selectedMonth, selectedYear, kjkData, periodType, isKJKForStaff]);
+  }, [reports, users, user, selectedMonth, selectedYear, kjkData, periodType]);
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50 font-sans"><Loader2 className="animate-spin text-indigo-600" size={50} /></div>;
 
