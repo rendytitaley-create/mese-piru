@@ -1105,19 +1105,6 @@ const pimpinan = pimpinanTerpilih;
     return rows;
   }, [users, nilai360, currentTW, selectedYear]);
 
-  // Data KOB bulan/tahun terpilih -- untuk role Ketua Tim: milik sendiri saja.
-  // Untuk role admin/pimpinan: mengikuti filter nama pegawai (filterStaffId) yang dipilih di header,
-  // "Semua" berarti gabungan semua Ketua Tim (dipakai untuk panel monitoring).
-  const currentFilteredKOB = useMemo(() => {
-    let res = kobData.filter(k => k.month === selectedMonth && k.year === selectedYear);
-    if (user?.role === 'ketua') {
-      res = res.filter(k => k.userId === user.username);
-    } else if (filterStaffName !== 'Semua') {
-      res = res.filter(k => k.userId === filterStaffId);
-    }
-    return res;
-  }, [kobData, user, selectedMonth, selectedYear, filterStaffName, filterStaffId]);
-
   // Monitoring progres pengisian KOB tiap Ketua Tim: dibandingkan jumlah IKU yang ditugaskan
   // dengan jumlah IKU yang sudah punya minimal 1 baris IKI bulan ini.
   const kobMonitoringData = useMemo(() => {
@@ -1580,6 +1567,19 @@ const exportRekapKJKTahunan = async () => {
     if (filterStaffName === 'Semua') return null;
     return users.find(u => u.name === filterStaffName)?.username || null;
   }, [filterStaffName, users]);
+
+  // Data KOB bulan/tahun terpilih -- untuk role Ketua Tim: milik sendiri saja.
+  // Untuk role admin/pimpinan: mengikuti filter nama pegawai (filterStaffId) yang dipilih di header,
+  // "Semua" berarti gabungan semua Ketua Tim (dipakai untuk panel monitoring).
+  const currentFilteredKOB = useMemo(() => {
+    let res = kobData.filter(k => k.month === selectedMonth && k.year === selectedYear);
+    if (user?.role === 'ketua') {
+      res = res.filter(k => k.userId === user.username);
+    } else if (filterStaffName !== 'Semua') {
+      res = res.filter(k => k.userId === filterStaffId);
+    }
+    return res;
+  }, [kobData, user, selectedMonth, selectedYear, filterStaffName, filterStaffId]);
 
   const currentFilteredReports = useMemo(() => {
     // Tab Entri Pekerjaan & Penilaian Anggota: hormati pilihan periode (Bulanan/Triwulan/Tahunan) di header,
