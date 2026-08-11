@@ -90,6 +90,19 @@ const PIRUApp = () => {
   const [users, setUsers] = useState([]);
   const [kjkData, setKjkData] = useState([]); 
   const [appSettings, setAppSettings] = useState({ logoURL: null });
+
+  // Favicon tab browser otomatis mengikuti logo aplikasi (appSettings.logoURL) begitu tersedia,
+  // supaya tidak perlu upload file favicon terpisah -- cukup atur satu logo saja untuk semuanya.
+  useEffect(() => {
+    if (!appSettings.logoURL) return;
+    let link = document.querySelector("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = appSettings.logoURL;
+  }, [appSettings.logoURL]);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedDate, setSelectedDate] = useState(formatDateLocal(new Date()));
 const [bakiraDailyLog, setBakiraDailyLog] = useState({});
@@ -178,7 +191,7 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   useEffect(() => {
     signInAnonymously(auth);
     const unsubAuth = onAuthStateChanged(auth, (fUser) => {
-      const saved = localStorage.getItem('piru_session_final');
+      const saved = sessionStorage.getItem('piru_session_final');
       if (saved) { setUser(JSON.parse(saved)); }
       setLoading(false);
     });
@@ -557,7 +570,7 @@ setPersistence(auth, browserSessionPersistence);
     const found = users.find(u => u.username.toLowerCase() === inputUsername && u.password === authForm.password);
     if (found) {
       setUser(found);
-      localStorage.setItem('piru_session_final', JSON.stringify(found));
+      sessionStorage.setItem('piru_session_final', JSON.stringify(found));
     } else { setAuthError('Username atau password salah.'); }
   };
 
@@ -569,7 +582,7 @@ setPersistence(auth, browserSessionPersistence);
       await updateDoc(userRef, { password: newPasswordData.new });
       const updatedUser = { ...user, password: newPasswordData.new };
       setUser(updatedUser);
-      localStorage.setItem('piru_session_final', JSON.stringify(updatedUser));
+      sessionStorage.setItem('piru_session_final', JSON.stringify(updatedUser));
       alert("Password berhasil diperbarui.");
       setShowPasswordModal(false);
       setNewPasswordData({ current: '', new: '' });
@@ -1525,7 +1538,7 @@ const exportRekapKJKTahunan = async () => {
         </nav>
         <div className="pt-4 mt-4 border-t border-slate-100 space-y-1">
           <button onClick={() => setShowPasswordModal(true)} className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-medium text-slate-400 hover:text-indigo-600 hover:bg-slate-50 transition-colors"><KeyRound size={16}/> Ganti Password</button>
-          <button onClick={() => {localStorage.clear(); window.location.reload();}} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"><LogOut size={18}/> Logout</button>
+          <button onClick={() => {sessionStorage.clear(); window.location.reload();}} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"><LogOut size={18}/> Logout</button>
         </div>
       </div>
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
@@ -1543,7 +1556,7 @@ const exportRekapKJKTahunan = async () => {
           <div className="flex items-center gap-2 md:gap-2.5">
              <button onClick={exportToExcel} className="md:hidden p-2 text-green-600 bg-white rounded-lg shadow-sm border border-slate-200"><Download size={20}/></button>
              <button onClick={() => setShowPasswordModal(true)} className="md:hidden p-2 text-indigo-600 bg-white rounded-lg shadow-sm border border-slate-200"><KeyRound size={20}/></button>
-             <button onClick={() => {localStorage.clear(); window.location.reload();}} className="md:hidden p-2 text-red-500 bg-white rounded-lg shadow-sm border border-slate-200"><LogOut size={20}/></button>
+             <button onClick={() => {sessionStorage.clear(); window.location.reload();}} className="md:hidden p-2 text-red-500 bg-white rounded-lg shadow-sm border border-slate-200"><LogOut size={20}/></button>
              <div className="hidden md:flex items-center gap-2.5">
                {(activeTab === 'dashboard' && ['admin', 'pimpinan'].includes(user.role)) || ['laporan', 'penilaian', 'bukti_dukung'].includes(activeTab) ? (
                  <select className="bg-slate-800 text-white border-none rounded-lg px-3 py-2 text-xs font-medium outline-none cursor-pointer" value={periodType} onChange={e => setPeriodType(e.target.value)}>
