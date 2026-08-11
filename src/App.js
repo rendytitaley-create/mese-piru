@@ -861,6 +861,14 @@ const pimpinan = pimpinanTerpilih;
     return rows;
   }, [users, nilai360, currentTW, selectedYear]);
 
+  // Riwayat semua juara Pegawai Prima yang SUDAH dipublikasikan, lintas triwulan & tahun (tidak terikat Bulan/Tahun yang sedang dipilih)
+  const publishedWinnersHistory = useMemo(() => {
+    const periodOrder = { tw1: 1, tw2: 2, tw3: 3, tw4: 4 };
+    return winners
+      .filter(w => publishStatus[`${w.year}_${w.period}`]?.isPublished)
+      .sort((a, b) => (b.year - a.year) || ((periodOrder[b.period] || 0) - (periodOrder[a.period] || 0)));
+  }, [winners, publishStatus]);
+
   const exportKertasKerjaPrima = async () => {
   const period = currentTW.toUpperCase();
   const year = selectedYear;
@@ -1431,6 +1439,38 @@ const exportRekapKJKTahunan = async () => {
           <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-lg font-semibold text-sm mt-2 transition-colors shadow-sm">Masuk</button>
         </form>
       </div>
+    </div>
+  );
+
+  // Etalase Pegawai Prima: rekap semua juara triwulan yang sudah dipublikasikan.
+  // Dipakai baik untuk tampilan admin maupun tampilan pegawai/ketua tim.
+  const championGalleryJSX = (
+    <div className="bg-white p-8 md:p-10 rounded-2xl shadow-sm border border-slate-100">
+      <div className="flex items-center gap-4 mb-8">
+        <div className="bg-amber-50 p-3 rounded-xl text-amber-600"><Trophy size={24}/></div>
+        <div>
+          <h3 className="font-semibold text-slate-800 text-sm tracking-tight">Etalase Pegawai Prima</h3>
+          <p className="text-[10px] text-slate-400 mt-1">Rekap juara setiap triwulan yang sudah diumumkan</p>
+        </div>
+      </div>
+      {publishedWinnersHistory.length === 0 ? (
+        <div className="py-12 text-center text-slate-400 text-[10px] font-semibold border border-dashed border-slate-200 rounded-2xl">
+          Belum ada pengumuman juara yang dipublikasikan.
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+          {publishedWinnersHistory.map((w, idx) => (
+            <div key={idx} className="bg-slate-900 rounded-2xl p-6 text-center text-white border border-amber-500/20 shadow-sm">
+              <div className="w-16 h-16 rounded-full overflow-hidden mx-auto mb-3 border-2 border-amber-500 bg-slate-800">
+                {w.photoURL ? <img src={w.photoURL} alt={w.name} className="w-full h-full object-cover"/> : <User size={24} className="mx-auto mt-4 text-slate-500"/>}
+              </div>
+              <p className="font-semibold text-xs leading-tight mb-1">{w.name}</p>
+              <p className="text-[9px] text-slate-400 mb-3">{w.jabatan}</p>
+              <span className="inline-block bg-amber-500 text-slate-900 text-[8px] font-semibold px-2.5 py-1 rounded-full">{(w.period || '').toUpperCase()} {w.year}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 
@@ -2020,32 +2060,16 @@ const exportRekapKJKTahunan = async () => {
       </div>
     )}
 
-    {/* 2. BAGIAN PEGAWAI (VOTING / PENGUMUMAN) */}
+    {/* 1b. TEMPAT KHUSUS ADMIN: ETALASE PENGUMUMAN JUARA (terpisah dari panel Top 3 & Monitoring) */}
+    {user.role === 'admin' && championGalleryJSX}
+
+    {/* 2. BAGIAN PEGAWAI & KETUA TIM: wadah pajangan hasil tiap triwulan + proses penilaian hanya saat waktunya */}
     {user.role !== 'admin' && user.role !== 'pimpinan' && (
-      <div className="bg-white p-8 md:p-12 rounded-2xl md:rounded-2xl shadow-sm border border-slate-100">
-        {publishStatus[`${selectedYear}_${currentTW}`]?.isPublished ? (
-          <div className="animate-reveal-winner py-10 text-center">
-            <Trophy className="mx-auto text-amber-500 mb-8" size={80} />
-            <p className="text-[10px] font-semibold text-slate-400 tracking-[0.3em] mb-16">Penghargaan Atas Dedikasi & Integritas Tinggi</p>
-            {winners.filter(w => w.period === currentTW && w.year === selectedYear).map((w, idx) => (
-              <div key={idx} className="relative group max-w-sm mx-auto mb-20">
-                <div className="shine-effect animate-glow-pulse bg-slate-900 p-12 rounded-2xl text-white border border-amber-500/30 relative z-10 shadow-md">
-                  <div className="relative w-40 h-40 rounded-full overflow-hidden mx-auto mb-8 border-4 border-amber-500 bg-slate-800">
-                    {w.photoURL ? <img src={w.photoURL} alt={w.name} className="w-full h-full object-cover"/> : <User size={60} className="mx-auto mt-10 text-slate-600"/>}
-                  </div>
-                  <p className="font-semibold text-2xl tracking-tight leading-tight mb-2">{w.name}</p>
-                  <p className="text-indigo-400 font-semibold text-[10px] tracking-[0.2em] mb-8">{w.jabatan}</p>
-                </div>
-                <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-20 w-max">
-                  <div className="bg-gradient-to-r from-amber-300 via-amber-500 to-amber-300 px-10 py-4 rounded-2xl shadow-md border-2 border-white/50">
-                    <span className="text-slate-900 font-semibold text-[11px] tracking-[0.2em]">🏆 PEGAWAI PRIMA {(w.period || currentTW).toUpperCase()} 🏆</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (voteWindow.active || ['admin', 'pimpinan'].includes(user.role)) ? (
-          <>
+      <div className="space-y-8">
+        {championGalleryJSX}
+
+        {voteWindow.active && (
+          <div className="bg-white p-8 md:p-12 rounded-2xl shadow-sm border border-slate-100">
             <div className="flex items-center gap-6 mb-12 text-left">
               <div className="bg-indigo-50 p-5 rounded-xl text-indigo-600"><Award size={40}/></div>
               <div className="">
@@ -2071,14 +2095,8 @@ const exportRekapKJKTahunan = async () => {
                 );
               })}
             </div>
-          </>
-        ) : (
-  <div className="flex flex-col items-center py-20 text-center">
-    <Clock size={64} className="text-indigo-400 mb-8 animate-pulse"/>
-    <h3 className="text-2xl font-semibold text-indigo-600">Masa Voting Ditutup</h3>
-    <p className="text-[10px] text-slate-400 font-bold mt-2">Gunakan pilihan Bulan/Tahun di atas untuk melihat rekapitulasi riwayat nilai triwulan sebelumnya</p>
-  </div>
-)}
+          </div>
+        )}
       </div>
     )}
   </div>
