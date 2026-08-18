@@ -152,6 +152,25 @@ enableIndexedDbPersistence(db).catch((err) => {
 
 const PIRUApp = () => {
   const [user, setUser] = useState(null);
+
+  // === MODE DEMO (hanya lihat) ===
+  // Akun dengan flag isDemo:true bisa menjelajah semua menu seperti biasa, tapi setiap upaya
+  // menyimpan/mengubah/menghapus data akan diblokir di sini sebelum sempat menyentuh Firestore,
+  // supaya data asli kantor aman dipakai untuk demo ke pihak luar.
+  // Diletakkan di awal komponen (bukan dekat pemakaian pertamanya) supaya semua fungsi lain
+  // di bawahnya -- yang letaknya lebih dulu di file dibanding definisi aslinya -- tetap bisa memanggilnya.
+  const isDemoBlocked = () => {
+    if (user?.isDemo) {
+      alert("Mode Demo (Hanya Lihat): fitur simpan/ubah/hapus data dinonaktifkan pada akun ini.");
+      return true;
+    }
+    return false;
+  };
+  const safeAddDoc = (...args) => { if (isDemoBlocked()) return Promise.reject(new Error('demo-mode')); return addDoc(...args); };
+  const safeUpdateDoc = (...args) => { if (isDemoBlocked()) return Promise.reject(new Error('demo-mode')); return updateDoc(...args); };
+  const safeDeleteDoc = (...args) => { if (isDemoBlocked()) return Promise.reject(new Error('demo-mode')); return deleteDoc(...args); };
+  const safeSetDoc = (...args) => { if (isDemoBlocked()) return Promise.reject(new Error('demo-mode')); return setDoc(...args); };
+  const safeBatchCommit = (batch) => { if (isDemoBlocked()) return Promise.reject(new Error('demo-mode')); return batch.commit(); };
   const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState([]);
   const [users, setUsers] = useState([]);
@@ -208,7 +227,7 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
-  const [newUser, setNewUser] = useState({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '', assignedIKU: [] });
+  const [newUser, setNewUser] = useState({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '', assignedIKU: [], isDemo: false });
 
   const [tempLinks, setTempLinks] = useState({});
 
@@ -346,7 +365,7 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
       if (newAgenda.id) {
         // Mode edit selalu satu hari (data yang sudah tersimpan per-hari)
         const agendaRef = doc(db, "agendas", newAgenda.id);
-        await updateDoc(agendaRef, {
+        await safeUpdateDoc(agendaRef, {
           taskName: newAgenda.taskName,
           volume: newAgenda.volume,
           satuan: newAgenda.satuan,
@@ -383,10 +402,10 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
             createdAt: serverTimestamp()
           });
         });
-        await batch.commit();
+        await safeBatchCommit(batch);
         alert(`Agenda berhasil ditambahkan untuk ${dateList.length} hari (${newAgenda.date} s.d ${agendaEndDate}).`);
       } else {
-        await addDoc(collection(db, "agendas"), {
+        await safeAddDoc(collection(db, "agendas"), {
           ...newAgenda,
           userId: user.username,
           userName: user.name,
@@ -407,7 +426,7 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
 
   const deleteAgenda = async (id) => {
     if (window.confirm("Hapus catatan agenda ini?")) {
-      await deleteDoc(doc(db, "agendas", id));
+      await safeDeleteDoc(doc(db, "agendas", id));
     }
   };
 
@@ -542,7 +561,7 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
           fixedCount++;
         }
       });
-      await batch.commit();
+      await safeBatchCommit(batch);
       alert(`Berhasil menautkan ${fixedCount} dari ${unlinked.length} catatan KJK lama. ${unlinked.length - fixedCount > 0 ? `Sisanya (${unlinked.length - fixedCount}) tidak ditemukan nama pegawai yang cocok -- kemungkinan nama di file Excel berbeda dengan Data Pegawai saat ini.` : ''}`);
     } catch (err) {
       console.error(err);
@@ -607,7 +626,7 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
           }
         });
 
-        await batch.commit();
+        await safeBatchCommit(batch);
         alert(`Data KJK Berhasil Diperbarui untuk ${selectedMonth}/${selectedYear}`);
       } catch (err) {
         console.error(err);
@@ -633,7 +652,7 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
         ctx.drawImage(img, 0, 0, width, height);
         const base64 = canvas.toDataURL('image/png', 0.8);
         try {
-          await setDoc(doc(db, "settings", "app"), { logoURL: base64 }, { merge: true });
+          await safeSetDoc(doc(db, "settings", "app"), { logoURL: base64 }, { merge: true });
           alert("Logo aplikasi berhasil diperbarui secara global.");
         } catch (err) { alert("Gagal mengunggah logo."); }
       };
@@ -686,7 +705,7 @@ setPersistence(auth, browserSessionPersistence);
     if (newPasswordData.current !== user.password) { alert("Password lama tidak sesuai."); return; }
     try {
       const userRef = doc(db, "users", user.firestoreId);
-      await updateDoc(userRef, { password: newPasswordData.new });
+      await safeUpdateDoc(userRef, { password: newPasswordData.new });
       const updatedUser = { ...user, password: newPasswordData.new };
       setUser(updatedUser);
       sessionStorage.setItem('piru_session_final', JSON.stringify(updatedUser));
@@ -700,10 +719,10 @@ setPersistence(auth, browserSessionPersistence);
     e.preventDefault();
     try {
       if (isEditingUser && currentUserId) {
-        await updateDoc(doc(db, "users", currentUserId), { ...newUser, username: newUser.username.trim().toLowerCase() });
+        await safeUpdateDoc(doc(db, "users", currentUserId), { ...newUser, username: newUser.username.trim().toLowerCase() });
         alert("Data pegawai diperbarui.");
       } else {
-        await addDoc(collection(db, "users"), { ...newUser, username: newUser.username.trim().toLowerCase(), createdAt: serverTimestamp() });
+        await safeAddDoc(collection(db, "users"), { ...newUser, username: newUser.username.trim().toLowerCase(), createdAt: serverTimestamp() });
         alert("Pegawai berhasil ditambahkan.");
       }
       setShowUserModal(false); resetUserForm();
@@ -720,7 +739,7 @@ setPersistence(auth, browserSessionPersistence);
       if (!lanjut) return;
     }
     const docRef = doc(db, "bakira", selectedDate);
-    await setDoc(docRef, {
+    await safeSetDoc(docRef, {
       date: selectedDate,
       absensi: bakiraDailyLog,
       linkDoc: bakiraLinkDoc,
@@ -735,7 +754,7 @@ setPersistence(auth, browserSessionPersistence);
 };
 
   const resetReportForm = () => { setIsEditing(false); setCurrentReportId(null); setNewReport({ title: '', target: '', realisasi: '', satuan: '', keterangan: '', targetUser: '', originalAgendaId: '' }); };
-  const resetUserForm = () => { setIsEditingUser(false); setCurrentUserId(null); setNewUser({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '', status: 'aktif', assignedIKU: [] }); };
+  const resetUserForm = () => { setIsEditingUser(false); setCurrentUserId(null); setNewUser({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '', status: 'aktif', assignedIKU: [], isDemo: false }); };
 
   const handleNilaiSemua = async () => {
     if (filterStaffName === 'Semua') return;
@@ -755,7 +774,7 @@ setPersistence(auth, browserSessionPersistence);
         if (user.role === 'ketua') batch.update(ref, { nilaiKetua: grade, status: 'dinilai_ketua' });
         else if (user.role === 'pimpinan' || user.role === 'admin') batch.update(ref, { nilaiPimpinan: grade, status: 'selesai' });
       });
-      await batch.commit(); alert(`Berhasil memberikan nilai.`);
+      await safeBatchCommit(batch); alert(`Berhasil memberikan nilai.`);
     } catch (err) { alert("Gagal melakukan penilaian massal."); }
   };
 
@@ -763,14 +782,14 @@ setPersistence(auth, browserSessionPersistence);
     e.preventDefault();
     try {
       if (isEditing && currentReportId) {
-        await updateDoc(doc(db, "reports", currentReportId), { ...newReport, target: Number(newReport.target), realisasi: Number(newReport.realisasi) });
+        await safeUpdateDoc(doc(db, "reports", currentReportId), { ...newReport, target: Number(newReport.target), realisasi: Number(newReport.realisasi) });
       } else {
         let finalUserId = user.username; let finalUserName = user.name; let finalUserRole = user.role;
         if (activeTab === 'penilaian' && newReport.targetUser) {
             const targetStaff = users.find(u => u.name === newReport.targetUser);
             if (targetStaff) { finalUserId = targetStaff.username; finalUserName = targetStaff.name; finalUserRole = targetStaff.role; }
         }
-        await addDoc(collection(db, "reports"), {
+        await safeAddDoc(collection(db, "reports"), {
           ...newReport, target: Number(newReport.target), realisasi: Number(newReport.realisasi),
           userId: finalUserId, userName: finalUserName, userRole: finalUserRole,
           month: selectedMonth, year: selectedYear, status: 'pending', nilaiKetua: 0, nilaiPimpinan: 0, createdAt: serverTimestamp()
@@ -778,7 +797,7 @@ setPersistence(auth, browserSessionPersistence);
         
         // PERBAIKAN: Update status agenda HANYA saat laporan berhasil disimpan
         if (newReport.originalAgendaId) {
-          await updateDoc(doc(db, "agendas", newReport.originalAgendaId), { isImported: true });
+          await safeUpdateDoc(doc(db, "agendas", newReport.originalAgendaId), { isImported: true });
         }
       }
       setShowReportModal(false); resetReportForm();
@@ -799,13 +818,13 @@ setPersistence(auth, browserSessionPersistence);
     if (!newKOB.iku) { alert("Pilih IKU terlebih dahulu."); return; }
     try {
       if (isEditingKOB && currentKOBId) {
-        await updateDoc(doc(db, "kob", currentKOBId), {
+        await safeUpdateDoc(doc(db, "kob", currentKOBId), {
           iku: newKOB.iku, iki: newKOB.iki, satuan: newKOB.satuan,
           target: Number(newKOB.target), realisasi: Number(newKOB.realisasi),
           linkBuktiDukung: newKOB.linkBuktiDukung, updatedAt: serverTimestamp()
         });
       } else {
-        await addDoc(collection(db, "kob"), {
+        await safeAddDoc(collection(db, "kob"), {
           userId: user.username, userName: user.name,
           iku: newKOB.iku, iki: newKOB.iki, satuan: newKOB.satuan,
           target: Number(newKOB.target), realisasi: Number(newKOB.realisasi),
@@ -813,7 +832,7 @@ setPersistence(auth, browserSessionPersistence);
           month: selectedMonth, year: selectedYear, createdAt: serverTimestamp()
         });
         if (newKOB.originalAgendaId) {
-          await updateDoc(doc(db, "agendas", newKOB.originalAgendaId), { isImported: true });
+          await safeUpdateDoc(doc(db, "agendas", newKOB.originalAgendaId), { isImported: true });
         }
       }
       setShowKOBModal(false); resetKOBForm();
@@ -822,13 +841,13 @@ setPersistence(auth, browserSessionPersistence);
 
   const handleDeleteKOB = async (id) => {
     if (!window.confirm("Hapus baris KOB ini?")) return;
-    try { await deleteDoc(doc(db, "kob", id)); } catch (err) { alert("Gagal menghapus data KOB."); }
+    try { await safeDeleteDoc(doc(db, "kob", id)); } catch (err) { alert("Gagal menghapus data KOB."); }
   };
 
   const clearGrade = async (reportId, field) => {
     if (!window.confirm(`Hapus nilai ${field === 'nilaiKetua' ? 'Ketua' : 'Pimpinan'} ini?`)) return;
     try {
-      await updateDoc(doc(db, "reports", reportId), { [field]: 0, status: 'pending' });
+      await safeUpdateDoc(doc(db, "reports", reportId), { [field]: 0, status: 'pending' });
       alert("Nilai berhasil dihapus.");
     } catch (err) { alert("Gagal membersihkan nilai."); }
   };
@@ -856,7 +875,7 @@ setPersistence(auth, browserSessionPersistence);
         return;
       }
       
-      await batch.commit();
+      await safeBatchCommit(batch);
       alert(`Berhasil mengembalikan ${count} pekerjaan ${filterStaffName}.`);
     } catch (err) {
       console.error(err);
@@ -869,8 +888,8 @@ setPersistence(auth, browserSessionPersistence);
     if (val && !isNaN(val)) {
         const grade = parseFloat(val);
         const ref = doc(db, "reports", reportId);
-        if (roleName === 'ketua') await updateDoc(ref, { nilaiKetua: grade, status: 'dinilai_ketua' });
-        else if (roleName === 'pimpinan') await updateDoc(ref, { nilaiPimpinan: grade, status: 'selesai' });
+        if (roleName === 'ketua') await safeUpdateDoc(ref, { nilaiKetua: grade, status: 'dinilai_ketua' });
+        else if (roleName === 'pimpinan') await safeUpdateDoc(ref, { nilaiPimpinan: grade, status: 'selesai' });
     }
   };
 
@@ -878,7 +897,7 @@ setPersistence(auth, browserSessionPersistence);
     const link = tempLinks[reportId];
     if (!link) { alert("Masukkan link terlebih dahulu."); return; }
     try {
-      await updateDoc(doc(db, "reports", reportId), { linkDrive: link });
+      await safeUpdateDoc(doc(db, "reports", reportId), { linkDrive: link });
       alert("Link bukti dukung berhasil diperbarui.");
     } catch (err) { alert("Gagal memperbarui link."); }
   };
@@ -898,7 +917,7 @@ setPersistence(auth, browserSessionPersistence);
       myPendingReports.forEach(r => {
         batch.update(doc(db, "reports", r.id), { status: 'dikirim' });
       });
-      await batch.commit();
+      await safeBatchCommit(batch);
       alert("CKP berhasil dikirim. Menunggu penilaian.");
     } catch (err) { alert("Gagal mengirim CKP."); }
   };
@@ -1489,7 +1508,7 @@ const exportRekapKJKTahunan = async () => {
     if (!window.confirm(`Tetapkan ${staff.name} sebagai pemenang periode ${period.toUpperCase()} ${year}?`)) return;
     try {
       const winnerRef = doc(db, "winners", `${year}_${period}`);
-      await setDoc(winnerRef, {
+      await safeSetDoc(winnerRef, {
         ...staff,
         period,
         year,
@@ -1504,7 +1523,7 @@ const exportRekapKJKTahunan = async () => {
     const year = selectedYear;
     if (!window.confirm(`Publish pengumuman pemenang untuk periode ${period.toUpperCase()} ${year}?`)) return;
     try {
-        await setDoc(doc(db, "publish_status", `${year}_${period}`), {
+        await safeSetDoc(doc(db, "publish_status", `${year}_${period}`), {
             isPublished: true,
             publishedAt: serverTimestamp()
         });
@@ -1517,7 +1536,7 @@ const exportRekapKJKTahunan = async () => {
     const year = selectedYear;
     if (!window.confirm(`Batalkan publikasi pengumuman periode ${period.toUpperCase()} ${year}? Pengumuman tidak akan terlihat lagi oleh pegawai.`)) return;
     try {
-        await deleteDoc(doc(db, "publish_status", `${year}_${period}`));
+        await safeDeleteDoc(doc(db, "publish_status", `${year}_${period}`));
         alert("Publikasi berhasil dibatalkan.");
     } catch (err) { 
         console.error(err);
@@ -1558,7 +1577,7 @@ const exportRekapKJKTahunan = async () => {
       batch.delete(doc(db, "peer_reviews", v.id));
     });
 
-    await batch.commit();
+    await safeBatchCommit(batch);
     alert("Data voting berhasil dikembalikan/direset.");
   } catch (err) { 
     console.error(err);
@@ -1570,7 +1589,7 @@ const exportRekapKJKTahunan = async () => {
     e.preventDefault();
     try {
       const docId = `${voteWindow.evalYear}_${voteWindow.period}_from_${user.username}_to_${selectedStaffForVote.username}`;
-      await setDoc(doc(db, "peer_reviews", docId), {
+      await safeSetDoc(doc(db, "peer_reviews", docId), {
         reviewerId: user.username,
         targetUserId: selectedStaffForVote.username,
         targetName: selectedStaffForVote.name,
@@ -1849,6 +1868,9 @@ const exportRekapKJKTahunan = async () => {
             <div>
               <h1 className="text-base md:text-lg font-semibold text-slate-800 leading-tight break-words">{user.name}</h1>
               <p className="text-slate-400 font-medium text-xs mt-0.5">{user.jabatan || user.role}</p>
+              {user.isDemo && (
+                <span className="inline-block mt-1 bg-amber-100 text-amber-700 text-[8px] font-semibold px-2 py-0.5 rounded-full">MODE DEMO &middot; HANYA LIHAT</span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2 md:gap-2.5">
@@ -2563,7 +2585,7 @@ const exportRekapKJKTahunan = async () => {
                                             </span>
                                         </td>
                                         <td className="p-4 text-center">
-                                            <button onClick={() => deleteDoc(doc(db, "kjk", k.id))} className="text-red-400 hover:text-red-600 transition-all"><Trash2 size={16}/></button>
+                                            <button onClick={() => safeDeleteDoc(doc(db, "kjk", k.id))} className="text-red-400 hover:text-red-600 transition-all"><Trash2 size={16}/></button>
                                         </td>
                                     </tr>
                                 ))
@@ -2581,7 +2603,7 @@ const exportRekapKJKTahunan = async () => {
                                     KJK: {formatKJKDisplay(k.kjkValue)}
                                 </p>
                             </div>
-                            <button onClick={() => deleteDoc(doc(db, "kjk", k.id))} className="p-4 bg-red-50 text-red-400 rounded-2xl"><Trash2 size={18}/></button>
+                            <button onClick={() => safeDeleteDoc(doc(db, "kjk", k.id))} className="p-4 bg-red-50 text-red-400 rounded-2xl"><Trash2 size={18}/></button>
                         </div>
                     ))}
                 </div>
@@ -2941,7 +2963,8 @@ const exportRekapKJKTahunan = async () => {
                                   jabatan: u.jabatan, 
                                   photoURL: u.photoURL || '',
                                   status: u.status || 'aktif',
-                                  assignedIKU: u.assignedIKU || []
+                                  assignedIKU: u.assignedIKU || [],
+                                  isDemo: !!u.isDemo
                                 }); 
                                 setShowUserModal(true); 
                               }} 
@@ -2962,7 +2985,7 @@ const exportRekapKJKTahunan = async () => {
                                   : `Aktifkan kembali ${u.name}?`;
 
                                 if (window.confirm(pesan)) {
-                                  await updateDoc(doc(db, "users", u.firestoreId), { status: statusBaru });
+                                  await safeUpdateDoc(doc(db, "users", u.firestoreId), { status: statusBaru });
                                   alert(`Status ${u.name} diperbarui.`);
                                 }
                               }} 
@@ -2977,7 +3000,7 @@ const exportRekapKJKTahunan = async () => {
                               type="button"
                               onClick={() => {
                                 if (window.confirm(`HAPUS PERMANEN: Apakah Anda yakin ingin menghapus ${u.name}? Tindakan ini tidak bisa dibatalkan.`)) {
-                                  deleteDoc(doc(db, "users", u.firestoreId));
+                                  safeDeleteDoc(doc(db, "users", u.firestoreId));
                                 }
                               }} 
                               className="p-2 bg-red-50 text-red-400 rounded-xl"
@@ -3039,7 +3062,7 @@ const exportRekapKJKTahunan = async () => {
             if (user.role === 'ketua') batch.update(ref, { nilaiKetua: grade, status: 'dinilai_ketua' });
             else if (user.role === 'pimpinan' || user.role === 'admin') batch.update(ref, { nilaiPimpinan: grade, status: 'selesai' });
           });
-          await batch.commit();
+          await safeBatchCommit(batch);
           alert("Berhasil memberikan nilai.");
           setSelectedReportIds([]); // Menghapus centangan setelah selesai
         } catch (err) { alert("Gagal menilai."); }
@@ -3138,12 +3161,12 @@ const exportRekapKJKTahunan = async () => {
                                   if (window.confirm("Hapus laporan ini?")) {
   if (r.originalAgendaId) {
     try {
-      await updateDoc(doc(db, "agendas", r.originalAgendaId), { isImported: false });
+      await safeUpdateDoc(doc(db, "agendas", r.originalAgendaId), { isImported: false });
     } catch (error) {
       console.warn("Agenda tidak ditemukan");
     }
   }
-  await deleteDoc(doc(db, "reports", r.id));
+  await safeDeleteDoc(doc(db, "reports", r.id));
 }
                                 }} className="p-2 bg-red-50 text-red-400 rounded-xl"><Trash2 size={14}/></button>
                             )}
@@ -3225,12 +3248,12 @@ const exportRekapKJKTahunan = async () => {
                                 if (window.confirm("Hapus laporan ini?")) {
   if (r.originalAgendaId) {
     try {
-      await updateDoc(doc(db, "agendas", r.originalAgendaId), { isImported: false });
+      await safeUpdateDoc(doc(db, "agendas", r.originalAgendaId), { isImported: false });
     } catch (error) {
       console.warn("Agenda tidak ditemukan");
     }
   }
-  await deleteDoc(doc(db, "reports", r.id));
+  await safeDeleteDoc(doc(db, "reports", r.id));
 }
                               }} className="text-red-400"><Trash2 size={18}/></button>
                           )}
@@ -3577,6 +3600,19 @@ const exportRekapKJKTahunan = async () => {
                 <select className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-semibold text-slate-600 border border-slate-100 text-center" value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
                     <option value="pegawai">Pegawai</option><option value="ketua">Ketua Tim</option><option value="pimpinan">Pimpinan</option><option value="admin">Admin</option>
                 </select>
+
+                <label className="flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-2xl p-4 text-left cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="w-5 h-5 accent-amber-500 shrink-0" 
+                    checked={!!newUser.isDemo} 
+                    onChange={e => setNewUser({...newUser, isDemo: e.target.checked})} 
+                  />
+                  <span>
+                    <span className="block text-[10px] font-semibold text-amber-700">Akun Demo (Hanya Lihat)</span>
+                    <span className="block text-[9px] text-amber-600 mt-0.5">Bisa login & menjelajah semua menu, tapi tidak bisa menyimpan/mengubah/menghapus data apa pun. Cocok untuk demo ke pihak luar.</span>
+                  </span>
+                </label>
 
                 {newUser.role === 'ketua' && (
                   <div className="bg-indigo-50 rounded-2xl p-5 text-left space-y-3 border border-indigo-100">
