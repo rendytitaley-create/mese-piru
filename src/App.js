@@ -2382,15 +2382,19 @@ const exportRekapKJKTahunan = async () => {
             <div className="animate-in fade-in duration-500">
               {['admin', 'pimpinan'].includes(user.role) ? (
                 <>
-                  {kgbReminderList.length > 0 && (
-                    <div className="bg-teal-900 text-white rounded-2xl p-6 md:p-8 mb-8">
-                      <div className="flex items-center gap-4 mb-6">
-                        <div className="bg-teal-500/10 p-3 rounded-xl text-teal-300"><CalendarClock size={22}/></div>
-                        <div>
-                          <h3 className="font-semibold text-sm tracking-tight">Pengingat Kenaikan Gaji Berkala (KGB)</h3>
-                          <p className="text-[10px] text-teal-300/70 mt-1">{kgbReminderList.length} pegawai perlu segera ditindaklanjuti</p>
-                        </div>
+                  <div className="bg-teal-900 text-white rounded-2xl p-6 md:p-8 mb-8">
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="bg-teal-500/10 p-3 rounded-xl text-teal-300"><CalendarClock size={22}/></div>
+                      <div>
+                        <h3 className="font-semibold text-sm tracking-tight">Pengingat Kenaikan Gaji Berkala (KGB)</h3>
+                        <p className="text-[10px] text-teal-300/70 mt-1">
+                          {kgbReminderList.length > 0 ? `${kgbReminderList.length} pegawai perlu segera ditindaklanjuti` : "Tidak ada KGB yang perlu diproses saat ini"}
+                        </p>
                       </div>
+                    </div>
+                    {kgbReminderList.length === 0 ? (
+                      <p className="text-[10px] text-teal-300/50 text-center py-4">Pengingat akan muncul di sini otomatis begitu ada pegawai yang masuk masa proses (1 bulan sebelum jadwal KGB) atau sudah lewat jadwal.</p>
+                    ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {kgbReminderList.map(({ staff, kgb }, idx) => (
                           <div key={idx} className={`rounded-xl p-4 border ${kgb.level === 'lewat' ? 'bg-red-500/10 border-red-500/20' : 'bg-amber-500/10 border-amber-500/20'}`}>
@@ -2410,8 +2414,8 @@ const exportRekapKJKTahunan = async () => {
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-10">
                   {dashboardStats.staffSummary.map((s, i) => (
                     <div key={i} className="bg-slate-900 p-8 md:p-10 rounded-2xl md:rounded-2xl border border-slate-800 shadow-md flex flex-col items-center text-center group transition-all hover:border-indigo-500/50">
@@ -2702,8 +2706,8 @@ const exportRekapKJKTahunan = async () => {
       </div>
     )}
 
-    {/* 1b. TEMPAT KHUSUS ADMIN: ETALASE PENGUMUMAN JUARA (terpisah dari panel Top 3 & Monitoring) */}
-    {user.role === 'admin' && championGalleryJSX}
+    {/* 1b. TEMPAT ADMIN & PIMPINAN: ETALASE PENGUMUMAN JUARA (terpisah dari panel Top 3 & Monitoring) */}
+    {['admin', 'pimpinan'].includes(user.role) && championGalleryJSX}
 
     {/* 2. BAGIAN PEGAWAI & KETUA TIM: wadah pajangan hasil tiap triwulan + proses penilaian hanya saat waktunya */}
     {user.role !== 'admin' && user.role !== 'pimpinan' && (
