@@ -10,7 +10,7 @@ import {
   ShieldCheck, Loader2, Plus, X, BarChart3, FileText, 
   LogOut, Trash2, Edit3, TrendingUp, Clock, Zap, UserPlus, Users, Download, ClipboardCheck, CheckCircle2,
   LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, ImageIcon, Link, Copy, ExternalLink, Search, FileSpreadsheet, Award, Trophy, Star, Heart, Megaphone, Play,
-  Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckSquare, Send, RotateCcw
+  Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckSquare, Send, RotateCcw, History
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -1784,6 +1784,25 @@ const exportRekapKJKTahunan = async () => {
     };
   }, [reports, users, user, selectedMonth, selectedYear, kjkData, periodType]);
 
+  // Riwayat nilai CKP & KJK per bulan (Jan-Des) untuk pengguna yang sedang login.
+  // Selalu 1 tahun penuh, tidak terpengaruh periodType (mirip kartu kumulatif tahunan).
+  const myMonthlyHistory = useMemo(() => {
+    if (!user) return [];
+    const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    return monthNames.map((namaBulan, idx) => {
+      const m = idx + 1;
+      const monthReports = reports.filter(r => r.userId === user.username && r.month === m && r.year === selectedYear);
+      const total = monthReports.length;
+      const selesai = monthReports.filter(r => r.status === 'selesai').length;
+      const statusText = total === 0 ? "Belum Lapor" : (selesai === total ? "Selesai" : "Proses");
+      const gradedReports = monthReports.filter(r => r.status === 'selesai');
+      const ckpScore = gradedReports.length > 0 ? (gradedReports.reduce((a, c) => a + (Number(c.nilaiPimpinan) || 0), 0) / gradedReports.length) : null;
+      const monthKJK = kjkData.filter(k => k.month === m && k.year === selectedYear && isKJKForStaff(k, user));
+      const kjkMins = monthKJK.reduce((a, c) => a + timeToMinutes(c.kjkValue), 0);
+      return { month: m, namaBulan, total, statusText, ckpScore, kjkStr: minutesToTimeStr(kjkMins), kjkMins };
+    });
+  }, [reports, kjkData, user, selectedYear]);
+
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50 font-sans"><Loader2 className="animate-spin text-indigo-600" size={50} /></div>;
 
   if (!user) return (
@@ -2385,6 +2404,81 @@ const exportRekapKJKTahunan = async () => {
                               {formatKJKDisplay(dashboardStats.myYearlyKJK)}
                            </p>
                         </div>
+                    </div>
+                  </div>
+
+                  {/* RIWAYAT NILAI CKP & KJK PER BULAN */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div className="p-6 md:p-8 border-b border-slate-100 flex items-center gap-4">
+                      <div className="bg-indigo-50 p-3 rounded-xl text-indigo-600"><History size={20}/></div>
+                      <div>
+                        <h3 className="font-semibold text-slate-800 text-sm tracking-tight">Riwayat CKP & KJK Bulanan</h3>
+                        <p className="text-[10px] text-slate-400 mt-1">Rekap nilai akhir dan kedisiplinan setiap bulan sepanjang tahun {selectedYear}</p>
+                      </div>
+                    </div>
+
+                    {/* VERSI DESKTOP: TABEL */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50 text-[9px] font-semibold text-slate-400">
+                            <th className="p-4">Bulan</th>
+                            <th className="p-4 text-center">Status</th>
+                            <th className="p-4 text-center">Nilai CKP</th>
+                            <th className="p-4 text-center">KJK</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {myMonthlyHistory.map((h) => (
+                            <tr key={h.month} className={`${h.month === selectedMonth ? 'bg-indigo-50/60' : 'hover:bg-slate-50'} transition-all`}>
+                              <td className="p-4 font-semibold text-slate-700 text-[11px]">
+                                {h.namaBulan}
+                                {h.month === selectedMonth && <span className="ml-2 text-[8px] font-semibold text-indigo-500 bg-indigo-100 px-2 py-0.5 rounded-full">Bulan Ini</span>}
+                              </td>
+                              <td className="p-4 text-center">
+                                <span className={`text-[8px] font-semibold px-2.5 py-1 rounded-full ${h.statusText === 'Selesai' ? 'bg-green-100 text-green-600' : h.statusText === 'Proses' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400'}`}>
+                                  {h.statusText}
+                                </span>
+                              </td>
+                              <td className="p-4 text-center font-semibold text-[12px] text-slate-700">{h.ckpScore !== null ? h.ckpScore.toFixed(2) : '-'}</td>
+                              <td className="p-4 text-center">
+                                <span className={`text-[11px] font-semibold ${h.kjkMins === 0 && h.total > 0 ? 'text-green-600' : h.kjkMins > 0 ? 'text-red-500' : 'text-slate-300'}`}>
+                                  {h.total > 0 ? formatKJKDisplay(h.kjkStr) : '-'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* VERSI MOBILE: KARTU */}
+                    <div className="md:hidden divide-y divide-slate-100">
+                      {myMonthlyHistory.map((h) => (
+                        <div key={h.month} className={`p-5 ${h.month === selectedMonth ? 'bg-indigo-50/60' : ''}`}>
+                          <div className="flex items-center justify-between mb-3">
+                            <p className="font-semibold text-slate-700 text-[12px] flex items-center gap-2">
+                              {h.namaBulan}
+                              {h.month === selectedMonth && <span className="text-[7px] font-semibold text-indigo-500 bg-indigo-100 px-2 py-0.5 rounded-full">Bulan Ini</span>}
+                            </p>
+                            <span className={`text-[8px] font-semibold px-2.5 py-1 rounded-full ${h.statusText === 'Selesai' ? 'bg-green-100 text-green-600' : h.statusText === 'Proses' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400'}`}>
+                              {h.statusText}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-8">
+                            <div>
+                              <p className="text-[8px] text-slate-400 font-semibold mb-0.5">Nilai CKP</p>
+                              <p className="font-semibold text-[13px] text-slate-700">{h.ckpScore !== null ? h.ckpScore.toFixed(2) : '-'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[8px] text-slate-400 font-semibold mb-0.5">KJK</p>
+                              <p className={`font-semibold text-[13px] ${h.kjkMins === 0 && h.total > 0 ? 'text-green-600' : h.kjkMins > 0 ? 'text-red-500' : 'text-slate-300'}`}>
+                                {h.total > 0 ? formatKJKDisplay(h.kjkStr) : '-'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
