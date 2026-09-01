@@ -758,15 +758,25 @@ setPersistence(auth, browserSessionPersistence);
 
   const handleNilaiSemua = async () => {
     if (filterStaffName === 'Semua') return;
-    const canBeGraded = currentFilteredReports.filter(r => r.status !== 'pending');
+    // Ketua Tim hanya boleh menilai pekerjaan yang sudah dikirim TAPI belum final (belum dinilai Pimpinan).
+    // Pimpinan/admin tetap boleh menilai ulang (termasuk mengoreksi) yang sudah 'selesai'.
+    const canBeGraded = user.role === 'ketua'
+      ? currentFilteredReports.filter(r => r.status === 'dikirim' || r.status === 'dinilai_ketua')
+      : currentFilteredReports.filter(r => r.status !== 'pending');
     if (canBeGraded.length === 0) {
-      alert("Pegawai belum mengirimkan entri pekerjaan. Tidak ada data yang bisa dinilai.");
+      alert("Tidak ada pekerjaan yang bisa dinilai saat ini (mungkin belum dikirim pegawai, atau semuanya sudah dinilai final oleh Pimpinan).");
       return;
     }
-    const val = prompt(`Masukkan nilai untuk ${canBeGraded.length} pekerjaan ${filterStaffName}:`);
+    // Peringatan dini: kalau masih ada pekerjaan yang belum dikirim pegawai (status 'pending'),
+    // pekerjaan itu TIDAK ikut ke dalam "Nilai Semua" ini -- supaya tidak ada yang tertinggal tanpa disadari.
+    const belumDikirim = currentFilteredReports.filter(r => r.status === 'pending').length;
+    const pesanPeringatan = belumDikirim > 0
+      ? `\n\nCatatan: masih ada ${belumDikirim} pekerjaan ${filterStaffName} yang BELUM DIKIRIM oleh pegawai (status "Belum Kirim") sehingga tidak ikut dinilai di sini. Minta pegawai mengirim dulu lewat tombol "Kirim CKP".`
+      : '';
+    const val = prompt(`Masukkan nilai untuk ${canBeGraded.length} pekerjaan ${filterStaffName}:${pesanPeringatan}`);
     if (!val || isNaN(val)) return;
     const grade = parseFloat(val);
-    if (!window.confirm(`Berikan nilai ${grade} ke ${canBeGraded.length} pekerjaan?`)) return;
+    if (!window.confirm(`Berikan nilai ${grade} ke ${canBeGraded.length} pekerjaan?${pesanPeringatan}`)) return;
     try {
       const batch = writeBatch(db);
       canBeGraded.forEach((r) => {
@@ -884,6 +894,15 @@ setPersistence(auth, browserSessionPersistence);
   };
 
   const submitGrade = async (reportId, roleName) => {
+    // Pengaman: penilaian Pimpinan adalah final. Ketua Tim tidak boleh lagi menilai
+    // (yang akan menurunkan status) pekerjaan yang sudah berstatus 'selesai'.
+    if (roleName === 'ketua' && user.role === 'ketua') {
+      const targetReport = reports.find(r => r.id === reportId);
+      if (targetReport?.status === 'selesai') {
+        alert("Pekerjaan ini sudah dinilai final oleh Pimpinan dan tidak bisa dinilai ulang oleh Ketua Tim.");
+        return;
+      }
+    }
     const val = prompt(`Masukkan Nilai ${roleName === 'ketua' ? 'Ketua Tim' : 'Pimpinan'}:`);
     if (val && !isNaN(val)) {
         const grade = parseFloat(val);
@@ -3050,14 +3069,23 @@ const exportRekapKJKTahunan = async () => {
     <button 
       type="button"
       onClick={async () => {
-        const val = prompt(`Masukkan nilai untuk ${selectedReportIds.length} pekerjaan yang dipilih:`);
+        // Ketua Tim tidak boleh menilai ulang (menurunkan status) pekerjaan yang sudah final ('selesai').
+        const idsToGrade = user.role === 'ketua'
+          ? selectedReportIds.filter(id => reports.find(r => r.id === id)?.status !== 'selesai')
+          : selectedReportIds;
+        const dilewati = selectedReportIds.length - idsToGrade.length;
+        if (idsToGrade.length === 0) {
+          alert("Semua pekerjaan yang dipilih sudah dinilai final oleh Pimpinan, tidak bisa dinilai ulang oleh Ketua Tim.");
+          return;
+        }
+        const val = prompt(`Masukkan nilai untuk ${idsToGrade.length} pekerjaan yang dipilih:${dilewati > 0 ? `\n\n(${dilewati} pekerjaan terpilih dilewati karena sudah final/selesai dinilai Pimpinan)` : ''}`);
         if (!val || isNaN(val)) return;
         const grade = parseFloat(val);
-        if (!window.confirm(`Berikan nilai ${grade} ke ${selectedReportIds.length} pekerjaan terpilih?`)) return;
+        if (!window.confirm(`Berikan nilai ${grade} ke ${idsToGrade.length} pekerjaan terpilih?`)) return;
         
         try {
           const batch = writeBatch(db);
-          selectedReportIds.forEach((id) => {
+          idsToGrade.forEach((id) => {
             const ref = doc(db, "reports", id);
             if (user.role === 'ketua') batch.update(ref, { nilaiKetua: grade, status: 'dinilai_ketua' });
             else if (user.role === 'pimpinan' || user.role === 'admin') batch.update(ref, { nilaiPimpinan: grade, status: 'selesai' });
@@ -3098,8 +3126,8 @@ const exportRekapKJKTahunan = async () => {
       className="w-4 h-4"
       onChange={(e) => {
         if (e.target.checked) {
-          // Centang Semua yang statusnya bukan pending
-          const ids = currentFilteredReports.filter(r => r.status !== 'pending').map(r => r.id);
+          // Centang Semua yang statusnya bukan pending (dan bukan 'selesai' kalau yang login Ketua Tim, karena sudah final)
+          const ids = currentFilteredReports.filter(r => r.status !== 'pending' && !(r.status === 'selesai' && user.role === 'ketua')).map(r => r.id);
           setSelectedReportIds(ids);
         } else {
           setSelectedReportIds([]);
@@ -3126,7 +3154,7 @@ const exportRekapKJKTahunan = async () => {
       type="checkbox" 
       className="w-4 h-4 cursor-pointer"
       checked={selectedReportIds.includes(r.id)}
-      disabled={r.status === 'pending'} 
+      disabled={r.status === 'pending' || (r.status === 'selesai' && user.role === 'ketua')} 
       onChange={() => {
         if (selectedReportIds.includes(r.id)) {
           setSelectedReportIds(selectedReportIds.filter(id => id !== r.id));
@@ -3180,9 +3208,15 @@ const exportRekapKJKTahunan = async () => {
                                 ) : (
                                   <>
                                     {['ketua', 'admin'].includes(user.role) && (
-                                      <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-semibold shadow-sm">
-                                        Ketua
-                                      </button>
+                                      r.status === 'selesai' && user.role === 'ketua' ? (
+                                        <div className="bg-green-50 text-green-600 px-3 py-1.5 rounded-xl text-[8px] font-semibold border border-green-100" title="Sudah dinilai final oleh Pimpinan, tidak bisa dinilai ulang">
+                                          Terkunci
+                                        </div>
+                                      ) : (
+                                        <button onClick={() => submitGrade(r.id, 'ketua')} className="bg-amber-400 text-white px-3 py-1.5 rounded-xl text-[8px] font-semibold shadow-sm">
+                                          Ketua
+                                        </button>
+                                      )
                                     )}
                                     {['pimpinan', 'admin'].includes(user.role) && (
                                       <button onClick={() => submitGrade(r.id, 'pimpinan')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[8px] font-semibold shadow-sm">
@@ -3270,7 +3304,13 @@ const exportRekapKJKTahunan = async () => {
                       </div>
                       {activeTab === 'penilaian' && (r.status === 'dikirim' || r.status === 'dinilai_ketua' || r.status === 'selesai' || user.role === 'admin') && (
                         <div className="flex gap-2 mt-4">
-                          {['ketua', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'ketua')} className="flex-1 py-3 bg-amber-400 text-white rounded-xl text-[9px] font-semibold shadow-sm">Nilai Ketua</button>}
+                          {['ketua', 'admin'].includes(user.role) && (
+                            r.status === 'selesai' && user.role === 'ketua' ? (
+                              <div className="flex-1 py-3 bg-green-50 text-green-600 rounded-xl text-[9px] font-semibold text-center border border-green-100">Terkunci (Final)</div>
+                            ) : (
+                              <button onClick={() => submitGrade(r.id, 'ketua')} className="flex-1 py-3 bg-amber-400 text-white rounded-xl text-[9px] font-semibold shadow-sm">Nilai Ketua</button>
+                            )
+                          )}
                           {['pimpinan', 'admin'].includes(user.role) && <button onClick={() => submitGrade(r.id, 'pimpinan')} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-[9px] font-semibold shadow-sm">Nilai Pimp</button>}
                         </div>
                       )}
