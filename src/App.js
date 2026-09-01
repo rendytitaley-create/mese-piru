@@ -1886,6 +1886,24 @@ const exportRekapKJKTahunan = async () => {
 
   // Etalase Pegawai Prima: rekap semua juara triwulan yang sudah dipublikasikan.
   // Dipakai baik untuk tampilan admin maupun tampilan pegawai/ketua tim.
+  // Banner penanda periode pengisian -- menyorot dengan warna berbeda kalau Bulan/Tahun yang
+  // sedang dipilih BUKAN bulan berjalan, supaya pegawai sadar sebelum salah entri ke periode yang keliru.
+  const renderPeriodeBanner = (label) => {
+    const now = new Date();
+    const isCurrentPeriod = selectedMonth === now.getMonth() + 1 && selectedYear === now.getFullYear();
+    const monthNames = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+    return (
+      <div className={`mb-6 px-5 py-3.5 rounded-xl border flex items-center gap-3 ${isCurrentPeriod ? 'bg-slate-50 border-slate-200 text-slate-500' : 'bg-amber-50 border-amber-300 text-amber-800'}`}>
+        <CalendarClock size={16} className="shrink-0"/>
+        <p className="text-[11px] font-semibold leading-snug">
+          {isCurrentPeriod
+            ? `Anda mengisi ${label} untuk periode Bulan Ini: ${monthNames[selectedMonth - 1]} ${selectedYear}`
+            : `Perhatian: Anda mengisi ${label} untuk periode ${monthNames[selectedMonth - 1]} ${selectedYear} -- bukan bulan berjalan. Pastikan ini memang periode yang dituju sebelum menyimpan.`}
+        </p>
+      </div>
+    );
+  };
+
   const championGalleryJSX = (
     <div className="bg-white p-8 md:p-10 rounded-2xl shadow-sm border border-slate-100">
       <div className="flex items-center gap-4 mb-8">
@@ -2037,7 +2055,9 @@ const exportRekapKJKTahunan = async () => {
         {/* --- MODUL BARU: AGENDA (VISUAL KALENDER) --- */}
         {activeTab === 'agenda' && (
           <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-28 md:pb-10">
-            <div className="max-w-7xl mx-auto flex flex-col xl:flex-row gap-8">
+            <div className="max-w-7xl mx-auto">
+              {renderPeriodeBanner('Agenda Kerja')}
+              <div className="flex flex-col xl:flex-row gap-8">
               {/* KOLOM KALENDER */}
               <div className="flex-1 bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-slate-100 h-fit">
                 <div className="flex items-center justify-between mb-8">
@@ -2189,6 +2209,7 @@ const exportRekapKJKTahunan = async () => {
                       ))
                   )}
                 </div>
+              </div>
               </div>
             </div>
           </div>
@@ -2960,6 +2981,7 @@ const exportRekapKJKTahunan = async () => {
 
         {activeTab === 'kob' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+            {renderPeriodeBanner('Kinerja Organisasi Bulanan (KOB)')}
 
             {/* MONITORING PROGRES PENGISIAN KOB -- khusus admin & pimpinan */}
             {['admin', 'pimpinan'].includes(user.role) && (
@@ -3292,6 +3314,7 @@ const exportRekapKJKTahunan = async () => {
 
           {(activeTab === 'laporan' || activeTab === 'penilaian') && (
             <div className="">
+              {activeTab === 'laporan' && renderPeriodeBanner('Entri Pekerjaan')}
               {/* MODIFIKASI: Penempatan Tombol Kontrol Penilaian di Mode Desktop */}
               {activeTab === 'penilaian' && filterStaffName !== 'Semua' && (
                 <div className="hidden md:flex items-center gap-4 mb-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-in fade-in">
@@ -3711,7 +3734,12 @@ const exportRekapKJKTahunan = async () => {
           <form onSubmit={handleSubmitKOB} className="bg-white w-full max-w-2xl rounded-xl p-8 md:p-12 shadow-md relative max-h-[90vh] overflow-y-auto">
             <button type="button" onClick={() => { resetKOBForm(); setShowKOBModal(false); }} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400"><X size={20}/></button>
             <h3 className="text-2xl font-semibold tracking-tight mb-2 text-slate-800 text-center">{isEditingKOB ? "Edit Baris KOB" : "Tambah Baris KOB"}</h3>
-            <p className="text-[10px] font-semibold text-indigo-500 mb-8 text-center">IKU: {newKOB.iku}</p>
+            <p className="text-[10px] font-semibold text-indigo-500 mb-1 text-center">IKU: {newKOB.iku}</p>
+            {!isEditingKOB && (
+              <p className="text-[10px] font-semibold text-slate-400 mb-8 text-center">
+                Akan disimpan untuk periode: {["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"][selectedMonth - 1]} {selectedYear}
+              </p>
+            )}
 
             {!isEditingKOB && (
               <button 
@@ -3959,7 +3987,12 @@ const exportRekapKJKTahunan = async () => {
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 z-[120] font-sans text-center">
           <form onSubmit={handleSubmitReport} className="bg-white w-full max-w-2xl rounded-xl p-8 md:p-12 shadow-md relative max-h-[90vh] overflow-y-auto">
             <button type="button" onClick={() => { resetReportForm(); setShowReportModal(false); }} className="absolute top-6 right-6 p-3 bg-slate-50 rounded-full text-slate-400"><X size={20}/></button>
-            <h3 className="text-2xl font-semibold tracking-tight mb-8 text-slate-800 text-center">{isEditing ? "Update Pekerjaan" : (activeTab === 'penilaian' ? "Entri Anggota" : "Entri Pekerjaan Saya")}</h3>
+            <h3 className="text-2xl font-semibold tracking-tight mb-2 text-slate-800 text-center">{isEditing ? "Update Pekerjaan" : (activeTab === 'penilaian' ? "Entri Anggota" : "Entri Pekerjaan Saya")}</h3>
+            {!isEditing && (
+              <p className="text-[10px] font-semibold text-indigo-500 mb-6 text-center">
+                Akan disimpan untuk periode: {["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"][selectedMonth - 1]} {selectedYear}
+              </p>
+            )}
             
             {/* BUTTON IMPORT DARI AGENDA */}
             {activeTab === 'laporan' && !isEditing && (
