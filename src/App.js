@@ -4,7 +4,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserSessionPersistence } from 'firebase/auth';
 import { 
   getFirestore, collection, addDoc, updateDoc, doc, onSnapshot, 
-  serverTimestamp, query, orderBy, deleteDoc, enableIndexedDbPersistence, writeBatch, setDoc, where
+  serverTimestamp, query, orderBy, deleteDoc, enableIndexedDbPersistence, writeBatch, setDoc, where, arrayUnion
 } from 'firebase/firestore';
 import { 
   ShieldCheck, Loader2, Plus, X, BarChart3, FileText, 
@@ -782,6 +782,25 @@ setPersistence(auth, browserSessionPersistence);
 
   const resetReportForm = () => { setIsEditing(false); setCurrentReportId(null); setNewReport({ title: '', target: '', realisasi: '', satuan: '', keterangan: '', targetUser: '', originalAgendaId: '' }); };
   const resetUserForm = () => { setIsEditingUser(false); setCurrentUserId(null); setNewUser({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '', status: 'aktif', assignedIKU: [], isDemo: false, kgbBulan: '', kgbTahun: '' }); };
+
+  // Tandai KGB seorang pegawai sudah selesai diproses. Siklus berikutnya (2 tahun kemudian, bulan
+  // yang sama) otomatis dijadwalkan, dan jadwal yang baru saja selesai dicatat ke riwayat (kgbRiwayat)
+  // supaya ada jejak kapan setiap KGB benar-benar diproses -- KGB terus berjalan berulang setiap 2 tahun.
+  const handleProsesKGB = async (staff) => {
+    if (user.role !== 'admin') { alert("Hanya Admin yang bisa menandai KGB selesai diproses."); return; }
+    const monthNames = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+    const kgb = getKGBStatus(staff.kgbBulan, staff.kgbTahun);
+    if (!kgb) return;
+    const kgbBerikutnyaLabel = `${monthNames[staff.kgbBulan - 1]} ${staff.kgbTahun + 2}`;
+    if (!window.confirm(`Tandai KGB ${staff.name} (${kgb.kgbLabel}) sudah selesai diproses?\n\nKGB berikutnya akan otomatis dijadwalkan ulang ke ${kgbBerikutnyaLabel} (2 tahun kemudian).`)) return;
+    try {
+      await safeUpdateDoc(doc(db, "users", staff.firestoreId), {
+        kgbTahun: staff.kgbTahun + 2,
+        kgbRiwayat: arrayUnion({ bulan: staff.kgbBulan, tahun: staff.kgbTahun, diprosesPada: new Date().toISOString(), diprosesOleh: user.name })
+      });
+      alert(`KGB berhasil ditandai selesai. Jadwal berikutnya: ${kgbBerikutnyaLabel}.`);
+    } catch (err) { console.error(err); alert("Gagal memperbarui jadwal KGB."); }
+  };
 
   const handleNilaiSemua = async () => {
     if (filterStaffName === 'Semua') return;
@@ -2379,6 +2398,15 @@ const exportRekapKJKTahunan = async () => {
                             <p className={`text-[9px] font-semibold mt-1.5 ${kgb.level === 'lewat' ? 'text-red-300' : 'text-amber-300'}`}>
                               {kgb.level === 'lewat' ? `KGB ${kgb.kgbLabel} sudah lewat` : `Saatnya proses \u00b7 Jadwal ${kgb.kgbLabel}`}
                             </p>
+                            {user.role === 'admin' && (
+                              <button 
+                                type="button"
+                                onClick={() => handleProsesKGB(staff)}
+                                className="mt-3 w-full text-[8px] font-semibold px-3 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-white transition-colors"
+                              >
+                                Tandai Selesai &middot; Jadwalkan +2 Tahun
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -3149,7 +3177,20 @@ const exportRekapKJKTahunan = async () => {
                                 segera: `KGB ${kgb.kgbLabel} \u00b7 ${kgb.monthsToProses} bln lagi proses`,
                                 terjadwal: `KGB: ${kgb.kgbLabel}`,
                               };
-                              return <span className={`inline-block mt-1.5 text-[7px] font-semibold px-2 py-0.5 rounded-full ${styles[kgb.level]}`}>{teks[kgb.level]}</span>;
+                              return (
+                                <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
+                                  <span className={`inline-block text-[7px] font-semibold px-2 py-0.5 rounded-full ${styles[kgb.level]}`}>{teks[kgb.level]}</span>
+                                  {(kgb.level === 'proses' || kgb.level === 'lewat') && (
+                                    <button 
+                                      type="button"
+                                      onClick={() => handleProsesKGB(u)}
+                                      className="text-[7px] font-semibold px-2 py-0.5 rounded-full bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                                    >
+                                      Tandai Selesai &middot; +2 Thn
+                                    </button>
+                                  )}
+                                </div>
+                              );
                             })()}
                           </div>
                         </td>
