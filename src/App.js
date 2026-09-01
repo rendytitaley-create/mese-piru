@@ -10,7 +10,7 @@ import {
   ShieldCheck, Loader2, Plus, X, BarChart3, FileText, 
   LogOut, Trash2, Edit3, TrendingUp, Clock, Zap, UserPlus, Users, Download, ClipboardCheck, CheckCircle2,
   LayoutDashboard, User, Camera, KeyRound, AlertCircle, Eye, EyeOff, ImageIcon, Link, Copy, ExternalLink, Search, FileSpreadsheet, Award, Trophy, Star, Heart, Megaphone, Play,
-  Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckSquare, Send, RotateCcw, History
+  Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckSquare, Send, RotateCcw, History, CalendarClock
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -142,6 +142,33 @@ function getPeriodShortLabel(period) {
   return labels[period] || period;
 }
 
+// Hitung status pengingat Kenaikan Gaji Berkala (KGB) berdasarkan Bulan/Tahun KGB berikutnya.
+// Proses/pengajuan KGB dianggap harus dimulai 1 bulan sebelum bulan KGB (N-1).
+// Mengembalikan null kalau data KGB belum diisi.
+function getKGBStatus(kgbBulan, kgbTahun) {
+  if (!kgbBulan || !kgbTahun) return null;
+  const today = new Date();
+  const curMonth = today.getMonth() + 1, curYear = today.getFullYear();
+
+  // Bulan proses = 1 bulan sebelum bulan KGB (dengan rollover tahun kalau KGB di bulan Januari)
+  let prosesBulan = kgbBulan - 1, prosesTahun = kgbTahun;
+  if (prosesBulan === 0) { prosesBulan = 12; prosesTahun -= 1; }
+
+  const monthsToProses = (prosesTahun - curYear) * 12 + (prosesBulan - curMonth);
+  const monthsToKGB = (kgbTahun - curYear) * 12 + (kgbBulan - curMonth);
+
+  const monthNames = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+  const kgbLabel = `${monthNames[kgbBulan - 1]} ${kgbTahun}`;
+
+  let level; // 'lewat' | 'proses' | 'segera' | 'terjadwal'
+  if (monthsToKGB < 0) level = 'lewat';
+  else if (monthsToProses <= 0) level = 'proses';
+  else if (monthsToProses <= 3) level = 'segera';
+  else level = 'terjadwal';
+
+  return { kgbLabel, monthsToProses, monthsToKGB, level };
+}
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -227,7 +254,7 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
-  const [newUser, setNewUser] = useState({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '', assignedIKU: [], isDemo: false });
+  const [newUser, setNewUser] = useState({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '', assignedIKU: [], isDemo: false, kgbBulan: '', kgbTahun: '' });
 
   const [tempLinks, setTempLinks] = useState({});
 
@@ -754,7 +781,7 @@ setPersistence(auth, browserSessionPersistence);
 };
 
   const resetReportForm = () => { setIsEditing(false); setCurrentReportId(null); setNewReport({ title: '', target: '', realisasi: '', satuan: '', keterangan: '', targetUser: '', originalAgendaId: '' }); };
-  const resetUserForm = () => { setIsEditingUser(false); setCurrentUserId(null); setNewUser({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '', status: 'aktif', assignedIKU: [], isDemo: false }); };
+  const resetUserForm = () => { setIsEditingUser(false); setCurrentUserId(null); setNewUser({ name: '', username: '', password: '', role: 'pegawai', jabatan: '', photoURL: '', status: 'aktif', assignedIKU: [], isDemo: false, kgbBulan: '', kgbTahun: '' }); };
 
   const handleNilaiSemua = async () => {
     if (filterStaffName === 'Semua') return;
@@ -1803,6 +1830,15 @@ const exportRekapKJKTahunan = async () => {
     });
   }, [reports, kjkData, user, selectedYear]);
 
+  // Ringkasan pegawai yang sedang dalam masa proses (N-1) atau sudah lewat jadwal KGB -- untuk panel pengingat admin/pimpinan.
+  const kgbReminderList = useMemo(() => {
+    return users
+      .filter(u => (u.status || 'aktif').toLowerCase() !== 'nonaktif')
+      .map(u => ({ staff: u, kgb: getKGBStatus(u.kgbBulan, u.kgbTahun) }))
+      .filter(({ kgb }) => kgb && (kgb.level === 'proses' || kgb.level === 'lewat'))
+      .sort((a, b) => a.kgb.monthsToKGB - b.kgb.monthsToKGB);
+  }, [users]);
+
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50 font-sans"><Loader2 className="animate-spin text-indigo-600" size={50} /></div>;
 
   if (!user) return (
@@ -1906,9 +1942,28 @@ const exportRekapKJKTahunan = async () => {
             <div>
               <h1 className="text-base md:text-lg font-semibold text-slate-800 leading-tight break-words">{user.name}</h1>
               <p className="text-slate-400 font-medium text-xs mt-0.5">{user.jabatan || user.role}</p>
-              {user.isDemo && (
-                <span className="inline-block mt-1 bg-amber-100 text-amber-700 text-[8px] font-semibold px-2 py-0.5 rounded-full">MODE DEMO &middot; HANYA LIHAT</span>
-              )}
+              <div className="flex flex-wrap gap-1 mt-1">
+                {user.isDemo && (
+                  <span className="inline-block bg-amber-100 text-amber-700 text-[8px] font-semibold px-2 py-0.5 rounded-full">MODE DEMO &middot; HANYA LIHAT</span>
+                )}
+                {(() => {
+                  const kgb = getKGBStatus(user.kgbBulan, user.kgbTahun);
+                  if (!kgb) return null;
+                  const styles = {
+                    lewat: 'bg-red-100 text-red-700',
+                    proses: 'bg-amber-100 text-amber-700 animate-pulse',
+                    segera: 'bg-amber-50 text-amber-600',
+                    terjadwal: 'bg-teal-50 text-teal-600',
+                  };
+                  const teks = {
+                    lewat: `KGB ${kgb.kgbLabel} sudah lewat, segera perbarui`,
+                    proses: `Saatnya proses KGB! Jadwal: ${kgb.kgbLabel}`,
+                    segera: `KGB ${kgb.kgbLabel} \u00b7 ${kgb.monthsToProses} bulan lagi mulai proses`,
+                    terjadwal: `KGB berikutnya: ${kgb.kgbLabel}`,
+                  };
+                  return <span className={`inline-block text-[8px] font-semibold px-2 py-0.5 rounded-full ${styles[kgb.level]}`}>{teks[kgb.level]}</span>;
+                })()}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2 md:gap-2.5">
@@ -2307,6 +2362,28 @@ const exportRekapKJKTahunan = async () => {
           {activeTab === 'dashboard' && (
             <div className="animate-in fade-in duration-500">
               {['admin', 'pimpinan'].includes(user.role) ? (
+                <>
+                  {kgbReminderList.length > 0 && (
+                    <div className="bg-teal-900 text-white rounded-2xl p-6 md:p-8 mb-8">
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="bg-teal-500/10 p-3 rounded-xl text-teal-300"><CalendarClock size={22}/></div>
+                        <div>
+                          <h3 className="font-semibold text-sm tracking-tight">Pengingat Kenaikan Gaji Berkala (KGB)</h3>
+                          <p className="text-[10px] text-teal-300/70 mt-1">{kgbReminderList.length} pegawai perlu segera ditindaklanjuti</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {kgbReminderList.map(({ staff, kgb }, idx) => (
+                          <div key={idx} className={`rounded-xl p-4 border ${kgb.level === 'lewat' ? 'bg-red-500/10 border-red-500/20' : 'bg-amber-500/10 border-amber-500/20'}`}>
+                            <p className="font-semibold text-[11px] truncate">{staff.name}</p>
+                            <p className={`text-[9px] font-semibold mt-1.5 ${kgb.level === 'lewat' ? 'text-red-300' : 'text-amber-300'}`}>
+                              {kgb.level === 'lewat' ? `KGB ${kgb.kgbLabel} sudah lewat` : `Saatnya proses \u00b7 Jadwal ${kgb.kgbLabel}`}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-10">
                   {dashboardStats.staffSummary.map((s, i) => (
                     <div key={i} className="bg-slate-900 p-8 md:p-10 rounded-2xl md:rounded-2xl border border-slate-800 shadow-md flex flex-col items-center text-center group transition-all hover:border-indigo-500/50">
@@ -2353,6 +2430,7 @@ const exportRekapKJKTahunan = async () => {
                     </div>
                   ))}
                 </div>
+                </>
               ) : (
                 <div className="flex flex-col gap-8 mb-10">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -3056,6 +3134,23 @@ const exportRekapKJKTahunan = async () => {
                             <p className="text-indigo-500 text-[8px] font-bold mt-1">
                               @{u.username} | {u.role} | <span className="">{u.status || 'aktif'}</span>
                             </p>
+                            {(() => {
+                              const kgb = getKGBStatus(u.kgbBulan, u.kgbTahun);
+                              if (!kgb) return null;
+                              const styles = {
+                                lewat: 'bg-red-100 text-red-700',
+                                proses: 'bg-amber-100 text-amber-700',
+                                segera: 'bg-amber-50 text-amber-600',
+                                terjadwal: 'bg-teal-50 text-teal-600',
+                              };
+                              const teks = {
+                                lewat: `KGB ${kgb.kgbLabel} sudah lewat`,
+                                proses: `Saatnya proses KGB (${kgb.kgbLabel})`,
+                                segera: `KGB ${kgb.kgbLabel} \u00b7 ${kgb.monthsToProses} bln lagi proses`,
+                                terjadwal: `KGB: ${kgb.kgbLabel}`,
+                              };
+                              return <span className={`inline-block mt-1.5 text-[7px] font-semibold px-2 py-0.5 rounded-full ${styles[kgb.level]}`}>{teks[kgb.level]}</span>;
+                            })()}
                           </div>
                         </td>
 
@@ -3077,7 +3172,9 @@ const exportRekapKJKTahunan = async () => {
                                   photoURL: u.photoURL || '',
                                   status: u.status || 'aktif',
                                   assignedIKU: u.assignedIKU || [],
-                                  isDemo: !!u.isDemo
+                                  isDemo: !!u.isDemo,
+                                  kgbBulan: u.kgbBulan || '',
+                                  kgbTahun: u.kgbTahun || ''
                                 }); 
                                 setShowUserModal(true); 
                               }} 
@@ -3734,6 +3831,29 @@ const exportRekapKJKTahunan = async () => {
                 <select className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-semibold text-slate-600 border border-slate-100 text-center" value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
                     <option value="pegawai">Pegawai</option><option value="ketua">Ketua Tim</option><option value="pimpinan">Pimpinan</option><option value="admin">Admin</option>
                 </select>
+
+                <div className="bg-teal-50 rounded-2xl p-5 text-left space-y-3 border border-teal-100">
+                  <p className="text-[10px] font-semibold text-teal-700">Kenaikan Gaji Berkala (KGB) Berikutnya</p>
+                  <p className="text-[9px] text-teal-600 leading-relaxed">Isi Bulan & Tahun jadwal KGB berikutnya. Sistem akan otomatis mengingatkan mulai 1 bulan sebelum jadwal ini (waktunya proses/pengajuan).</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <select 
+                      className="w-full p-4 bg-white rounded-xl outline-none text-xs font-semibold border border-teal-200"
+                      value={newUser.kgbBulan}
+                      onChange={e => setNewUser({...newUser, kgbBulan: e.target.value ? Number(e.target.value) : ''})}
+                    >
+                      <option value="">Bulan KGB</option>
+                      {["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"].map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
+                    </select>
+                    <select 
+                      className="w-full p-4 bg-white rounded-xl outline-none text-xs font-semibold border border-teal-200"
+                      value={newUser.kgbTahun}
+                      onChange={e => setNewUser({...newUser, kgbTahun: e.target.value ? Number(e.target.value) : ''})}
+                    >
+                      <option value="">Tahun KGB</option>
+                      {Array.from({length: 12}, (_, i) => 2023 + i).map(y => <option key={y} value={y}>{y}</option>)}
+                    </select>
+                  </div>
+                </div>
 
                 <label className="flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-2xl p-4 text-left cursor-pointer">
                   <input 
