@@ -277,6 +277,10 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null); // Filter klik tanggal
   const [selectedReportIds, setSelectedReportIds] = useState([]); // Untuk menyimpan ID yang dicentang
 
+  // === BARU: STATE PERSETUJUAN LEMBUR ===
+  const [lemburStatusFilter, setLemburStatusFilter] = useState('semua'); // semua | menunggu | disetujui | ditolak | lama
+  const [lemburStaffFilter, setLemburStaffFilter] = useState('Semua'); // berisi username pegawai, atau 'Semua'
+
   // SINKRONISASI OTOMATIS: KALENDER MENGIKUTI HEADER
   useEffect(() => {
     const newDate = new Date(selectedYear, selectedMonth - 1, 1);
@@ -386,11 +390,42 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
     return list;
   };
 
+  // === BARU: PERSETUJUAN LEMBUR ===
+  // Setiap agenda yang dicentang "Lembur" sejak fitur ini aktif otomatis berstatus "menunggu"
+  // dan harus disetujui Pimpinan/Admin. Agenda lembur lama (sebelum fitur ini ada) tidak punya
+  // field lemburStatus, sehingga dianggap "Data Lama" dan tidak perlu persetujuan.
+  // Pengajuan dianggap TERLAMBAT jika diajukan pada hari lembur itu sendiri atau sesudahnya.
+  const buildPengajuanLembur = (dateStr) => ({
+    lemburStatus: 'menunggu',
+    lemburDiajukanAt: serverTimestamp(),
+    lemburTerlambat: dateStr <= formatDateLocal(new Date()),
+    lemburCatatan: '',
+    lemburDiperiksaOleh: '',
+    lemburDiperiksaUsername: '',
+    lemburDiperiksaAt: null
+  });
+
   const handleAddAgenda = async (e) => {
     e.preventDefault();
     try {
       if (newAgenda.id) {
         // Mode edit selalu satu hari (data yang sudah tersimpan per-hari)
+        const prevAgenda = agendas.find(a => a.id === newAgenda.id) || {};
+        if (prevAgenda.lemburStatus === 'disetujui') {
+          alert("Agenda lembur ini sudah disetujui sehingga tidak dapat diubah lagi.");
+          return;
+        }
+        // Tentukan perubahan status lembur akibat edit ini
+        let lemburUpdate = {};
+        if (!newAgenda.isLembur) {
+          // Centang lembur dilepas: hapus status pengajuan (jika ada)
+          if (prevAgenda.lemburStatus) lemburUpdate = { lemburStatus: null };
+        } else if (prevAgenda.isLembur && !prevAgenda.lemburStatus) {
+          // Data lama (sebelum fitur persetujuan): biarkan apa adanya
+        } else if (!prevAgenda.isLembur || prevAgenda.lemburStatus === 'ditolak' || prevAgenda.date !== newAgenda.date) {
+          // Baru dicentang lembur, diajukan ulang setelah ditolak, atau tanggalnya diganti -> ajukan ulang
+          lemburUpdate = buildPengajuanLembur(newAgenda.date);
+        }
         const agendaRef = doc(db, "agendas", newAgenda.id);
         await safeUpdateDoc(agendaRef, {
           taskName: newAgenda.taskName,
@@ -398,9 +433,12 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
           satuan: newAgenda.satuan,
           date: newAgenda.date,
           isLembur: newAgenda.isLembur || false,
+          ...lemburUpdate,
           updatedAt: serverTimestamp()
         });
-        alert("Agenda berhasil diperbarui.");
+        alert(lemburUpdate.lemburStatus === 'menunggu'
+          ? "Agenda berhasil diperbarui. Uraian lembur diajukan (ulang) dan menunggu persetujuan Pimpinan."
+          : "Agenda berhasil diperbarui.");
       } else if (agendaEntryMode === 'range') {
         // Mode rentang tanggal: buat 1 catatan agenda untuk setiap hari dalam rentang
         const dateList = getDateRangeList(newAgenda.date, agendaEndDate);
@@ -421,6 +459,7 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
             satuan: newAgenda.satuan,
             date: dateStr,
             isLembur: newAgenda.isLembur || false,
+            ...(newAgenda.isLembur ? buildPengajuanLembur(dateStr) : {}),
             userId: user.username,
             userName: user.name,
             isImported: false,
@@ -430,7 +469,7 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
           });
         });
         await safeBatchCommit(batch);
-        alert(`Agenda berhasil ditambahkan untuk ${dateList.length} hari (${newAgenda.date} s.d ${agendaEndDate}).`);
+        alert(`Agenda berhasil ditambahkan untuk ${dateList.length} hari (${newAgenda.date} s.d ${agendaEndDate}).` + (newAgenda.isLembur ? " Uraian lembur menunggu persetujuan Pimpinan." : ""));
       } else {
         await safeAddDoc(collection(db, "agendas"), {
           ...newAgenda,
@@ -438,9 +477,10 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
           userName: user.name,
           isImported: false,
           isLembur: newAgenda.isLembur || false,
+          ...(newAgenda.isLembur ? buildPengajuanLembur(newAgenda.date) : {}),
           createdAt: serverTimestamp()
         });
-        alert("Agenda berhasil ditambahkan.");
+        alert("Agenda berhasil ditambahkan." + (newAgenda.isLembur ? " Uraian lembur menunggu persetujuan Pimpinan." : ""));
       }
       setShowAgendaModal(false);
       setAgendaEntryMode('single');
@@ -452,9 +492,93 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   };
 
   const deleteAgenda = async (id) => {
+    const target = agendas.find(a => a.id === id);
+    if (target && target.lemburStatus === 'disetujui') {
+      alert("Agenda lembur ini sudah disetujui sehingga tidak dapat dihapus.");
+      return;
+    }
     if (window.confirm("Hapus catatan agenda ini?")) {
       await safeDeleteDoc(doc(db, "agendas", id));
     }
+  };
+
+  // === BARU: FUNGSI PERSETUJUAN LEMBUR (Pimpinan & Admin) ===
+  const canApproveLembur = !!user && ['pimpinan', 'admin'].includes(user.role);
+
+  // Nama pegawai diambil dari Data Pegawai berdasarkan username (ID tetap),
+  // supaya tetap benar walaupun nama pegawai diubah di kemudian hari.
+  const getLemburStaffName = (a) => (users.find(u => u.username === a.userId) || {}).name || a.userName || a.userId;
+
+  const reviewLembur = async (ids, status) => {
+    if (!canApproveLembur || ids.length === 0) return;
+    let catatan = '';
+    if (status === 'ditolak') {
+      const alasan = window.prompt("Tuliskan alasan penolakan (akan dibaca oleh pegawai):");
+      if (alasan === null) return; // batal
+      if (!alasan.trim()) { alert("Alasan penolakan wajib diisi."); return; }
+      catatan = alasan.trim();
+    } else if (status === 'disetujui' && ids.length > 1) {
+      if (!window.confirm(`Setujui ${ids.length} uraian lembur sekaligus?`)) return;
+    } else if (status === 'menunggu') {
+      if (!window.confirm("Batalkan keputusan ini dan kembalikan status ke 'Menunggu'?")) return;
+    }
+    try {
+      const batch = writeBatch(db);
+      ids.forEach(id => {
+        batch.update(doc(db, "agendas", id), status === 'menunggu'
+          ? { lemburStatus: 'menunggu', lemburCatatan: '', lemburDiperiksaOleh: '', lemburDiperiksaUsername: '', lemburDiperiksaAt: null }
+          : { lemburStatus: status, lemburCatatan: catatan, lemburDiperiksaOleh: user.name, lemburDiperiksaUsername: user.username, lemburDiperiksaAt: serverTimestamp() });
+      });
+      await safeBatchCommit(batch);
+    } catch (err) {
+      if (err && err.message === 'demo-mode') return;
+      console.error(err);
+      alert("Gagal menyimpan keputusan lembur.");
+    }
+  };
+
+  // Semua agenda lembur (baru maupun lama) yang boleh dilihat oleh pengguna ini
+  const lemburVisibleAgendas = !user ? [] : agendas.filter(a => a.isLembur && (canApproveLembur || a.userId === user.username));
+  const lemburPendingCount = !user ? 0 : agendas.filter(a => a.isLembur && a.lemburStatus === 'menunggu' && (canApproveLembur || a.userId === user.username)).length;
+
+  const exportLemburToExcel = async (rows, periodeLabel) => {
+    if (rows.length === 0) { alert("Tidak ada data lembur untuk dicetak."); return; }
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Lembur');
+    ws.mergeCells('A1:J1');
+    ws.getCell('A1').value = `REKAP PENGAJUAN LEMBUR - ${periodeLabel.toUpperCase()}`;
+    ws.getCell('A1').font = { bold: true, size: 13 };
+    ws.getCell('A1').alignment = { horizontal: 'center' };
+    const header = ['No', 'Tanggal', 'Nama Pegawai', 'Uraian Kegiatan Lembur', 'Volume', 'Satuan', 'Status', 'Pengajuan', 'Diperiksa Oleh', 'Catatan'];
+    const headerRow = ws.getRow(3);
+    header.forEach((h, i) => {
+      const c = headerRow.getCell(i + 1);
+      c.value = h;
+      c.font = { bold: true };
+      c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+    });
+    const statusLabel = { menunggu: 'Menunggu', disetujui: 'Disetujui', ditolak: 'Ditolak' };
+    rows.forEach((a, idx) => {
+      const r = ws.getRow(4 + idx);
+      [idx + 1, a.date, getLemburStaffName(a), a.taskName, a.volume || '', a.satuan || '',
+        a.lemburStatus ? statusLabel[a.lemburStatus] : 'Data Lama',
+        a.lemburStatus ? (a.lemburTerlambat ? 'Terlambat' : 'Tepat waktu') : '-',
+        a.lemburDiperiksaOleh || '', a.lemburCatatan || ''
+      ].forEach((v, i) => {
+        const c = r.getCell(i + 1);
+        c.value = v;
+        c.alignment = { vertical: 'top', wrapText: true, horizontal: [0, 1, 4, 5, 6, 7].includes(i) ? 'center' : 'left' };
+      });
+    });
+    [5, 12, 26, 50, 9, 12, 12, 13, 22, 30].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+    for (let r = 3; r < 4 + rows.length; r++) {
+      for (let c = 1; c <= header.length; c++) {
+        ws.getRow(r).getCell(c).border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+      }
+    }
+    const buffer = await wb.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `Rekap_Lembur_${periodeLabel.replace(/\s+/g, '_')}.xlsx`);
   };
 
   // LOGIKA KALENDER MANUAL
@@ -1904,6 +2028,14 @@ const exportRekapKJKTahunan = async () => {
     );
   };
 
+  // Tombol menu Lembur untuk navigasi bawah (mobile), dipakai di semua role
+  const lemburMobileNavBtn = (
+    <button onClick={() => setActiveTab('lembur')} className={`relative flex flex-col items-center gap-1 ${activeTab === 'lembur' ? 'text-indigo-600' : 'text-slate-300'}`}>
+      <Clock size={24}/><span className="text-[8px] font-semibold">Lembur</span>
+      {canApproveLembur && lemburPendingCount > 0 && <span className="absolute -top-1 -right-2 bg-amber-500 text-white text-[8px] font-semibold rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">{lemburPendingCount}</span>}
+    </button>
+  );
+
   const championGalleryJSX = (
     <div className="bg-white p-8 md:p-10 rounded-2xl shadow-sm border border-slate-100">
       <div className="flex items-center gap-4 mb-8">
@@ -1956,6 +2088,11 @@ const exportRekapKJKTahunan = async () => {
               <button onClick={() => setActiveTab('laporan')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'laporan' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}><FileText size={18}/> Entri Pekerjaan</button>
             </>
           )}
+          {/* MENU BARU: PERSETUJUAN LEMBUR */}
+          <button onClick={() => setActiveTab('lembur')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'lembur' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}>
+            <Clock size={18} className="shrink-0"/> <span className="flex-1 text-left whitespace-nowrap">{canApproveLembur ? 'Persetujuan Lembur' : 'Pengajuan Lembur'}</span>
+            {canApproveLembur && lemburPendingCount > 0 && <span className="-ml-1 bg-amber-500 text-white text-[10px] font-semibold rounded-full min-w-[20px] px-1.5 py-0.5 text-center">{lemburPendingCount}</span>}
+          </button>
           <button onClick={() => setActiveTab('bukti_dukung')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bukti_dukung' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}><Link size={18}/> Bukti Dukung</button>
           {['admin', 'pimpinan', 'ketua'].includes(user.role) && (<button onClick={() => setActiveTab('penilaian')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'penilaian' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}><ClipboardCheck size={18}/> Penilaian Anggota</button>)}
           {['admin', 'pimpinan', 'ketua'].includes(user.role) && (<button onClick={() => setActiveTab('kob')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'kob' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}><BarChart3 size={18}/> KOB</button>)}
@@ -2004,7 +2141,7 @@ const exportRekapKJKTahunan = async () => {
             </div>
           </div>
           <div className="flex items-center gap-2 md:gap-2.5">
-             <button onClick={exportToExcel} className="md:hidden p-2 text-green-600 bg-white rounded-lg shadow-sm border border-slate-200"><Download size={20}/></button>
+             {activeTab !== 'lembur' && <button onClick={exportToExcel} className="md:hidden p-2 text-green-600 bg-white rounded-lg shadow-sm border border-slate-200"><Download size={20}/></button>}
              <button onClick={() => setShowPasswordModal(true)} className="md:hidden p-2 text-indigo-600 bg-white rounded-lg shadow-sm border border-slate-200"><KeyRound size={20}/></button>
              <button onClick={() => {sessionStorage.clear(); window.location.reload();}} className="md:hidden p-2 text-red-500 bg-white rounded-lg shadow-sm border border-slate-200"><LogOut size={20}/></button>
              <div className="hidden md:flex items-center gap-2.5">
@@ -2046,8 +2183,8 @@ const exportRekapKJKTahunan = async () => {
                <select className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-600 outline-none shadow-sm cursor-pointer" value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}>
                  {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <option key={y} value={y}>{y}</option>)}
                </select>
-               <button onClick={exportToExcel} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors"><Download size={14}/> Cetak</button>
-               {user.role !== 'admin' && activeTab !== 'agenda' && <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-medium shadow-sm flex items-center gap-1.5 transition-colors"><Plus size={14}/> Entri</button>}
+               {activeTab !== 'lembur' && <button onClick={exportToExcel} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors"><Download size={14}/> Cetak</button>}
+               {user.role !== 'admin' && activeTab !== 'agenda' && activeTab !== 'lembur' && <button onClick={() => { resetReportForm(); setShowReportModal(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-medium shadow-sm flex items-center gap-1.5 transition-colors"><Plus size={14}/> Entri</button>}
              </div>
           </div>
         </header>
@@ -2157,6 +2294,14 @@ const exportRekapKJKTahunan = async () => {
                                 LEMBUR
                               </span>
                             )}
+                            {a.isLembur && a.lemburStatus && (
+                              <span className={`inline-block mt-2 ml-1 px-2 py-0.5 text-[7px] font-semibold rounded-lg ${a.lemburStatus === 'disetujui' ? 'bg-green-100 text-green-700' : a.lemburStatus === 'ditolak' ? 'bg-red-100 text-red-700' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                                {a.lemburStatus === 'disetujui' ? 'DISETUJUI' : a.lemburStatus === 'ditolak' ? 'DITOLAK' : 'MENUNGGU PERSETUJUAN'}
+                              </span>
+                            )}
+                            {a.isLembur && a.lemburStatus === 'ditolak' && a.lemburCatatan && (
+                              <p className="mt-1.5 text-[8px] text-red-600 leading-snug">Alasan ditolak: {a.lemburCatatan}. Silakan perbaiki uraian lalu simpan untuk mengajukan ulang.</p>
+                            )}
                             {a.isPekerjaanBersambung && !a.isRangeEndDay ? (
                               <span className="inline-block mt-2 px-2 py-1 bg-indigo-50 text-indigo-500 text-[9px] font-semibold rounded-lg">
                                 Pekerjaan berlanjut &middot; volume dicatat di hari terakhir
@@ -2169,7 +2314,7 @@ const exportRekapKJKTahunan = async () => {
                           </div>
                           <div className="flex flex-col gap-2 shrink-0">
                             {a.isImported && <CheckSquare size={14} className="text-green-500"/>}
-{(user.role === 'pegawai' || filterStaffName === 'Semua') && !a.isImported && (
+{(user.role === 'pegawai' || filterStaffName === 'Semua') && !a.isImported && a.lemburStatus !== 'disetujui' && (
   <div className="flex gap-2">
     <button 
       onClick={() => {
@@ -2979,6 +3124,200 @@ const exportRekapKJKTahunan = async () => {
             </div>
           )}
 
+        {/* === MENU BARU: PERSETUJUAN / PENGAJUAN LEMBUR === */}
+        {activeTab === 'lembur' && (() => {
+          const namaBulan = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+          const monthPrefix = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
+          const periodeLabel = `${namaBulan[selectedMonth - 1]} ${selectedYear}`;
+          const statusOf = (a) => a.lemburStatus || 'lama';
+          const gantiBulan = (delta) => {
+            const d = new Date(selectedYear, selectedMonth - 1 + delta, 1);
+            setSelectedMonth(d.getMonth() + 1);
+            setSelectedYear(d.getFullYear());
+          };
+          const formatTanggal = (s) => {
+            const d = new Date(s + 'T00:00:00');
+            return isNaN(d) ? s : d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+          };
+
+          const inMonth = lemburVisibleAgendas.filter(a => (a.date || '').startsWith(monthPrefix));
+          const byStaff = inMonth.filter(a => !canApproveLembur || lemburStaffFilter === 'Semua' || a.userId === lemburStaffFilter);
+          const counts = { menunggu: 0, disetujui: 0, ditolak: 0, lama: 0 };
+          byStaff.forEach(a => { counts[statusOf(a)] = (counts[statusOf(a)] || 0) + 1; });
+          const rows = byStaff
+            .filter(a => lemburStatusFilter === 'semua' || statusOf(a) === lemburStatusFilter)
+            .sort((a, b) => (a.date || '').localeCompare(b.date || '') || getLemburStaffName(a).localeCompare(getLemburStaffName(b)));
+          const groups = [];
+          rows.forEach(a => {
+            const last = groups[groups.length - 1];
+            if (last && last.date === a.date) last.items.push(a); else groups.push({ date: a.date, items: [a] });
+          });
+
+          // Pengajuan yang masih menunggu di bulan lain (supaya tidak terlewat)
+          const pendingLain = {};
+          lemburVisibleAgendas
+            .filter(a => a.lemburStatus === 'menunggu' && !(a.date || '').startsWith(monthPrefix))
+            .forEach(a => { const k = (a.date || '').slice(0, 7); pendingLain[k] = (pendingLain[k] || 0) + 1; });
+
+          const staffOptions = users
+            .filter(u => u.role !== 'admin' && u.status !== 'nonaktif' && u.status !== 'Nonaktif')
+            .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+          const statusChips = [
+            { key: 'semua', label: 'Semua', count: byStaff.length, cls: 'bg-slate-800 text-white' },
+            { key: 'menunggu', label: 'Menunggu', count: counts.menunggu, cls: 'bg-amber-500 text-white' },
+            { key: 'disetujui', label: 'Disetujui', count: counts.disetujui, cls: 'bg-green-600 text-white' },
+            { key: 'ditolak', label: 'Ditolak', count: counts.ditolak, cls: 'bg-red-600 text-white' },
+            { key: 'lama', label: 'Data Lama', count: counts.lama, cls: 'bg-slate-500 text-white' },
+          ];
+
+          return (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 max-w-5xl mx-auto">
+              {/* JUDUL & PILIHAN BULAN */}
+              <div className="bg-slate-900 text-white rounded-2xl p-6 md:p-8 mb-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-amber-500/10 p-3 rounded-xl text-amber-400"><Clock size={22}/></div>
+                    <div>
+                      <h3 className="font-semibold text-sm tracking-tight">{canApproveLembur ? 'Persetujuan Lembur Pegawai' : 'Pengajuan Lembur Saya'}</h3>
+                      <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                        {canApproveLembur
+                          ? 'Uraian kegiatan lembur diambil otomatis dari Agenda Kerja yang dicentang "Lembur". Lembur dianggap sah setelah disetujui.'
+                          : 'Ajukan lembur melalui Agenda Kerja dengan mencentang "Kategori Lembur", sebelum hari pelaksanaan. Lembur dianggap sah setelah disetujui Pimpinan.'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => gantiBulan(-1)} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg"><ChevronLeft size={16}/></button>
+                    <span className="text-xs font-semibold min-w-[120px] text-center">{periodeLabel}</span>
+                    <button onClick={() => gantiBulan(1)} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg"><ChevronRight size={16}/></button>
+                  </div>
+                </div>
+
+                {canApproveLembur && Object.keys(pendingLain).length > 0 && (
+                  <div className="mt-5 pt-5 border-t border-slate-800 flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] text-amber-400 font-semibold">Masih ada pengajuan menunggu di bulan lain:</span>
+                    {Object.keys(pendingLain).sort().map(k => (
+                      <button key={k} onClick={() => { setSelectedYear(Number(k.slice(0, 4))); setSelectedMonth(Number(k.slice(5, 7))); setLemburStatusFilter('menunggu'); }}
+                        className="text-[9px] font-semibold bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 px-3 py-1 rounded-full">
+                        {namaBulan[Number(k.slice(5, 7)) - 1]} {k.slice(0, 4)} ({pendingLain[k]})
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* FILTER */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6">
+                <div className="flex flex-wrap gap-2">
+                  {statusChips.filter(c => c.key !== 'lama' || c.count > 0 || lemburStatusFilter === 'lama').map(c => (
+                    <button key={c.key} onClick={() => setLemburStatusFilter(c.key)}
+                      className={`px-3.5 py-2 rounded-lg text-[10px] font-semibold transition-colors ${lemburStatusFilter === c.key ? c.cls : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                      {c.label} ({c.count})
+                    </button>
+                  ))}
+                </div>
+                {canApproveLembur && (
+                  <div className="flex gap-2">
+                    <select value={lemburStaffFilter} onChange={e => setLemburStaffFilter(e.target.value)}
+                      className="flex-1 md:flex-none p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 shadow-sm outline-none">
+                      <option value="Semua">Semua Pegawai</option>
+                      {staffOptions.map(u => <option key={u.firestoreId || u.username} value={u.username}>{u.name}</option>)}
+                    </select>
+                    <button onClick={() => exportLemburToExcel(rows, periodeLabel)}
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors shrink-0">
+                      <Download size={14}/> Excel
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* DAFTAR LEMBUR PER TANGGAL */}
+              {groups.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-10 text-center">
+                  <p className="text-[11px] font-semibold text-slate-400">Tidak ada uraian lembur untuk pilihan ini pada {periodeLabel}.</p>
+                  {!canApproveLembur && (
+                    <button onClick={() => setActiveTab('agenda')} className="mt-4 text-[10px] font-semibold text-indigo-600 underline">Buka Agenda Kerja untuk mengajukan lembur</button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {groups.map(g => {
+                    const pendingIds = g.items.filter(a => a.lemburStatus === 'menunggu').map(a => a.id);
+                    return (
+                      <div key={g.date} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div className="flex items-center justify-between gap-3 px-5 md:px-6 py-4 bg-slate-50 border-b border-slate-100">
+                          <div>
+                            <p className="text-xs font-semibold text-slate-700">{formatTanggal(g.date)}</p>
+                            <p className="text-[9px] text-slate-400 mt-0.5">{g.items.length} uraian lembur</p>
+                          </div>
+                          {canApproveLembur && pendingIds.length > 1 && (
+                            <button onClick={() => reviewLembur(pendingIds, 'disetujui')}
+                              className="shrink-0 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-[9px] font-semibold flex items-center gap-1.5">
+                              <CheckCircle2 size={12}/> Setujui Semua ({pendingIds.length})
+                            </button>
+                          )}
+                        </div>
+                        <div className="divide-y divide-slate-100">
+                          {g.items.map(a => {
+                            const st = statusOf(a);
+                            const staff = users.find(u => u.username === a.userId);
+                            return (
+                              <div key={a.id} className="px-5 md:px-6 py-4 flex flex-col md:flex-row md:items-start gap-4">
+                                <div className="flex-1 min-w-0">
+                                  {canApproveLembur && (
+                                    <p className="text-[11px] font-semibold text-indigo-600">{getLemburStaffName(a)}{staff && staff.jabatan ? <span className="text-slate-400 font-medium"> &middot; {staff.jabatan}</span> : null}</p>
+                                  )}
+                                  <p className="text-xs text-slate-700 font-medium leading-relaxed mt-1 break-words whitespace-pre-wrap">{a.taskName}</p>
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                    <span className={`px-2 py-0.5 text-[8px] font-semibold rounded-md ${st === 'disetujui' ? 'bg-green-100 text-green-700' : st === 'ditolak' ? 'bg-red-100 text-red-700' : st === 'menunggu' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                                      {st === 'disetujui' ? 'Disetujui' : st === 'ditolak' ? 'Ditolak' : st === 'menunggu' ? 'Menunggu Persetujuan' : 'Data Lama (tanpa persetujuan)'}
+                                    </span>
+                                    {a.lemburStatus && a.lemburTerlambat && (
+                                      <span className="px-2 py-0.5 text-[8px] font-semibold rounded-md bg-red-50 text-red-600 border border-red-200">Diajukan Terlambat</span>
+                                    )}
+                                    {(a.volume || a.satuan) && (
+                                      <span className="px-2 py-0.5 text-[8px] font-semibold rounded-md bg-slate-50 text-slate-500">{a.volume} {a.satuan}</span>
+                                    )}
+                                    {a.isPekerjaanBersambung && !a.isRangeEndDay && (
+                                      <span className="px-2 py-0.5 text-[8px] font-semibold rounded-md bg-indigo-50 text-indigo-500">Pekerjaan bersambung</span>
+                                    )}
+                                  </div>
+                                  {(a.lemburDiperiksaOleh || a.lemburCatatan) && (
+                                    <p className="text-[9px] text-slate-400 mt-2 leading-snug">
+                                      {a.lemburDiperiksaOleh && <>Diperiksa oleh <span className="font-semibold text-slate-500">{a.lemburDiperiksaOleh}</span></>}
+                                      {a.lemburCatatan && <span className={st === 'ditolak' ? 'text-red-600' : ''}>{a.lemburDiperiksaOleh ? ' · ' : ''}Catatan: {a.lemburCatatan}</span>}
+                                    </p>
+                                  )}
+                                  {!canApproveLembur && st === 'ditolak' && (
+                                    <button onClick={() => setActiveTab('agenda')} className="mt-2 text-[9px] font-semibold text-indigo-600 underline">Perbaiki di Agenda Kerja untuk mengajukan ulang</button>
+                                  )}
+                                </div>
+                                {canApproveLembur && st !== 'lama' && (
+                                  <div className="flex gap-2 shrink-0">
+                                    {st === 'menunggu' ? (
+                                      <>
+                                        <button onClick={() => reviewLembur([a.id], 'disetujui')} className="bg-green-600 hover:bg-green-700 text-white px-3.5 py-2 rounded-lg text-[10px] font-semibold flex items-center gap-1.5"><CheckCircle2 size={13}/> Setujui</button>
+                                        <button onClick={() => reviewLembur([a.id], 'ditolak')} className="bg-white border border-red-200 text-red-600 hover:bg-red-50 px-3.5 py-2 rounded-lg text-[10px] font-semibold flex items-center gap-1.5"><X size={13}/> Tolak</button>
+                                      </>
+                                    ) : (
+                                      <button onClick={() => reviewLembur([a.id], 'menunggu')} className="bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 px-3 py-2 rounded-lg text-[9px] font-semibold flex items-center gap-1.5"><RotateCcw size={12}/> Batalkan Keputusan</button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         {activeTab === 'kob' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
             {renderPeriodeBanner('Kinerja Organisasi Bulanan (KOB)')}
@@ -3588,6 +3927,7 @@ const exportRekapKJKTahunan = async () => {
           {user.role === 'admin' ? (
             <>
               <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-semibold">Nilai</span></button>
+              {lemburMobileNavBtn}
               <button onClick={() => setActiveTab('kob')} className={`flex flex-col items-center gap-1 ${activeTab === 'kob' ? 'text-indigo-600' : 'text-slate-300'}`}><BarChart3 size={24}/><span className="text-[8px] font-semibold">KOB</span></button>
               <button onClick={() => setActiveTab('prima')} className={`flex flex-col items-center gap-1 ${activeTab === 'prima' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-semibold">prima</span></button>
   <button onClick={() => setActiveTab('bakira')} className={`flex flex-col items-center gap-1 ${activeTab === 'bakira' ? 'text-indigo-600' : 'text-slate-300'}`}><Camera size={24}/><span className="text-[8px] font-semibold">BAKIRA</span></button>
@@ -3597,6 +3937,7 @@ const exportRekapKJKTahunan = async () => {
             <>
               <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center gap-1 ${activeTab === 'agenda' ? 'text-indigo-600' : 'text-slate-300'}`}><CalendarIcon size={24}/><span className="text-[8px] font-semibold">Agenda</span></button>
               <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-semibold">Nilai</span></button>
+              {lemburMobileNavBtn}
               <button onClick={() => setActiveTab('kob')} className={`flex flex-col items-center gap-1 ${activeTab === 'kob' ? 'text-indigo-600' : 'text-slate-300'}`}><BarChart3 size={24}/><span className="text-[8px] font-semibold">KOB</span></button>
               <button onClick={() => setActiveTab('prima')} className={`flex flex-col items-center gap-1 ${activeTab === 'prima' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-semibold">prima</span></button>
             </>
@@ -3604,6 +3945,7 @@ const exportRekapKJKTahunan = async () => {
             <>
               <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center gap-1 ${activeTab === 'agenda' ? 'text-indigo-600' : 'text-slate-300'}`}><CalendarIcon size={24}/><span className="text-[8px] font-semibold">Agenda</span></button>
               <button onClick={() => setActiveTab('laporan')} className={`flex flex-col items-center gap-1 ${activeTab === 'laporan' ? 'text-indigo-600' : 'text-slate-300'}`}><FileText size={24}/><span className="text-[8px] font-semibold">Entri</span></button>
+              {lemburMobileNavBtn}
               {user.role === 'ketua' && <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center gap-1 ${activeTab === 'penilaian' ? 'text-indigo-600' : 'text-slate-300'}`}><ClipboardCheck size={24}/><span className="text-[8px] font-semibold">Nilai</span></button>}
               {user.role === 'ketua' && <button onClick={() => setActiveTab('kob')} className={`flex flex-col items-center gap-1 ${activeTab === 'kob' ? 'text-indigo-600' : 'text-slate-300'}`}><BarChart3 size={24}/><span className="text-[8px] font-semibold">KOB</span></button>}
               <button onClick={() => setActiveTab('prima')} className={`flex flex-col items-center gap-1 ${activeTab === 'prima' ? 'text-indigo-600' : 'text-slate-300'}`}><Award size={24}/><span className="text-[8px] font-semibold">prima</span></button>
