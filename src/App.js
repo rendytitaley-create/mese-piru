@@ -640,6 +640,9 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
         case 'sakit':
           totalSkor += 90;
           break;
+        case 'terlambat':
+          totalSkor += 80; // BARU: Terlambat tetap hadir, tapi nilai dikurangi
+          break;
         case 'izin':
           totalSkor += 75;
           break;
@@ -1497,7 +1500,7 @@ const exportPresensiToPDF = () => {
   const tableData = users
     .filter(u => u.role !== 'admin' && u.name !== 'Corneles Bulohlabna, SST, M.Si.' && (u.status || 'aktif').toLowerCase() !== 'nonaktif')
     .sort((a, b) => (b.role === 'pimpinan') - (a.role === 'pimpinan'))
-    .filter(u => (bakiraDailyLog[u.username] || 'hadir') === 'hadir') // Hanya yang hadir
+    .filter(u => ['hadir', 'terlambat'].includes(bakiraDailyLog[u.username] || 'hadir')) // Hanya yang hadir (Terlambat tetap dianggap hadir)
     .map((u, idx) => [idx + 1, u.name, u.jabatan || '-', 'Hadir']);
 
   // 4. Membuat Tabel (autoTable)
@@ -1573,7 +1576,7 @@ const exportPresensiToPDF = () => {
       const status = bakiraDailyLog[u.username] || 'hadir';
       
       // HANYA PROSES JIKA STATUS 'hadir'
-      if (status === 'hadir') {
+      if (status === 'hadir' || status === 'terlambat') { // Terlambat tetap dianggap hadir
         const row = sheet.getRow(rowNum);
         row.values = [counter, u.name, u.jabatan || '-', 'Hadir'];
         
@@ -2400,6 +2403,7 @@ const exportRekapKJKTahunan = async () => {
  ${bakiraDailyLog[u.username] === 'tugas' ? 'bg-purple-100 text-purple-700' : ''}
  ${bakiraDailyLog[u.username] === 'cuti' ? 'bg-orange-100 text-orange-700' : ''}
  ${bakiraDailyLog[u.username] === 'alpa' ? 'bg-red-100 text-red-700' : ''}
+ ${bakiraDailyLog[u.username] === 'terlambat' ? 'bg-amber-100 text-amber-800' : ''}
  ${!bakiraDailyLog[u.username] ? 'bg-slate-100' : ''}
  `}
                         value={bakiraDailyLog[u.username] || 'hadir'}
@@ -2410,6 +2414,7 @@ const exportRekapKJKTahunan = async () => {
                         <option value="sakit">Sakit</option>
                         <option value="tugas">Tugas</option>
                         <option value="cuti">Cuti</option>
+                        <option value="terlambat">Terlambat</option>
                         <option value="alpa">Alpa</option>
                       </select>
                     </td>
@@ -2438,6 +2443,7 @@ const exportRekapKJKTahunan = async () => {
  ${bakiraDailyLog[u.username] === 'tugas' ? 'bg-purple-100 text-purple-700' : ''}
  ${bakiraDailyLog[u.username] === 'cuti' ? 'bg-orange-100 text-orange-700' : ''}
  ${bakiraDailyLog[u.username] === 'alpa' ? 'bg-red-100 text-red-700' : ''}
+ ${bakiraDailyLog[u.username] === 'terlambat' ? 'bg-amber-100 text-amber-800' : ''}
  ${!bakiraDailyLog[u.username] ? 'bg-slate-100' : ''}
  `}
                     value={bakiraDailyLog[u.username] || 'hadir'}
@@ -2448,6 +2454,7 @@ const exportRekapKJKTahunan = async () => {
                     <option value="sakit">Sakit</option>
                     <option value="tugas">Tugas</option>
                     <option value="cuti">Cuti</option>
+                        <option value="terlambat">Terlambat</option>
                     <option value="alpa">Alpa</option>
                   </select>
                 </div>
