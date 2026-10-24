@@ -285,6 +285,10 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   const [lemburRiwayatOpen, setLemburRiwayatOpen] = useState({}); // id agenda -> true jika riwayat dibuka
   const [showAksesPicker, setShowAksesPicker] = useState(false);
   const [aksesPickerSelection, setAksesPickerSelection] = useState([]);
+  // === BARU: INPUT JAM PRESENSI LEMBUR (oleh Admin) & FORMAT CETAK ===
+  const [lemburPresensi, setLemburPresensi] = useState({}); // { 'username_YYYY-MM-DD': { jamDatang, jamPulang, statusWFH, jamLemburManual } }
+  const [lemburView, setLemburView] = useState('persetujuan'); // 'persetujuan' | 'presensi'
+  const [lemburCetakFormat, setLemburCetakFormat] = useState('excel'); // 'excel' | 'pdf'
 
   // SINKRONISASI OTOMATIS: KALENDER MENGIKUTI HEADER
   useEffect(() => {
@@ -389,6 +393,17 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
       setLemburAkses(data);
     });
     return () => unsubLemburAkses();
+  }, [user]);
+
+  // === BARU: LISTENER JAM PRESENSI LEMBUR (diisi Admin, per pegawai per tanggal) ===
+  useEffect(() => {
+    if (!user) return;
+    const unsubPresensiLembur = onSnapshot(collection(db, "lembur_presensi"), (snap) => {
+      const data = {};
+      snap.docs.forEach(d => { data[d.id] = d.data(); });
+      setLemburPresensi(data);
+    });
+    return () => unsubPresensiLembur();
   }, [user]);
 
   // === BARU: FUNGSI AGENDA ===
@@ -666,36 +681,129 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
     return { entriStr, jam, selisih, label, tone: selisih > 0 ? 'baik' : selisih === 0 ? 'sedang' : 'buruk' };
   };
 
-  // === BARU: CETAK REKAP LEMBUR FORMAT DAFTAR PRESENSI (khusus Admin) ===
-  // Satu blok per pegawai: judul "DAFTAR PRESENSI" + nama, lalu tabel No/Tanggal/Keterangan/Hari/
-  // Jam Datang/Jam Pulang/Status WFH/Jumlah Jam Lembur + kolom Keterangan Pekerjaan Lembur.
-  // Diambil otomatis: nama, tanggal, hari, S/M (Sabtu/Minggu), warna biru hari libur, uraian pekerjaan.
-  // Diisi manual setelah diunduh: Jam Datang, Jam Pulang, Status WFH, Jumlah Jam Lembur.
-  // Yang dicetak: lembur berstatus DISETUJUI, ditambah data lembur lama (sebelum fitur persetujuan) di bulan tsb.
-  // Berlaku mulai periode Oktober 2026.
+  // === BARU: DATA PRESENSI LEMBUR (jam datang/pulang diisi Admin) ===
+  // Dicetak/diisi: lembur DISETUJUI + data lama (sebelum fitur persetujuan), mulai Oktober 2026.
   const REKAP_PRESENSI_MULAI = '2026-10';
-  const exportRekapLemburPresensi = async (ym) => {
+  const NAMA_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const isHariLiburLembur = (tgl) => {
+    const dow = new Date(tgl + 'T00:00:00').getDay();
+    return dow === 0 || dow === 6 || LIBUR_NASIONAL_TETAP.includes(tgl.slice(5));
+  };
+  const presensiKey = (username, tgl) => `${username}_${tgl}`;
+  const jamKeMenit = (hhmm) => {
+    if (!hhmm) return null;
+    const [h, m] = String(hhmm).split(':').map(Number);
+    return isNaN(h) ? null : h * 60 + (m || 0);
+  };
+  // Aturan otomatis: Senin-Kamis = pulang - 16:00; Jumat = pulang - 16:30;
+  // Sabtu/Minggu/libur = pulang - datang (maks. 8 jam). Dibulatkan ke bawah per jam penuh.
+  const hitungJamLemburOtomatis = (tgl, jamDatang, jamPulang) => {
+    let pulang = jamKeMenit(jamPulang);
+    if (pulang === null) return null;
+    const datang = jamKeMenit(jamDatang);
+    if (datang !== null && pulang < datang) pulang += 24 * 60; // pulang lewat tengah malam
+    const dow = new Date(tgl + 'T00:00:00').getDay();
+    if (isHariLiburLembur(tgl)) {
+      if (datang === null) return null;
+      return Math.min(8, Math.max(0, Math.floor((pulang - datang) / 60)));
+    }
+    const batasPulang = dow === 5 ? 16 * 60 + 30 : 16 * 60;
+    return Math.max(0, Math.floor((pulang - batasPulang) / 60));
+  };
+  // Data presensi final untuk satu pegawai-tanggal (manual Admin menimpa hitungan otomatis)
+  const getPresensiLembur = (username, tgl) => {
+    const rec = lemburPresensi[presensiKey(username, tgl)] || {};
+    const otomatis = hitungJamLemburOtomatis(tgl, rec.jamDatang, rec.jamPulang);
+    const manual = rec.jamLemburManual !== undefined && rec.jamLemburManual !== null && rec.jamLemburManual !== '' ? Number(rec.jamLemburManual) : null;
+    return {
+      jamDatang: rec.jamDatang || '', jamPulang: rec.jamPulang || '',
+      statusWFH: rec.statusWFH !== undefined ? rec.statusWFH : 'WFOL',
+      otomatis, manual, jamLembur: manual !== null ? manual : otomatis
+    };
+  };
+  const simpanPresensiLembur = async (username, tgl, perubahan) => {
     if (!user || user.role !== 'admin') return;
-    if (ym < REKAP_PRESENSI_MULAI) { alert("Cetak Rekap Presensi Lembur berlaku mulai periode Oktober 2026."); return; }
-    const semuaLemburBulan = agendas.filter(a => a.isLembur && (a.date || '').startsWith(ym));
-    const dicetak = semuaLemburBulan.filter(a => a.lemburStatus === 'disetujui' || !a.lemburStatus);
-    const belumDisetujui = semuaLemburBulan.filter(a => a.lemburStatus === 'menunggu').length;
-    if (dicetak.length === 0) { alert(`Belum ada lembur yang disetujui untuk ${namaBulanTahun(ym)}.`); return; }
-    if (belumDisetujui > 0 && !window.confirm(`Masih ada ${belumDisetujui} pengajuan lembur ${namaBulanTahun(ym)} yang MENUNGGU persetujuan dan tidak akan ikut dicetak.\n\nLanjutkan mencetak?`)) return;
-
-    const namaHari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    // Kelompokkan per pegawai -> per tanggal
+    try {
+      await safeSetDoc(doc(db, "lembur_presensi", presensiKey(username, tgl)), {
+        userId: username, date: tgl, ...perubahan, diubahOleh: user.name, diubahAt: serverTimestamp()
+      }, { merge: true });
+    } catch (err) {
+      if (err && err.message === 'demo-mode') return;
+      console.error(err);
+      alert("Gagal menyimpan jam presensi lembur.");
+    }
+  };
+  // Kumpulan data lembur yang sah untuk dicetak/diisi pada bulan ym
+  const getDataLemburBulan = (ym) => {
+    const semua = agendas.filter(a => a.isLembur && (a.date || '').startsWith(ym));
+    const sah = semua.filter(a => a.lemburStatus === 'disetujui' || !a.lemburStatus);
     const perPegawai = {};
-    dicetak.forEach(a => {
+    sah.forEach(a => {
       perPegawai[a.userId] = perPegawai[a.userId] || {};
       perPegawai[a.userId][a.date] = perPegawai[a.userId][a.date] || [];
       const t = (a.taskName || '').trim();
       if (t && !perPegawai[a.userId][a.date].includes(t)) perPegawai[a.userId][a.date].push(t);
     });
-    const urutanPegawai = Object.keys(perPegawai).map(un => {
+    const pegawai = Object.keys(perPegawai).map(un => {
       const u = users.find(x => x.username === un) || {};
-      return { username: un, name: u.name || (dicetak.find(a => a.userId === un) || {}).userName || un, isPimpinan: u.role === 'pimpinan' };
+      return { username: un, name: u.name || (sah.find(a => a.userId === un) || {}).userName || un, isPimpinan: u.role === 'pimpinan' };
     }).sort((a, b) => (b.isPimpinan - a.isPimpinan) || a.name.localeCompare(b.name));
+    return { jumlahSah: sah.length, jumlahMenunggu: semua.filter(a => a.lemburStatus === 'menunggu').length, perPegawai, pegawai };
+  };
+  const cekSiapCetakLembur = (ym, data, judul) => {
+    if (ym < REKAP_PRESENSI_MULAI) { alert(`${judul} berlaku mulai periode Oktober 2026.`); return false; }
+    if (data.jumlahSah === 0) { alert(`Belum ada lembur yang disetujui untuk ${namaBulanTahun(ym)}.`); return false; }
+    if (data.jumlahMenunggu > 0 && !window.confirm(`Masih ada ${data.jumlahMenunggu} pengajuan lembur ${namaBulanTahun(ym)} yang MENUNGGU persetujuan dan tidak akan ikut dicetak.\n\nLanjutkan mencetak?`)) return false;
+    return true;
+  };
+
+  // === CETAK 1: REKAP PRESENSI LEMBUR (per pegawai, format Daftar Presensi) — Excel / PDF ===
+  const exportRekapLemburPresensi = async (ym, format = 'excel') => {
+    if (!user || user.role !== 'admin') return;
+    const data = getDataLemburBulan(ym);
+    if (!cekSiapCetakLembur(ym, data, 'Cetak Rekap Presensi Lembur')) return;
+    const barisPegawai = (pg) => Object.keys(data.perPegawai[pg.username]).sort().map((tgl, i) => {
+      const dow = new Date(tgl + 'T00:00:00').getDay();
+      const pr = getPresensiLembur(pg.username, tgl);
+      return { tgl, isLibur: isHariLiburLembur(tgl), cells: [i + 1, tgl, dow === 6 ? 'S' : dow === 0 ? 'M' : '', NAMA_HARI[dow], pr.jamDatang, pr.jamPulang, pr.statusWFH, pr.jamLembur === null ? '' : pr.jamLembur], uraian: data.perPegawai[pg.username][tgl] };
+    });
+    const header = ['No', 'Tanggal', 'Keterangan', 'Hari', 'Jam Datang', 'Jam Pulang', 'Status WFH', 'Jumlah Jam Lembur'];
+
+    if (format === 'pdf') {
+      const pdf = new jsPDF('l', 'mm', 'a4');
+      let y = 14;
+      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(11);
+      pdf.setFillColor(252, 228, 214); pdf.rect(178, y - 5, 109, 8, 'F');
+      pdf.text('KETERANGAN PEKERJAAN LEMBUR', 232.5, y, { align: 'center' });
+      y += 6;
+      data.pegawai.forEach((pg, idx) => {
+        if (y > 170) { pdf.addPage(); y = 14; }
+        if (idx > 0) { pdf.setFillColor(0, 0, 0); pdf.rect(10, y, 277, 3, 'F'); y += 5; }
+        pdf.setFillColor(184, 204, 228); pdf.rect(10, y, 168, 14, 'F');
+        pdf.setFillColor(217, 217, 217); pdf.rect(178, y, 109, 14, 'F');
+        pdf.setFont('times', 'bold'); pdf.setFontSize(13);
+        pdf.text('DAFTAR PRESENSI', 94, y + 6, { align: 'center' });
+        pdf.text(pg.name, 94, y + 12, { align: 'center' });
+        const rows = barisPegawai(pg);
+        autoTable(pdf, {
+          startY: y + 16,
+          margin: { left: 10, right: 10 },
+          head: [[...header, '']],
+          body: rows.map(r => [...r.cells.map(v => String(v)), r.uraian.join('\n')]),
+          theme: 'grid',
+          styles: { font: 'times', fontSize: 9.5, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.2, halign: 'center', valign: 'middle' },
+          headStyles: { fillColor: [31, 56, 100], textColor: [255, 255, 255], font: 'helvetica', fontStyle: 'bold', fontSize: 8.5 },
+          columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 22 }, 2: { cellWidth: 20 }, 3: { cellWidth: 18 }, 4: { cellWidth: 20 }, 5: { cellWidth: 20 }, 6: { cellWidth: 20 }, 7: { cellWidth: 38 }, 8: { cellWidth: 109, halign: 'left', font: 'helvetica', fontSize: 8.5 } },
+          didParseCell: (d) => {
+            if (d.section === 'head' && d.column.index === 8) { d.cell.styles.fillColor = [255, 255, 255]; }
+            if (d.section === 'body' && d.column.index < 8 && rows[d.row.index] && rows[d.row.index].isLibur) { d.cell.styles.fillColor = [0, 176, 240]; }
+          }
+        });
+        y = pdf.lastAutoTable.finalY + 6;
+      });
+      pdf.save(`Rekap_Presensi_Lembur_${namaBulanTahun(ym).replace(/\s+/g, '_')}.pdf`);
+      return;
+    }
 
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Rekap Lembur', { pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
@@ -704,8 +812,6 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
     const fill = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
     const thin = { style: 'thin', color: { argb: 'FF000000' } };
     const border = { top: thin, left: thin, bottom: thin, right: thin };
-
-    // Judul kolom kanan
     let r = 2;
     ws.getCell(`I${r}`).value = 'KETERANGAN PEKERJAAN LEMBUR';
     ws.getCell(`I${r}`).font = { name: 'Arial', size: 12, bold: true };
@@ -713,15 +819,12 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
     ws.getCell(`I${r}`).fill = fill('FFFCE4D6');
     ws.getRow(r).height = 28;
     r++;
-
-    urutanPegawai.forEach((pg, idxPg) => {
+    data.pegawai.forEach((pg, idxPg) => {
       if (idxPg > 0) {
-        // Pemisah hitam antar pegawai
         for (let c = 1; c <= 9; c++) ws.getRow(r).getCell(c).fill = fill('FF000000');
         ws.getRow(r).height = 14;
         r++;
       }
-      // Judul blok
       ws.mergeCells(`A${r}:H${r}`);
       const judul = ws.getCell(`A${r}`);
       judul.value = `DAFTAR PRESENSI\n${pg.name}`;
@@ -731,11 +834,9 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
       ws.getCell(`I${r}`).fill = fill('FFD9D9D9');
       ws.getRow(r).height = 40;
       r++;
-      // Baris kosong
       ws.getCell(`I${r}`).border = border;
       r++;
-      // Header tabel
-      ['No', 'Tanggal', 'Keterangan', 'Hari', 'Jam Datang', 'Jam Pulang', 'Status WFH', 'Jumlah Jam Lembur'].forEach((h, i) => {
+      header.forEach((h, i) => {
         const c = ws.getRow(r).getCell(i + 1);
         c.value = h;
         c.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
@@ -746,35 +847,105 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
       ws.getRow(r).getCell(9).border = border;
       ws.getRow(r).height = 22;
       r++;
-      // Baris data
-      Object.keys(perPegawai[pg.username]).sort().forEach((tgl, i) => {
-        const d = new Date(tgl + 'T00:00:00');
-        const dow = d.getDay();
-        const md = tgl.slice(5);
-        const isLibur = dow === 0 || dow === 6 || LIBUR_NASIONAL_TETAP.includes(md);
-        const ket = dow === 6 ? 'S' : dow === 0 ? 'M' : '';
-        const uraian = perPegawai[pg.username][tgl];
+      barisPegawai(pg).forEach(b => {
         const row = ws.getRow(r);
-        [i + 1, tgl, ket, namaHari[dow], '', '', '', ''].forEach((v, ci) => {
+        b.cells.forEach((v, ci) => {
           const c = row.getCell(ci + 1);
           c.value = v;
           c.font = tnr(12);
           c.alignment = { horizontal: ci === 0 ? 'right' : 'center', vertical: ci === 0 || ci === 3 || ci === 7 ? 'bottom' : 'top' };
           c.border = border;
-          if (isLibur) c.fill = fill('FF00B0F0');
+          if (b.isLibur) c.fill = fill('FF00B0F0');
         });
         const cU = row.getCell(9);
-        cU.value = uraian.join('\n');
+        cU.value = b.uraian.join('\n');
         cU.font = { name: 'Arial', size: 11, color: { argb: 'FF000000' } };
         cU.alignment = { vertical: 'top', wrapText: true };
         cU.border = border;
-        row.height = Math.max(20, uraian.reduce((n, t) => n + Math.max(1, Math.ceil(t.length / 95)), 0) * 15 + 4);
+        row.height = Math.max(20, b.uraian.reduce((n, t) => n + Math.max(1, Math.ceil(t.length / 95)), 0) * 15 + 4);
         r++;
       });
     });
-
     const buffer = await wb.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), `Rekap_Presensi_Lembur_${namaBulanTahun(ym).replace(/\s+/g, '_')}.xlsx`);
+  };
+
+  // === CETAK 2: PRESENSI LEMBUR HARIAN (satu halaman/sheet per tanggal) — Excel / PDF ===
+  const exportPresensiLemburHarian = async (ym, format = 'pdf') => {
+    if (!user || user.role !== 'admin') return;
+    const data = getDataLemburBulan(ym);
+    if (!cekSiapCetakLembur(ym, data, 'Cetak Presensi Lembur Harian')) return;
+    const perTanggal = {};
+    data.pegawai.forEach(pg => {
+      Object.keys(data.perPegawai[pg.username]).forEach(tgl => { (perTanggal[tgl] = perTanggal[tgl] || []).push(pg); });
+    });
+    const tanggalList = Object.keys(perTanggal).sort();
+    const judulBulan = `BULAN ${namaBulanTahun(ym).split(' ')[0].toUpperCase()} TAHUN ${ym.slice(0, 4)}`;
+    const barisTanggal = (tgl) => perTanggal[tgl].map((pg, i) => {
+      const pr = getPresensiLembur(pg.username, tgl);
+      return [i + 1, pg.name, tgl, pr.jamDatang, pr.jamPulang, pr.jamLembur === null ? '' : `${pr.jamLembur} Jam`, ''];
+    });
+    const header = ['No', 'Nama', 'Tanggal', 'Jam\nDatang', 'Jam\nPulang', 'Jam\nLembur', 'TTD'];
+
+    if (format === 'excel') {
+      const wb = new ExcelJS.Workbook();
+      const thin = { style: 'thin', color: { argb: 'FF000000' } };
+      const border = { top: thin, left: thin, bottom: thin, right: thin };
+      tanggalList.forEach(tgl => {
+        const ws = wb.addWorksheet(tgl, { pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
+        [6, 34, 14, 12, 12, 12, 34].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+        ['REKAP PRESENSI PEGAWAI LEMBUR', judulBulan].forEach((t, k) => {
+          ws.mergeCells(`A${k + 1}:G${k + 1}`);
+          const c = ws.getCell(`A${k + 1}`);
+          c.value = t; c.font = { name: 'Arial', size: 14, bold: true }; c.alignment = { horizontal: 'center' };
+        });
+        const hr = ws.getRow(4);
+        header.forEach((h, i) => {
+          const c = hr.getCell(i + 1);
+          c.value = h;
+          c.font = { name: i <= 1 ? 'Arial' : 'Times New Roman', size: 12, bold: true };
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+          c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+          c.border = border;
+        });
+        hr.height = 36;
+        barisTanggal(tgl).forEach((vals, idx) => {
+          const row = ws.getRow(5 + idx);
+          vals.forEach((v, i) => {
+            const c = row.getCell(i + 1);
+            c.value = v;
+            c.font = { name: i <= 1 ? 'Arial' : 'Times New Roman', size: 12 };
+            c.alignment = { horizontal: i === 1 ? 'left' : 'center', vertical: 'middle' };
+            c.border = border;
+          });
+          row.height = 36;
+        });
+      });
+      const buffer = await wb.xlsx.writeBuffer();
+      saveAs(new Blob([buffer]), `Presensi_Lembur_Harian_${namaBulanTahun(ym).replace(/\s+/g, '_')}.xlsx`);
+      return;
+    }
+
+    const pdf = new jsPDF('l', 'mm', 'a4');
+    tanggalList.forEach((tgl, idx) => {
+      if (idx > 0) pdf.addPage();
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(14);
+      pdf.text('REKAP PRESENSI PEGAWAI LEMBUR', 148.5, 22, { align: 'center' });
+      pdf.text(judulBulan, 148.5, 30, { align: 'center' });
+      autoTable(pdf, {
+        startY: 40,
+        margin: { left: 30, right: 30 },
+        head: [header],
+        body: barisTanggal(tgl),
+        theme: 'grid',
+        styles: { font: 'times', fontSize: 11, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.3, valign: 'middle', halign: 'center', minCellHeight: 14 },
+        headStyles: { fillColor: [242, 242, 242], textColor: [0, 0, 0], fontStyle: 'bold', minCellHeight: 14 },
+        columnStyles: { 0: { cellWidth: 12, font: 'helvetica' }, 1: { cellWidth: 55, halign: 'left', font: 'helvetica' }, 2: { cellWidth: 28 }, 3: { cellWidth: 24 }, 4: { cellWidth: 24 }, 5: { cellWidth: 24 }, 6: { cellWidth: 70 } },
+        didParseCell: (d) => { if (d.section === 'head' && d.column.index <= 1) { d.cell.styles.font = 'helvetica'; d.cell.styles.fontSize = 12; } }
+      });
+    });
+    pdf.save(`Presensi_Lembur_Harian_${namaBulanTahun(ym).replace(/\s+/g, '_')}.pdf`);
   };
 
   const exportLemburToExcel = async (rows, periodeLabel) => {
@@ -3388,6 +3559,25 @@ const exportRekapKJKTahunan = async () => {
 
         {/* === MENU BARU: PERSETUJUAN / PENGAJUAN LEMBUR === */}
         {activeTab === 'lembur' && (() => {
+          // Tombol cetak lembur (Admin): pilihan format + Rekap Presensi + Presensi Harian
+          const ymCetak = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
+          const nonaktifCetak = ymCetak < '2026-10';
+          const cetakLemburButtons = (
+            <>
+              <select value={lemburCetakFormat} onChange={e => setLemburCetakFormat(e.target.value)} className="p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 shadow-sm outline-none">
+                <option value="excel">Excel</option>
+                <option value="pdf">PDF</option>
+              </select>
+              <button onClick={() => exportRekapLemburPresensi(ymCetak, lemburCetakFormat)} title={nonaktifCetak ? 'Berlaku mulai periode Oktober 2026' : 'Rekap lembur yang disetujui per pegawai, format Daftar Presensi'}
+                className={`px-4 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors shrink-0 ${nonaktifCetak ? 'bg-slate-200 text-slate-400' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
+                <FileSpreadsheet size={14}/> Rekap Presensi
+              </button>
+              <button onClick={() => exportPresensiLemburHarian(ymCetak, lemburCetakFormat)} title={nonaktifCetak ? 'Berlaku mulai periode Oktober 2026' : 'Presensi lembur harian, satu halaman per tanggal'}
+                className={`px-4 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors shrink-0 ${nonaktifCetak ? 'bg-slate-200 text-slate-400' : 'bg-slate-800 hover:bg-slate-900 text-white'}`}>
+                <FileText size={14}/> Presensi Harian
+              </button>
+            </>
+          );
           const namaBulan = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
           const monthPrefix = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
           const periodeLabel = `${namaBulan[selectedMonth - 1]} ${selectedYear}`;
@@ -3469,6 +3659,102 @@ const exportRekapKJKTahunan = async () => {
                 )}
               </div>
 
+              {/* BARU: PILIHAN TAMPILAN (Admin & Pimpinan) */}
+              {canApproveLembur && (
+                <div className="flex gap-2 mb-6 bg-white p-1.5 rounded-xl border border-slate-100 shadow-sm w-fit">
+                  <button onClick={() => setLemburView('persetujuan')} className={`px-4 py-2 rounded-lg text-[11px] font-semibold ${lemburView !== 'presensi' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>Persetujuan</button>
+                  <button onClick={() => setLemburView('presensi')} className={`px-4 py-2 rounded-lg text-[11px] font-semibold ${lemburView === 'presensi' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>Jam Presensi & Cetak</button>
+                </div>
+              )}
+
+              {/* BARU: INPUT JAM PRESENSI LEMBUR (Admin mengisi, Pimpinan melihat) */}
+              {canApproveLembur && lemburView === 'presensi' && (() => {
+                const dataBulan = getDataLemburBulan(monthPrefix);
+                const isAdmin = user.role === 'admin';
+                let totalBaris = 0, lengkap = 0;
+                dataBulan.pegawai.forEach(pg => Object.keys(dataBulan.perPegawai[pg.username]).forEach(tgl => {
+                  totalBaris++;
+                  const pr = getPresensiLembur(pg.username, tgl);
+                  if (pr.jamDatang && pr.jamPulang) lengkap++;
+                }));
+                return (
+                  <div className="space-y-6">
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">Jam Presensi Lembur {periodeLabel}</p>
+                        <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">
+                          {monthPrefix < REKAP_PRESENSI_MULAI
+                            ? 'Fitur ini berlaku mulai periode Oktober 2026.'
+                            : <>Terisi lengkap: <span className="font-semibold text-slate-700">{lengkap} dari {totalBaris}</span> hari lembur. Jam lembur dihitung otomatis (Sen&ndash;Kam: pulang &minus; 16.00; Jum: pulang &minus; 16.30; Sabtu/Minggu/libur: pulang &minus; datang, maks. 8 jam), dan dapat diubah manual oleh Admin.</>}
+                        </p>
+                      </div>
+                      {isAdmin && monthPrefix >= REKAP_PRESENSI_MULAI && <div className="flex flex-wrap gap-2 shrink-0">{cetakLemburButtons}</div>}
+                    </div>
+                    {monthPrefix >= REKAP_PRESENSI_MULAI && (dataBulan.pegawai.length === 0 ? (
+                      <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-10 text-center">
+                        <p className="text-[11px] font-semibold text-slate-400">Belum ada lembur yang disetujui pada {periodeLabel}.</p>
+                      </div>
+                    ) : dataBulan.pegawai.map(pg => (
+                      <div key={pg.username} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div className="px-5 md:px-6 py-4 bg-slate-50 border-b border-slate-100">
+                          <p className="text-xs font-semibold text-slate-700">{pg.name}</p>
+                          <p className="text-[9px] text-slate-400 mt-0.5">{Object.keys(dataBulan.perPegawai[pg.username]).length} hari lembur disetujui</p>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left min-w-[640px]">
+                            <thead>
+                              <tr className="text-[9px] font-semibold text-slate-400 border-b border-slate-100">
+                                <th className="px-4 py-3">Tanggal</th>
+                                <th className="px-2 py-3">Jam Datang</th>
+                                <th className="px-2 py-3">Jam Pulang</th>
+                                <th className="px-2 py-3">Status WFH</th>
+                                <th className="px-2 py-3">Jam Lembur</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {Object.keys(dataBulan.perPegawai[pg.username]).sort().map(tgl => {
+                                const pr = getPresensiLembur(pg.username, tgl);
+                                const libur = isHariLiburLembur(tgl);
+                                const inputCls = "p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-400 disabled:bg-transparent disabled:border-transparent";
+                                return (
+                                  <tr key={tgl} className={`border-b border-slate-50 ${libur ? 'bg-sky-50' : ''}`}>
+                                    <td className="px-4 py-2.5">
+                                      <p className="text-[11px] font-semibold text-slate-700">{tgl}</p>
+                                      <p className={`text-[9px] ${libur ? 'text-sky-600 font-semibold' : 'text-slate-400'}`}>{NAMA_HARI[new Date(tgl + 'T00:00:00').getDay()]}{libur ? ' · Hari libur' : ''}</p>
+                                    </td>
+                                    <td className="px-2 py-2.5"><input type="time" disabled={!isAdmin} className={inputCls} value={pr.jamDatang} onChange={e => simpanPresensiLembur(pg.username, tgl, { jamDatang: e.target.value })}/></td>
+                                    <td className="px-2 py-2.5"><input type="time" disabled={!isAdmin} className={inputCls} value={pr.jamPulang} onChange={e => simpanPresensiLembur(pg.username, tgl, { jamPulang: e.target.value })}/></td>
+                                    <td className="px-2 py-2.5"><input key={`wfh-${pr.statusWFH}`} type="text" disabled={!isAdmin} className={`${inputCls} w-24`} defaultValue={pr.statusWFH} onBlur={e => { if (e.target.value !== pr.statusWFH) simpanPresensiLembur(pg.username, tgl, { statusWFH: e.target.value.trim().toUpperCase() }); }}/></td>
+                                    <td className="px-2 py-2.5">
+                                      <div className="flex items-center gap-2">
+                                        <input key={`jl-${pr.jamLembur}-${pr.manual}`} type="number" min="0" max="24" disabled={!isAdmin} placeholder="-"
+                                          className={`${inputCls} w-16 text-center font-semibold ${pr.manual !== null ? 'text-amber-700' : 'text-slate-700'}`}
+                                          defaultValue={pr.jamLembur === null ? '' : pr.jamLembur}
+                                          onBlur={e => {
+                                            const v = e.target.value;
+                                            if (v === '' && pr.manual === null) return;
+                                            if (v !== '' && Number(v) === pr.otomatis && pr.manual === null) return;
+                                            simpanPresensiLembur(pg.username, tgl, { jamLemburManual: v === '' ? null : Number(v) });
+                                          }}/>
+                                        <span className="text-[9px] text-slate-400">jam</span>
+                                        {pr.manual !== null ? (
+                                          <span className="text-[8px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">Manual{pr.otomatis !== null ? ` (otomatis: ${pr.otomatis})` : ''}{isAdmin && <button onClick={() => simpanPresensiLembur(pg.username, tgl, { jamLemburManual: null })} className="ml-1.5 underline">kembalikan</button>}</span>
+                                        ) : pr.otomatis !== null ? <span className="text-[8px] font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded">Otomatis</span> : null}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )))}
+                  </div>
+                );
+              })()}
+
+              {(!canApproveLembur || lemburView !== 'presensi') && (<>
               {/* BARU: PANEL BATAS WAKTU & AKSES ENTRI LEMBUR */}
               {(() => {
                 const aksesSaya = getAksesLembur(monthPrefix, user.username);
@@ -3555,13 +3841,7 @@ const exportRekapKJKTahunan = async () => {
                       className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors shrink-0">
                       <Download size={14}/> Excel
                     </button>
-                    {user.role === 'admin' && (
-                      <button onClick={() => exportRekapLemburPresensi(monthPrefix)}
-                        title={monthPrefix < REKAP_PRESENSI_MULAI ? 'Berlaku mulai periode Oktober 2026' : 'Rekap lembur yang disetujui, format Daftar Presensi'}
-                        className={`px-4 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors shrink-0 ${monthPrefix < REKAP_PRESENSI_MULAI ? 'bg-slate-200 text-slate-400' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
-                        <FileSpreadsheet size={14}/> Rekap Presensi
-                      </button>
-                    )}
+                    {user.role === 'admin' && cetakLemburButtons}
                   </div>
                 )}
               </div>
@@ -3675,6 +3955,7 @@ const exportRekapKJKTahunan = async () => {
                   })}
                 </div>
               )}
+              </>)}
             </div>
           );
         })()}
