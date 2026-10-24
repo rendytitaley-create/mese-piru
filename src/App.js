@@ -289,6 +289,7 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   const [lemburPresensi, setLemburPresensi] = useState({}); // { 'username_YYYY-MM-DD': { jamDatang, jamPulang, statusWFH, jamLemburManual } }
   const [lemburView, setLemburView] = useState('persetujuan'); // 'persetujuan' | 'presensi'
   const [lemburCetakFormat, setLemburCetakFormat] = useState('excel'); // 'excel' | 'pdf'
+  const [migrasiLemburSelesai, setMigrasiLemburSelesai] = useState(false);
 
   // SINKRONISASI OTOMATIS: KALENDER MENGIKUTI HEADER
   useEffect(() => {
@@ -405,6 +406,39 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
     });
     return () => unsubPresensiLembur();
   }, [user]);
+
+  // === BARU: DATA LAMA LEMBUR MULAI OKTOBER 2026 WAJIB PERSETUJUAN ===
+  // Agenda lembur bertanggal >= 1 Oktober 2026 yang dibuat sebelum fitur persetujuan ada (tanpa lemburStatus)
+  // dimasukkan sekali ke antrean "menunggu" agar tetap melalui persetujuan Pimpinan.
+  // Dijalankan otomatis saat Admin/Pimpinan membuka aplikasi; aman diulang (hanya menyentuh data tanpa status).
+  useEffect(() => {
+    if (migrasiLemburSelesai || !user || user.isDemo || !['admin', 'pimpinan'].includes(user.role)) return;
+    if (agendas.length === 0) return;
+    const target = agendas.filter(a => a.isLembur && !a.lemburStatus && (a.date || '') >= '2026-10-01');
+    setMigrasiLemburSelesai(true);
+    if (target.length === 0) return;
+    (async () => {
+      try {
+        for (let i = 0; i < target.length; i += 400) {
+          const batch = writeBatch(db);
+          target.slice(i, i + 400).forEach(a => {
+            const dibuat = a.createdAt && typeof a.createdAt.toDate === 'function' ? a.createdAt.toDate() : null;
+            batch.update(doc(db, "agendas", a.id), {
+              lemburStatus: 'menunggu',
+              lemburDiajukanAt: a.createdAt || serverTimestamp(),
+              lemburTerlambat: dibuat ? formatDateLocal(dibuat) >= a.date : false,
+              lemburCatatan: '', lemburDiperiksaOleh: '', lemburDiperiksaUsername: '', lemburDiperiksaAt: null,
+              lemburRiwayat: arrayUnion({ aksi: 'Dimasukkan ke antrean persetujuan (data lama Oktober 2026)', oleh: 'Sistem', waktu: new Date().toISOString(), catatan: '' })
+            });
+          });
+          await batch.commit();
+        }
+      } catch (err) {
+        console.error('Migrasi lembur gagal', err);
+        setMigrasiLemburSelesai(false);
+      }
+    })();
+  }, [agendas, user, migrasiLemburSelesai]);
 
   // === BARU: FUNGSI AGENDA ===
   // Helper: hasilkan daftar tanggal (YYYY-MM-DD) dari startDate s.d endDate, inklusif
