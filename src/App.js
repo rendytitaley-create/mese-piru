@@ -280,6 +280,11 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   // === BARU: STATE PERSETUJUAN LEMBUR ===
   const [lemburStatusFilter, setLemburStatusFilter] = useState('semua'); // semua | menunggu | disetujui | ditolak | lama
   const [lemburStaffFilter, setLemburStaffFilter] = useState('Semua'); // berisi username pegawai, atau 'Semua'
+  // === BARU: BATAS WAKTU ENTRI & RIWAYAT LEMBUR ===
+  const [lemburAkses, setLemburAkses] = useState({}); // { 'YYYY-MM': { mode, bukaUntuk, pegawai, riwayat } }
+  const [lemburRiwayatOpen, setLemburRiwayatOpen] = useState({}); // id agenda -> true jika riwayat dibuka
+  const [showAksesPicker, setShowAksesPicker] = useState(false);
+  const [aksesPickerSelection, setAksesPickerSelection] = useState([]);
 
   // SINKRONISASI OTOMATIS: KALENDER MENGIKUTI HEADER
   useEffect(() => {
@@ -375,6 +380,17 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
     return () => { unsubReports(); unsubVotes(); unsubWinners(); unsubPublish(); unsubAgenda(); };
   }, [user]);
 
+  // === BARU: LISTENER PENGATURAN AKSES ENTRI LEMBUR (buka/tutup oleh admin, per bulan) ===
+  useEffect(() => {
+    if (!user) return;
+    const unsubLemburAkses = onSnapshot(collection(db, "lembur_akses"), (snap) => {
+      const data = {};
+      snap.docs.forEach(d => { data[d.id] = d.data(); });
+      setLemburAkses(data);
+    });
+    return () => unsubLemburAkses();
+  }, [user]);
+
   // === BARU: FUNGSI AGENDA ===
   // Helper: hasilkan daftar tanggal (YYYY-MM-DD) dari startDate s.d endDate, inklusif
   // Catatan: format manual (bukan toISOString) supaya tidak bergeser akibat konversi ke UTC
@@ -395,6 +411,49 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   // dan harus disetujui Pimpinan/Admin. Agenda lembur lama (sebelum fitur ini ada) tidak punya
   // field lemburStatus, sehingga dianggap "Data Lama" dan tidak perlu persetujuan.
   // Pengajuan dianggap TERLAMBAT jika diajukan pada hari lembur itu sendiri atau sesudahnya.
+  // === BARU: BATAS WAKTU ENTRI LEMBUR ===
+  // Lembur bulan X hanya bisa dientri s.d. HARI KERJA PERTAMA bulan berikutnya (inklusif).
+  // Bukan hari kerja: Sabtu, Minggu, dan libur nasional bertanggal tetap di bawah ini.
+  // Libur yang tanggalnya berubah tiap tahun (Lebaran, Natal bersama, dll.) diatasi Admin lewat tombol "Buka".
+  const LIBUR_NASIONAL_TETAP = ['01-01', '05-01', '06-01', '08-17', '12-25'];
+  const getBatasEntriLembur = (ym) => {
+    const [y, m] = ym.split('-').map(Number);
+    const d = new Date(y, m, 1); // tanggal 1 bulan berikutnya (m sudah 1-based)
+    const isLibur = (dt) => {
+      const md = `${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+      return dt.getDay() === 0 || dt.getDay() === 6 || LIBUR_NASIONAL_TETAP.includes(md);
+    };
+    while (isLibur(d)) d.setDate(d.getDate() + 1);
+    return formatDateLocal(d);
+  };
+  // Status akses entri lembur untuk bulan ym ('YYYY-MM') bagi pegawai tertentu
+  const getAksesLembur = (ym, username) => {
+    const batas = getBatasEntriLembur(ym);
+    const cfg = lemburAkses[ym] || {};
+    const lewat = formatDateLocal(new Date()) > batas;
+    if (cfg.mode === 'tutup') return { terbuka: false, batas, sumber: 'admin_tutup' };
+    if (cfg.mode === 'buka' && (cfg.bukaUntuk === 'semua' || (cfg.pegawai || []).includes(username))) {
+      return { terbuka: true, batas, sumber: 'admin_buka' };
+    }
+    return { terbuka: !lewat, batas, sumber: lewat ? 'lewat' : 'otomatis' };
+  };
+  const formatTanggalPanjang = (s) => {
+    const d = new Date(s + 'T00:00:00');
+    return isNaN(d) ? s : d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  };
+  const namaBulanTahun = (ym) => {
+    const [y, m] = ym.split('-').map(Number);
+    return `${["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"][m - 1]} ${y}`;
+  };
+  const pesanLemburDitutup = (ym) => `Entri lembur bulan ${namaBulanTahun(ym)} sudah DITUTUP (batas: ${formatTanggalPanjang(getBatasEntriLembur(ym))}). Hubungi Admin jika ada instruksi Pimpinan untuk membuka kembali.`;
+  // Cek semua bulan yang tersentuh; kembalikan bulan pertama yang tertutup (atau null jika semua terbuka)
+  const cariBulanLemburTertutup = (dateList) => {
+    const months = [...new Set(dateList.filter(Boolean).map(d => d.slice(0, 7)))];
+    return months.find(ym => !getAksesLembur(ym, user.username).terbuka) || null;
+  };
+  // Satu baris catatan riwayat pengajuan lembur (disimpan di array lemburRiwayat)
+  const entriRiwayatLembur = (aksi, catatan = '') => ({ aksi, oleh: user ? user.name : '', waktu: new Date().toISOString(), catatan });
+
   const buildPengajuanLembur = (dateStr) => ({
     lemburStatus: 'menunggu',
     lemburDiajukanAt: serverTimestamp(),
@@ -415,6 +474,12 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
           alert("Agenda lembur ini sudah disetujui sehingga tidak dapat diubah lagi.");
           return;
         }
+        // Batas waktu entri lembur: cek bulan agenda lama (jika lembur) dan bulan tujuan (jika lembur)
+        const bulanTertutupEdit = cariBulanLemburTertutup([
+          prevAgenda.isLembur ? prevAgenda.date : null,
+          newAgenda.isLembur ? newAgenda.date : null
+        ]);
+        if (bulanTertutupEdit) { alert(pesanLemburDitutup(bulanTertutupEdit)); return; }
         // Tentukan perubahan status lembur akibat edit ini
         let lemburUpdate = {};
         if (!newAgenda.isLembur) {
@@ -426,6 +491,18 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
           // Baru dicentang lembur, diajukan ulang setelah ditolak, atau tanggalnya diganti -> ajukan ulang
           lemburUpdate = buildPengajuanLembur(newAgenda.date);
         }
+        // Catat riwayat pengajuan lembur
+        let aksiRiwayat = null;
+        if (lemburUpdate.lemburStatus === 'menunggu') {
+          aksiRiwayat = !prevAgenda.isLembur ? 'Diajukan'
+            : prevAgenda.lemburStatus === 'ditolak' ? 'Diperbaiki & diajukan ulang setelah ditolak'
+            : `Tanggal lembur diubah (${prevAgenda.date} \u2192 ${newAgenda.date}), diajukan ulang`;
+        } else if (lemburUpdate.lemburStatus === null) {
+          aksiRiwayat = 'Centang lembur dibatalkan oleh pegawai';
+        } else if (prevAgenda.lemburStatus === 'menunggu') {
+          aksiRiwayat = 'Uraian/volume diubah oleh pegawai';
+        }
+        if (aksiRiwayat) lemburUpdate = { ...lemburUpdate, lemburRiwayat: arrayUnion(entriRiwayatLembur(aksiRiwayat)) };
         const agendaRef = doc(db, "agendas", newAgenda.id);
         await safeUpdateDoc(agendaRef, {
           taskName: newAgenda.taskName,
@@ -446,6 +523,10 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
           alert("Tanggal akhir tidak boleh sebelum tanggal mulai.");
           return;
         }
+        if (newAgenda.isLembur) {
+          const bulanTertutupRange = cariBulanLemburTertutup(dateList);
+          if (bulanTertutupRange) { alert(pesanLemburDitutup(bulanTertutupRange)); return; }
+        }
         const batch = writeBatch(db);
         const lastDateStr = dateList[dateList.length - 1];
         dateList.forEach(dateStr => {
@@ -459,7 +540,7 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
             satuan: newAgenda.satuan,
             date: dateStr,
             isLembur: newAgenda.isLembur || false,
-            ...(newAgenda.isLembur ? buildPengajuanLembur(dateStr) : {}),
+            ...(newAgenda.isLembur ? { ...buildPengajuanLembur(dateStr), lemburRiwayat: [entriRiwayatLembur('Diajukan')] } : {}),
             userId: user.username,
             userName: user.name,
             isImported: false,
@@ -471,13 +552,17 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
         await safeBatchCommit(batch);
         alert(`Agenda berhasil ditambahkan untuk ${dateList.length} hari (${newAgenda.date} s.d ${agendaEndDate}).` + (newAgenda.isLembur ? " Uraian lembur menunggu persetujuan Pimpinan." : ""));
       } else {
+        if (newAgenda.isLembur) {
+          const bulanTertutupSingle = cariBulanLemburTertutup([newAgenda.date]);
+          if (bulanTertutupSingle) { alert(pesanLemburDitutup(bulanTertutupSingle)); return; }
+        }
         await safeAddDoc(collection(db, "agendas"), {
           ...newAgenda,
           userId: user.username,
           userName: user.name,
           isImported: false,
           isLembur: newAgenda.isLembur || false,
-          ...(newAgenda.isLembur ? buildPengajuanLembur(newAgenda.date) : {}),
+          ...(newAgenda.isLembur ? { ...buildPengajuanLembur(newAgenda.date), lemburRiwayat: [entriRiwayatLembur('Diajukan')] } : {}),
           createdAt: serverTimestamp()
         });
         alert("Agenda berhasil ditambahkan." + (newAgenda.isLembur ? " Uraian lembur menunggu persetujuan Pimpinan." : ""));
@@ -495,6 +580,10 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
     const target = agendas.find(a => a.id === id);
     if (target && target.lemburStatus === 'disetujui') {
       alert("Agenda lembur ini sudah disetujui sehingga tidak dapat dihapus.");
+      return;
+    }
+    if (target && target.isLembur && cariBulanLemburTertutup([target.date])) {
+      alert(pesanLemburDitutup(target.date.slice(0, 7)));
       return;
     }
     if (window.confirm("Hapus catatan agenda ini?")) {
@@ -524,10 +613,11 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
     }
     try {
       const batch = writeBatch(db);
+      const riwayat = entriRiwayatLembur(status === 'disetujui' ? 'Disetujui' : status === 'ditolak' ? 'Ditolak' : 'Keputusan dibatalkan (kembali menunggu)', catatan);
       ids.forEach(id => {
         batch.update(doc(db, "agendas", id), status === 'menunggu'
-          ? { lemburStatus: 'menunggu', lemburCatatan: '', lemburDiperiksaOleh: '', lemburDiperiksaUsername: '', lemburDiperiksaAt: null }
-          : { lemburStatus: status, lemburCatatan: catatan, lemburDiperiksaOleh: user.name, lemburDiperiksaUsername: user.username, lemburDiperiksaAt: serverTimestamp() });
+          ? { lemburStatus: 'menunggu', lemburCatatan: '', lemburDiperiksaOleh: '', lemburDiperiksaUsername: '', lemburDiperiksaAt: null, lemburRiwayat: arrayUnion(riwayat) }
+          : { lemburStatus: status, lemburCatatan: catatan, lemburDiperiksaOleh: user.name, lemburDiperiksaUsername: user.username, lemburDiperiksaAt: serverTimestamp(), lemburRiwayat: arrayUnion(riwayat) });
       });
       await safeBatchCommit(batch);
     } catch (err) {
@@ -541,15 +631,50 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
   const lemburVisibleAgendas = !user ? [] : agendas.filter(a => a.isLembur && (canApproveLembur || a.userId === user.username));
   const lemburPendingCount = !user ? 0 : agendas.filter(a => a.isLembur && a.lemburStatus === 'menunggu' && (canApproveLembur || a.userId === user.username)).length;
 
+  // === BARU: ADMIN MENGATUR BUKA/TUTUP AKSES ENTRI LEMBUR PER BULAN ===
+  const simpanAksesLembur = async (ym, mode, bukaUntuk = 'semua', pegawai = []) => {
+    if (!user || user.role !== 'admin') return;
+    const namaPegawai = pegawai.map(un => (users.find(u => u.username === un) || {}).name || un);
+    const keterangan = mode === 'otomatis' ? 'Dikembalikan ke Otomatis (ikut batas waktu)'
+      : mode === 'tutup' ? 'Akses entri DITUTUP'
+      : bukaUntuk === 'semua' ? 'Akses entri DIBUKA untuk semua pegawai'
+      : `Akses entri DIBUKA untuk: ${namaPegawai.join(', ')}`;
+    if (!window.confirm(`${namaBulanTahun(ym)}: ${keterangan}?`)) return;
+    try {
+      await safeSetDoc(doc(db, "lembur_akses", ym), {
+        mode, bukaUntuk: mode === 'buka' ? bukaUntuk : '', pegawai: mode === 'buka' && bukaUntuk === 'tertentu' ? pegawai : [],
+        diubahOleh: user.name, diubahAt: serverTimestamp(),
+        riwayat: arrayUnion({ keterangan, oleh: user.name, waktu: new Date().toISOString() })
+      }, { merge: true });
+      setShowAksesPicker(false);
+    } catch (err) {
+      if (err && err.message === 'demo-mode') return;
+      console.error(err);
+      alert("Gagal menyimpan pengaturan akses lembur.");
+    }
+  };
+
+  // Tanggal entri pengajuan lembur & selisih hari terhadap tanggal lembur
+  const getInfoEntriLembur = (a) => {
+    const ts = a.lemburDiajukanAt || a.createdAt;
+    const dt = ts && typeof ts.toDate === 'function' ? ts.toDate() : (a.lemburStatus ? new Date() : null);
+    if (!dt || !a.date) return null;
+    const entriStr = formatDateLocal(dt);
+    const selisih = Math.round((new Date(a.date + 'T00:00:00') - new Date(entriStr + 'T00:00:00')) / 86400000);
+    const jam = dt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const label = selisih > 0 ? `${selisih} hari sebelum lembur` : selisih === 0 ? 'pada hari lembur' : `${Math.abs(selisih)} hari setelah lembur`;
+    return { entriStr, jam, selisih, label, tone: selisih > 0 ? 'baik' : selisih === 0 ? 'sedang' : 'buruk' };
+  };
+
   const exportLemburToExcel = async (rows, periodeLabel) => {
     if (rows.length === 0) { alert("Tidak ada data lembur untuk dicetak."); return; }
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Lembur');
-    ws.mergeCells('A1:J1');
+    ws.mergeCells('A1:L1');
     ws.getCell('A1').value = `REKAP PENGAJUAN LEMBUR - ${periodeLabel.toUpperCase()}`;
     ws.getCell('A1').font = { bold: true, size: 13 };
     ws.getCell('A1').alignment = { horizontal: 'center' };
-    const header = ['No', 'Tanggal', 'Nama Pegawai', 'Uraian Kegiatan Lembur', 'Volume', 'Satuan', 'Status', 'Pengajuan', 'Diperiksa Oleh', 'Catatan'];
+    const header = ['No', 'Tanggal', 'Nama Pegawai', 'Uraian Kegiatan Lembur', 'Volume', 'Satuan', 'Status', 'Pengajuan', 'Tanggal Entri', 'Selisih Entri', 'Diperiksa Oleh', 'Catatan'];
     const headerRow = ws.getRow(3);
     header.forEach((h, i) => {
       const c = headerRow.getCell(i + 1);
@@ -564,14 +689,16 @@ const [bakiraLinkDoc, setBakiraLinkDoc] = useState('');
       [idx + 1, a.date, getLemburStaffName(a), a.taskName, a.volume || '', a.satuan || '',
         a.lemburStatus ? statusLabel[a.lemburStatus] : 'Data Lama',
         a.lemburStatus ? (a.lemburTerlambat ? 'Terlambat' : 'Tepat waktu') : '-',
+        (() => { const inf = a.lemburStatus ? getInfoEntriLembur(a) : null; return inf ? `${inf.entriStr} ${inf.jam}` : '-'; })(),
+        (() => { const inf = a.lemburStatus ? getInfoEntriLembur(a) : null; return inf ? inf.label : '-'; })(),
         a.lemburDiperiksaOleh || '', a.lemburCatatan || ''
       ].forEach((v, i) => {
         const c = r.getCell(i + 1);
         c.value = v;
-        c.alignment = { vertical: 'top', wrapText: true, horizontal: [0, 1, 4, 5, 6, 7].includes(i) ? 'center' : 'left' };
+        c.alignment = { vertical: 'top', wrapText: true, horizontal: [0, 1, 4, 5, 6, 7, 8, 9].includes(i) ? 'center' : 'left' };
       });
     });
-    [5, 12, 26, 50, 9, 12, 12, 13, 22, 30].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+    [5, 12, 26, 50, 9, 12, 12, 13, 17, 22, 22, 30].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
     for (let r = 3; r < 4 + rows.length; r++) {
       for (let c = 1; c <= header.length; c++) {
         ws.getRow(r).getCell(c).border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
@@ -2197,6 +2324,23 @@ const exportRekapKJKTahunan = async () => {
           <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-28 md:pb-10">
             <div className="max-w-7xl mx-auto">
               {renderPeriodeBanner('Agenda Kerja')}
+              {/* BARU: INFO BATAS WAKTU ENTRI LEMBUR */}
+              {(() => {
+                const ymAgenda = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
+                const akses = getAksesLembur(ymAgenda, user.username);
+                return (
+                  <div className={`-mt-3 mb-6 px-5 py-3 rounded-xl border flex items-start gap-3 ${akses.terbuka ? 'bg-amber-50/60 border-amber-200 text-amber-800' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                    <Clock size={16} className="shrink-0 mt-0.5"/>
+                    <p className="text-[11px] font-semibold leading-snug">
+                      {akses.terbuka
+                        ? (akses.sumber === 'admin_buka'
+                            ? `Entri lembur bulan ${namaBulanTahun(ymAgenda)} sedang DIBUKA oleh Admin.`
+                            : `Batas entri lembur bulan ${namaBulanTahun(ymAgenda)}: ${formatTanggalPanjang(akses.batas)}. Setelah itu agenda lembur bulan ini tidak dapat ditambah, diubah, atau dihapus.`)
+                        : `Entri lembur bulan ${namaBulanTahun(ymAgenda)} sudah DITUTUP${akses.sumber === 'admin_tutup' ? ' oleh Admin' : ` (batas: ${formatTanggalPanjang(akses.batas)})`}. Agenda biasa (bukan lembur) tetap dapat diisi.`}
+                    </p>
+                  </div>
+                );
+              })()}
               <div className="flex flex-col xl:flex-row gap-8">
               {/* KOLOM KALENDER */}
               <div className="flex-1 bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-slate-100 h-fit">
@@ -2317,7 +2461,7 @@ const exportRekapKJKTahunan = async () => {
                           </div>
                           <div className="flex flex-col gap-2 shrink-0">
                             {a.isImported && <CheckSquare size={14} className="text-green-500"/>}
-{(user.role === 'pegawai' || filterStaffName === 'Semua') && !a.isImported && a.lemburStatus !== 'disetujui' && (
+{(user.role === 'pegawai' || filterStaffName === 'Semua') && !a.isImported && a.lemburStatus !== 'disetujui' && !(a.isLembur && !getAksesLembur((a.date || '').slice(0, 7), user.username).terbuka) && (
   <div className="flex gap-2">
     <button 
       onClick={() => {
@@ -3214,6 +3358,71 @@ const exportRekapKJKTahunan = async () => {
                 )}
               </div>
 
+              {/* BARU: PANEL BATAS WAKTU & AKSES ENTRI LEMBUR */}
+              {(() => {
+                const aksesSaya = getAksesLembur(monthPrefix, user.username);
+                const cfg = lemburAkses[monthPrefix] || {};
+                const lewat = formatDateLocal(new Date()) > aksesSaya.batas;
+                const mode = cfg.mode || 'otomatis';
+                const statusUmum = mode === 'tutup' ? 'DITUTUP oleh Admin'
+                  : mode === 'buka' ? (cfg.bukaUntuk === 'semua' ? 'DIBUKA oleh Admin untuk semua pegawai' : `DIBUKA oleh Admin untuk ${(cfg.pegawai || []).length} pegawai tertentu${lewat ? '' : ' (pegawai lain masih terbuka sesuai batas waktu)'}`)
+                  : lewat ? 'DITUTUP otomatis (batas waktu sudah lewat)' : 'TERBUKA (otomatis sesuai batas waktu)';
+                const terbukaUmum = mode === 'buka' ? true : mode === 'tutup' ? false : !lewat;
+                const pegawaiPilihan = users.filter(u => u.role !== 'admin' && u.status !== 'nonaktif' && u.status !== 'Nonaktif').sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                return (
+                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 md:p-6 mb-6">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold text-slate-400">Batas entri lembur {periodeLabel}</p>
+                        <p className="text-sm font-semibold text-slate-800 mt-0.5">{formatTanggalPanjang(aksesSaya.batas)}</p>
+                        <p className={`text-[10px] font-semibold mt-1 ${user.role === 'admin' || user.role === 'pimpinan' ? (terbukaUmum ? 'text-green-600' : 'text-red-600') : (aksesSaya.terbuka ? 'text-green-600' : 'text-red-600')}`}>
+                          Status: {user.role === 'admin' || user.role === 'pimpinan' ? statusUmum : (aksesSaya.terbuka ? (aksesSaya.sumber === 'admin_buka' ? 'DIBUKA oleh Admin untuk Anda' : 'TERBUKA') : (aksesSaya.sumber === 'admin_tutup' ? 'DITUTUP oleh Admin' : 'DITUTUP (batas waktu sudah lewat)'))}
+                        </p>
+                        {cfg.diubahOleh && ['admin', 'pimpinan'].includes(user.role) && (
+                          <p className="text-[9px] text-slate-400 mt-1">Terakhir diatur oleh {cfg.diubahOleh}{cfg.diubahAt && cfg.diubahAt.toDate ? ` \u00b7 ${cfg.diubahAt.toDate().toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}</p>
+                        )}
+                      </div>
+                      {user.role === 'admin' && (
+                        <div className="flex flex-wrap gap-2 shrink-0">
+                          <button onClick={() => simpanAksesLembur(monthPrefix, 'buka', 'semua')} className={`px-3 py-2 rounded-lg text-[10px] font-semibold border ${mode === 'buka' && cfg.bukaUntuk === 'semua' ? 'bg-green-600 border-green-600 text-white' : 'bg-white border-green-200 text-green-700 hover:bg-green-50'}`}>Buka untuk Semua</button>
+                          <button onClick={() => { setAksesPickerSelection(mode === 'buka' && cfg.bukaUntuk === 'tertentu' ? (cfg.pegawai || []) : []); setShowAksesPicker(!showAksesPicker); }} className={`px-3 py-2 rounded-lg text-[10px] font-semibold border ${mode === 'buka' && cfg.bukaUntuk === 'tertentu' ? 'bg-green-600 border-green-600 text-white' : 'bg-white border-green-200 text-green-700 hover:bg-green-50'}`}>Buka untuk Pegawai Tertentu</button>
+                          <button onClick={() => simpanAksesLembur(monthPrefix, 'tutup')} className={`px-3 py-2 rounded-lg text-[10px] font-semibold border ${mode === 'tutup' ? 'bg-red-600 border-red-600 text-white' : 'bg-white border-red-200 text-red-600 hover:bg-red-50'}`}>Tutup</button>
+                          <button onClick={() => simpanAksesLembur(monthPrefix, 'otomatis')} className={`px-3 py-2 rounded-lg text-[10px] font-semibold border ${mode === 'otomatis' ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>Otomatis</button>
+                        </div>
+                      )}
+                    </div>
+                    {user.role === 'admin' && showAksesPicker && (
+                      <div className="mt-5 pt-5 border-t border-slate-100">
+                        <p className="text-[10px] font-semibold text-slate-500 mb-3">Pilih pegawai yang dibuka aksesnya untuk {periodeLabel}:</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-60 overflow-y-auto">
+                          {pegawaiPilihan.map(u => (
+                            <label key={u.firestoreId || u.username} className="flex items-center gap-2 p-2 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer text-[11px] text-slate-700">
+                              <input type="checkbox" className="w-4 h-4 accent-indigo-600" checked={aksesPickerSelection.includes(u.username)}
+                                onChange={e => setAksesPickerSelection(e.target.checked ? [...aksesPickerSelection, u.username] : aksesPickerSelection.filter(x => x !== u.username))}/>
+                              {u.name}
+                            </label>
+                          ))}
+                        </div>
+                        <div className="flex gap-2 mt-4">
+                          <button disabled={aksesPickerSelection.length === 0} onClick={() => simpanAksesLembur(monthPrefix, 'buka', 'tertentu', aksesPickerSelection)} className="bg-green-600 disabled:bg-slate-300 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-[10px] font-semibold">Simpan ({aksesPickerSelection.length} pegawai)</button>
+                          <button onClick={() => setShowAksesPicker(false)} className="bg-white border border-slate-200 text-slate-500 px-4 py-2 rounded-lg text-[10px] font-semibold">Batal</button>
+                        </div>
+                      </div>
+                    )}
+                    {['admin', 'pimpinan'].includes(user.role) && (cfg.riwayat || []).length > 0 && (
+                      <details className="mt-4">
+                        <summary className="text-[10px] font-semibold text-indigo-600 cursor-pointer">Riwayat pengaturan akses ({cfg.riwayat.length})</summary>
+                        <ul className="mt-2 space-y-1">
+                          {[...cfg.riwayat].reverse().map((r, i) => (
+                            <li key={i} className="text-[10px] text-slate-500">{new Date(r.waktu).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })} &middot; <span className="font-semibold text-slate-600">{r.oleh}</span>: {r.keterangan}</li>
+                          ))}
+                        </ul>
+                      </details>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* FILTER */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6">
                 <div className="flex flex-wrap gap-2">
@@ -3290,11 +3499,38 @@ const exportRekapKJKTahunan = async () => {
                                       <span className="px-2 py-0.5 text-[8px] font-semibold rounded-md bg-indigo-50 text-indigo-500">Pekerjaan bersambung</span>
                                     )}
                                   </div>
+                                  {/* BARU: TANGGAL ENTRI & SELISIH HARI (untuk Admin & Pimpinan) */}
+                                  {canApproveLembur && a.lemburStatus && (() => {
+                                    const inf = getInfoEntriLembur(a);
+                                    if (!inf) return null;
+                                    return (
+                                      <p className="text-[10px] mt-2 leading-snug text-slate-500">
+                                        Dientri {formatTanggalPanjang(inf.entriStr)}, pukul {inf.jam} &middot;{' '}
+                                        <span className={`font-semibold px-1.5 py-0.5 rounded ${inf.tone === 'baik' ? 'bg-green-50 text-green-700' : inf.tone === 'sedang' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-600'}`}>{inf.label}</span>
+                                      </p>
+                                    );
+                                  })()}
                                   {(a.lemburDiperiksaOleh || a.lemburCatatan) && (
                                     <p className="text-[9px] text-slate-400 mt-2 leading-snug">
                                       {a.lemburDiperiksaOleh && <>Diperiksa oleh <span className="font-semibold text-slate-500">{a.lemburDiperiksaOleh}</span></>}
                                       {a.lemburCatatan && <span className={st === 'ditolak' ? 'text-red-600' : ''}>{a.lemburDiperiksaOleh ? ' · ' : ''}Catatan: {a.lemburCatatan}</span>}
                                     </p>
+                                  )}
+                                  {canApproveLembur && a.lemburStatus && (
+                                    <div className="mt-2">
+                                      <button onClick={() => setLemburRiwayatOpen({ ...lemburRiwayatOpen, [a.id]: !lemburRiwayatOpen[a.id] })} className="text-[9px] font-semibold text-indigo-600 underline flex items-center gap-1"><History size={11}/> {lemburRiwayatOpen[a.id] ? 'Sembunyikan riwayat' : 'Lihat riwayat'}</button>
+                                      {lemburRiwayatOpen[a.id] && (
+                                        <ul className="mt-2 border-l-2 border-indigo-100 pl-3 space-y-1.5">
+                                          {(a.lemburRiwayat || []).length === 0 ? (
+                                            <li className="text-[9px] text-slate-400">Riwayat rinci belum tercatat (pengajuan dibuat sebelum fitur riwayat aktif). Tanggal entri terakhir tercantum di atas.</li>
+                                          ) : [...a.lemburRiwayat].sort((x, y) => (x.waktu || '').localeCompare(y.waktu || '')).map((r, i) => (
+                                            <li key={i} className="text-[9px] text-slate-500 leading-snug">
+                                              <span className="font-semibold text-slate-600">{new Date(r.waktu).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span> &middot; {r.aksi}{r.oleh ? ` oleh ${r.oleh}` : ''}{r.catatan ? ` (${r.catatan})` : ''}
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      )}
+                                    </div>
                                   )}
                                   {!canApproveLembur && st === 'ditolak' && (
                                     <button onClick={() => setActiveTab('agenda')} className="mt-2 text-[9px] font-semibold text-indigo-600 underline">Perbaiki di Agenda Kerja untuk mengajukan ulang</button>
@@ -4024,6 +4260,9 @@ const exportRekapKJKTahunan = async () => {
                 />
                 <span className={`text-[10px] font-semibold ${newAgenda.isLembur ? 'text-white' : 'text-slate-500'}`}>Kategori Lembur / Hari Libur</span>
               </div>
+              {newAgenda.isLembur && newAgenda.date && !getAksesLembur(newAgenda.date.slice(0, 7), user.username).terbuka && (
+                <p className="text-[10px] font-semibold text-red-600 leading-snug px-2 -mt-2">{pesanLemburDitutup(newAgenda.date.slice(0, 7))}</p>
+              )}
               <div className="grid grid-cols-2 gap-4 text-center">
                 <input required type="number" placeholder="Volume" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-semibold text-center border border-slate-100" value={newAgenda.volume} onChange={e => setNewAgenda({...newAgenda, volume: e.target.value})} />
                 <input required type="text" placeholder="Satuan" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-semibold text-center border border-slate-100" value={newAgenda.satuan} onChange={e => setNewAgenda({...newAgenda, satuan: e.target.value})} />
